@@ -1,0 +1,12 @@
+asgiref==3.8.1
+Django~=5.1.5
+django-cors-headers==4.6.0
+djangorestframework==3.15.2
+mysqlclient==2.2.7
+pyodbc==5.2.0
+pytz==2024.2
+sqlparse==0.5.3
+tzdata==2025.1
+djangorestframework-simplejwt==5.4.0
+requests~=2.32.3
+psycopg2==2.9.10
