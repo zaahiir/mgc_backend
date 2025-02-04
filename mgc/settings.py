@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -113,6 +114,16 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
+ENCRYPTION_KEY = get_random_secret_key()
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'smartxoft@gmail.com'
+EMAIL_HOST_USER_PASSWORD = 'zyio jdww kyrq wcnw'
+DEFAULT_FROM_EMAIL = 'smartxoft@gmail.com'
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'

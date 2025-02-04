@@ -1,0 +1,23 @@
+# .htaccess
+<IfModule mod_wsgi.c>
+    WSGIDaemonProcess mastergolf.lajix.com python-path=/home/lajix/public_html/mastergolf.lajix.com/django/.venv/lib/python3.9/site-packages
+    WSGIProcessGroup mastergolf.lajix.com
+    WSGIScriptAlias / /home/lajix/public_html/mastergolf.lajix.com/django/mgc/wsgi.py
+</IfModule>
+
+<Directory /home/lajix/public_html/mastergolf.lajix.com/django/mgc>
+    <Files wsgi.py>
+        Require all granted
+    </Files>
+</Directory>
+
+Alias /static/ /home/lajix/public_html/mastergolf.lajix.com/django/static/
+Alias /media/ /home/lajix/public_html/mastergolf.lajix.com/django/media/
+
+<Directory /home/lajix/public_html/mastergolf.lajix.com/django/static>
+    Require all granted
+</Directory>
+
+<Directory /home/lajix/public_html/mastergolf.lajix.com/django/media>
+    Require all granted
+</Directory>
