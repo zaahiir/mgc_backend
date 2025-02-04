@@ -11,3 +11,6 @@ deployment:
     - /bin/cp requirements.txt $DEPLOYPATH
     - /bin/cp .htaccess $DEPLOYPATH
 
+
+#  test
+
