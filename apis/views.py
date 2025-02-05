@@ -567,21 +567,24 @@ class CourseViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
         if pk == "0":
-            serializer = CourseModelSerializers(CourseModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
+            queryset = CourseModel.objects.filter(hideStatus=0).order_by('-id')
         else:
-            serializer = CourseModelSerializers(CourseModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
-                                               many=True)
+            queryset = CourseModel.objects.filter(hideStatus=0, id=pk).order_by('-id')
+
+        queryset = queryset.prefetch_related('amenities')
+        serializer = CourseModelSerializers(queryset, many=True)
         response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
         return Response(response)
 
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
-        if pk == "0":
-            serializer = CourseModelSerializers(data=request.data)
-        else:
-            serializer = CourseModelSerializers(instance=CourseModel.objects.get(id=pk), data=request.data)
+        instance = None if pk == "0" else CourseModel.objects.get(id=pk)
+        serializer = CourseModelSerializers(instance=instance, data=request.data)
+
         if serializer.is_valid():
-            serializer.save()
+            course = serializer.save()
+            if 'amenities' in request.data:
+                course.amenities.set(request.data['amenities'])
             response = {'code': 1, 'message': "Done Successfully"}
         else:
             response = {'code': 0, 'message': "Unable to Process Request"}

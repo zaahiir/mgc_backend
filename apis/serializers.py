@@ -13,6 +13,7 @@ class CountryModelSerializers(serializers.ModelSerializer):
         model = CountryModel
         fields = '__all__'
 
+
 class PaymentMethodModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentMethodModel
@@ -98,7 +99,10 @@ class MemberModelSerializers(serializers.ModelSerializer):
 
 
 class CourseModelSerializers(serializers.ModelSerializer):
-    amenities = serializers.PrimaryKeyRelatedField(queryset=AmenitiesModel.objects.all())
+    amenities = serializers.PrimaryKeyRelatedField(
+        queryset=AmenitiesModel.objects.all(),
+        many=True  # Enable many-to-many serialization
+    )
 
     class Meta:
         model = CourseModel
@@ -106,7 +110,10 @@ class CourseModelSerializers(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['amenities'] = instance.amenities.amenityName if instance.amenities else None
+        # Convert amenities to list of names
+        representation['amenities'] = [
+            amenity.amenityName for amenity in instance.amenities.all()
+        ] if instance.amenities.exists() else []
         return representation
 
 

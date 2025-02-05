@@ -140,8 +140,7 @@ class CourseModel(models.Model):
     country = models.CharField(max_length=100, null=True, blank=True)
     phoneNumber = models.CharField(max_length=20, null=True, blank=True)
     website = models.URLField(max_length=255, null=True, blank=True)
-    amenities = models.ForeignKey(AmenitiesModel, on_delete=models.CASCADE, null=True, blank=True,
-                                  related_name="amenities")
+    amenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="amenities")
     golfDescription = models.TextField(null=True, blank=True)
     golfLocation = models.CharField(max_length=255, null=True, blank=True)
     hideStatus = models.IntegerField(default=0)

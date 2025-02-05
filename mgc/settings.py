@@ -15,8 +15,10 @@ ALLOWED_HOSTS = ['*']
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:4200',  # Replace with your frontend URL
+    'http://localhost:4200',  # Your local frontend
+    'https://mastergolf.lajix.com',  # Add this line
 ]
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
