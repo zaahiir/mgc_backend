@@ -10,6 +10,7 @@ from django.db.models import Q
 from .utils import PasswordManager
 from django.core.mail import send_mail
 from django.conf import settings
+import json
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -578,17 +579,44 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
-        instance = None if pk == "0" else CourseModel.objects.get(id=pk)
-        serializer = CourseModelSerializers(instance=instance, data=request.data)
+        try:
+            instance = None if pk == "0" else CourseModel.objects.get(id=pk)
 
-        if serializer.is_valid():
-            course = serializer.save()
-            if 'amenities' in request.data:
-                course.amenities.set(request.data['amenities'])
-            response = {'code': 1, 'message': "Done Successfully"}
-        else:
-            response = {'code': 0, 'message': "Unable to Process Request"}
-        return Response(response)
+            # Convert request.data to mutable dictionary
+            data = request.data.dict() if hasattr(request.data, 'dict') else request.data
+
+            # Parse amenities from JSON string
+            if 'amenities' in data:
+                data['amenities'] = json.loads(data['amenities'])
+
+            serializer = CourseModelSerializers(
+                instance=instance,
+                data=data,
+                context={'request': request}
+            )
+
+            if serializer.is_valid():
+                course = serializer.save()
+                if 'amenities' in data:
+                    course.amenities.set(data['amenities'])
+                response = {
+                    'code': 1,
+                    'message': "Done Successfully",
+                    'data': CourseModelSerializers(course).data
+                }
+                return Response(response)
+            else:
+                return Response({
+                    'code': 0,
+                    'message': "Validation Error",
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['GET'])
     def deletion(self, request, pk=None):

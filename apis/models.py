@@ -141,6 +141,7 @@ class CourseModel(models.Model):
     phoneNumber = models.CharField(max_length=20, null=True, blank=True)
     website = models.URLField(max_length=255, null=True, blank=True)
     amenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="amenities")
+    courseImage = models.ImageField(upload_to='course_images/', null=True, blank=True)
     golfDescription = models.TextField(null=True, blank=True)
     golfLocation = models.CharField(max_length=255, null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
