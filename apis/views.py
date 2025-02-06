@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import ValidationError
+from django.shortcuts import render
 from .serializers import *
 from django.db.models import Q
 from .utils import PasswordManager
@@ -454,7 +455,7 @@ class MemberViewSet(viewsets.ModelViewSet):
             serializer = MemberModelSerializers(MemberModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
         else:
             serializer = MemberModelSerializers(MemberModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
-                                               many=True)
+                                                many=True)
         response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
         return Response(response)
 
@@ -635,7 +636,7 @@ class BlogViewSet(viewsets.ModelViewSet):
             serializer = BlogModelSerializers(BlogModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
         else:
             serializer = BlogModelSerializers(BlogModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
-                                               many=True)
+                                              many=True)
         response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
         return Response(response)
 
@@ -657,3 +658,14 @@ class BlogViewSet(viewsets.ModelViewSet):
         BlogModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
+
+
+def index_view(request):
+    courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
+
+    context = {
+        'courses': courses,
+        'blogs': blogs
+    }
+    return render(request, 'index.html', context)
