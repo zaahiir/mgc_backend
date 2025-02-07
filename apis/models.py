@@ -160,12 +160,42 @@ class BlogModel(models.Model):
 
 
 class ContactEnquiryModel(models.Model):
-    contactEnquiryDate = models.DateTimeField(auto_now_add=True)
+    contactEnquiryDate = models.DateField(auto_now_add=True)
     contactEnquiryFirstName = models.CharField(max_length=255)
     contactEnquiryLastName = models.CharField(max_length=255)
     contactEnquiryPhoneNumber = models.CharField(max_length=20, null=True, blank=True)
     contactEnquiryEmail = models.EmailField(unique=True, null=True, blank=True)
     contactEnquiryMessage = models.TextField()
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+
+class MemberEnquiryModel(models.Model):
+    memberEnquiryDate = models.DateField(auto_now_add=True)
+    memberEnquiryPlan = models.ForeignKey(PlanModel, on_delete=models.CASCADE, null=True, blank=True,
+                                          related_name="memberEnquiryPlan")
+    memberEnquiryFirstName = models.CharField(max_length=255)
+    memberEnquiryLastName = models.CharField(max_length=255)
+    memberEnquiryPhoneNumber = models.CharField(max_length=20, null=True, blank=True)
+    memberEnquiryEmail = models.EmailField(null=True, blank=True)
+    memberEnquiryAddressLine1 = models.CharField(max_length=255)
+    memberEnquiryAddressLine2 = models.CharField(max_length=255, null=True, blank=True)
+    memberEnquiryTown = models.CharField(max_length=100)
+    memberEnquiryPostcode = models.CharField(max_length=20)
+    memberEnquiryCounty_or_city = models.CharField(max_length=100)
+    memberEnquiryDateOfBirth = models.DateField(null=True, blank=True)
+    memberEnquiryCompanyName = models.CharField(max_length=255, null=True, blank=True)
+    memberEnquiryHowDidYouHearAboutOGC = models.CharField(max_length=255, null=True, blank=True)
+    memberEnquiryNameOfMGCMember = models.CharField(max_length=255, null=True, blank=True)
+    memberEnquiryCurrentClub = models.CharField(max_length=255, null=True, blank=True)
+    memberEnquiryHandicap = models.CharField(max_length=10, null=True, blank=True)
+    memberEnquirySocietyDays = models.BooleanField(default=False)
+    memberEnquiryGroupCoaching = models.BooleanField(default=False)
+    memberEnquiryUkGolfTrips = models.BooleanField(default=False)
+    memberEnquiryGolfAbroad = models.BooleanField(default=False)
+    memberEnquiryMessage = models.TextField()
+    passportPhoto = models.ImageField(upload_to='member_photos/', null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)

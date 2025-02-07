@@ -72,6 +72,75 @@
     <script src="{% static 'js/jquery-3.1.1.min.js' %}"></script>
     <script src="{% static 'js/jBox.all.min.js' %}"></script>
     <script src="{% static 'js/jquery.validate.js' %}"></script>
+
+    
+    <style>
+        .modal-80-width {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .form-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            margin: -10px;
+        }
+        .form-group {
+            flex: 0 0 33.333%;
+            max-width: 33.333%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .checkbox-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .interest-section {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .interest-heading {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .checkbox-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .checkbox-row label {
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-row input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        @media (max-width: 768px) {
+            .form-group {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .checkbox-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .checkbox-row label {
+                margin-bottom: 5px;
+            }
+        }
+        .passport-photo-container {
+            display: flex;
+            align-items: center;
+        }
+        .passport-photo-label {
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        .passport-photo-input {
+            flex-grow: 1;
+        }
+    </style>
       
   </head>
   
@@ -339,14 +408,17 @@
                                                 </span>
                                             </div>
                                             
-                                            <a href="javascript:void()" id="myModal{{ membership.id }}" style="margin: 30px auto 30px;" class="link-vist p-relative mt-20 text-center">
-                                                <span class="link-vist-text">Interested</span>
-                                                <div class="link-vist-arrow">
-                                                    <svg viewBox="0 0 80 80">
-                                                        <polyline points="19.89 15.25 64.03 15.25 64.03 59.33"></polyline>
-                                                        <line x1="64.03" y1="15.25" x2="14.03" y2="65.18"></line>
-                                                    </svg>
-                                                </div>
+                                            <a href="javascript:void()"  style="margin: 30px auto 30px;"
+                                                class="interest-btn link-vist p-relative mt-20 text-center" 
+                                                data-plan-id="{{ membership.id }}"
+                                                data-plan-name="{{ membership.planName }}">
+                                                    <span class="link-vist-text">Interested</span>
+                                                    <div class="link-vist-arrow">
+                                                        <svg viewBox="0 0 80 80">
+                                                            <polyline points="19.89 15.25 64.03 15.25 64.03 59.33"></polyline>
+                                                            <line x1="64.03" y1="15.25" x2="14.03" y2="65.18"></line>
+                                                        </svg>
+                                                    </div>
                                             </a>
                                         </div>
                                     </div>
@@ -479,55 +551,63 @@
                       
               </div>     
               
-              <script>
-                                              $(document).ready(function() {
-                                                  new jBox('Modal', {
-                                                    attach: '#myModalomember',
-                                                    content: $('#grabMe'),
-                                                    closeOnClick: false,
-                                                    closeOnEsc: false
-                                                  });
-                                                  
-                                                  new jBox('Modal', {
-                                                    attach: '#myModaltmember',
-                                                    content: $('#grabMe'),
-                                                    closeOnClick: false,
-                                                    closeOnEsc: false
-                                                  });
-                                                  
-                                                  new jBox('Modal', {
-                                                    attach: '#myModalfmember',
-                                                    content: $('#grabMe'),
-                                                    closeOnClick: false,
-                                                    closeOnEsc: false
-                                                  });
-                                                  
-                                                  new jBox('Modal', {
-                                                    attach: '#myModalwmember',
-                                                    content: $('#grabMe'),
-                                                    closeOnClick: false,
-                                                    closeOnEsc: false
-                                                  });
-                                                  
-                                                  
-                                                  new jBox('Modal', {
-                                                    attach: '#myModaljmember',
-                                                    content: $('#grabMe'),
-                                                    closeOnClick: false,
-                                                    closeOnEsc: false
-                                                  });
-                                                  
-                                                  new jBox('Modal', {
-                                                    attach: '#myModalscmember',
-                                                    content: $('#grabMe'),
-                                                    closeOnClick: false,
-                                                    closeOnEsc: false
-                                                  });
-                                                  
-                                                  
-                                                  
-                                              });
-                                          </script>
+              <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        var memberEnquiryModal;
+
+        // Initialize modal with 80% width
+        memberEnquiryModal = new jBox('Modal', {
+            attach: '.interest-btn',
+            content: $('#grabMe'),
+            closeOnClick: false,
+            closeOnEsc: false,
+            width: '80%'
+        });
+    
+        // Capture selected plan details when "Interested" button is clicked
+        $('.interest-btn').on('click', function() {
+            var planId = $(this).data('plan-id');
+            var planName = $(this).data('plan-name');
+            
+            $('#selected-plan-id').val(planId);
+            $('#selected-plan-name').val(planName);
+        });
+    
+        // Form submission via AJAX
+        $('#memberEnquiryForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            
+            $.ajax({
+                url: '/apis/memberEnquiry/0/processing/',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.code === 1) {
+                        alert('Enquiry submitted successfully!');
+                        
+                        // Close the modal
+                        if (memberEnquiryModal) {
+                            memberEnquiryModal.close();
+                        }
+                        
+                        // Optional: Reset the form
+                        $('#memberEnquiryForm')[0].reset();
+                    } else {
+                        alert('Unable to submit enquiry. Please try again.');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                }
+            });
+        });
+    });
+    </script>
                                           
                                           <div style="display: none" id="grabMe">
                                   
@@ -544,92 +624,201 @@
                                                   </div>
                                               </div>
                                               
-                                              <div class="mcontent">
-                                                  
-                                                  <form id="regform" name="regform" class="form" method="post">
-                                                  
-                                                  <div class="messages"></div>
-                                                      <div class="input__wrap controls">
-                                                      
-                                                          <div class="form-wrap">
-                                                          
-                                                              <div class="form-group pb-15 mb-10 mr-5">
-                                                                  <div class="entry-box">
-                                                                      <!-- <label>Your name *</label> -->
-                                                                      <input type="text" name="first_name" id="first_name"
-                                                                          placeholder="First name" required="required"
-                                                                          data-error="name is required.">
-                                                                  </div>
-                                                                  <label class="error"></label>
-                                                              </div>
-                                                          
-                                                              <div class="form-group pb-15 mb-10 ml-5">
-                                                                  <div class="entry-box">
-                                                                      <!-- <label>Your name *</label> -->
-                                                                      <input type="text" name="last_name" id="last_name"
-                                                                          placeholder="Last name" required="required"
-                                                                          data-error="name is required.">
-                                                                  </div>
-                                                                  <label class="error"></label>
-                                                              </div>
-                                                              
-                                                          </div>
-                                                      
-                                                          <div class="form-wrap">
-                                                      
-                                                              <div class="form-wrap">
-                                                          
-                                                                  <div class="form-group pb-15 mb-10 mr-5">
-                                                                      <div class="entry-box">
-                                                                          <!-- <label>Your name *</label> -->
-                                                                          <input type="tel" name="amobile" id="amobile"
-                                                                              placeholder="Mobile No" required="required"
-                                                                              data-error="name is required.">
-                                                                              
-                                                                          <input type="hidden" name="acountrycode" id="acountrycode">
-                                                                          <input type="hidden" name="adialcode" id="adialcode">
-                                                                          <input type="hidden" name="aisocode" id="aisocode">
-                                                                      </div>
-                                                                      <label class="error"></label>
-                                                                  </div>
-  
-                                                                  <div class="form-group pb-15 mb-10 ml-5">
-                                                                      <div class="entry-box">
-                                                                          <!-- <label>Your E-Mail *</label> -->
-                                                                          <input type="email" name="email" id="email"
-                                                                              placeholder="Email ID" required="required"
-                                                                              data-error="Valid email is required.">
-                                                                      </div>
-                                                                      <label class="error"></label>
-                                                                  </div>
-                                                              
-                                                              </div>
-                                                              
-                                                          
-                                                              
-                                                          </div>
-  
-                                                          <div class="text-center mt-10 mb-30">
-                                                              
-                                                              <button type="submit" class="dsn-button" style="cursor:pointer;">
-                                                                  <span class="dsn-border border-color-default"></span>
-                                                                  <span class="text-button">Submit</span>
-  
-                                                              </button>
-                                                              
-                                                          </div>
-                                                          
-                                                      </div>
-                                                  </form>
-                                              </div>
-                                              
-                                              
+                                              <div id="grabMe" class="mcontent modal-80-width">
+                                                <form id="memberEnquiryForm" name="regform" class="form" method="post" enctype="multipart/form-data">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" id="selected-plan-id" name="selected_plan_id">
+                                                    <input type="hidden" id="selected-plan-name" name="selected_plan_name">
+                                            
+                                                    <div class="messages"></div>
+                                                    <div class="input__wrap controls">
+                                                        <div class="form-wrap">
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryFirstName" id="first_name"
+                                                                        placeholder="First name" required="required"
+                                                                        data-error="First name is required.">
+                                                                </div>
+                                                                <label class="error"></label>
+                                                            </div>
+                                                        
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryLastName" id="last_name"
+                                                                        placeholder="Last name" required="required"
+                                                                        data-error="Last name is required.">
+                                                                </div>
+                                                                <label class="error"></label>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="tel" name="memberEnquiryPhoneNumber" id="amobile"
+                                                                        placeholder="Mobile No" required="required"
+                                                                        data-error="Mobile number is required.">
+                                                                    
+                                                                    <input type="hidden" name="acountrycode" id="acountrycode">
+                                                                    <input type="hidden" name="adialcode" id="adialcode">
+                                                                    <input type="hidden" name="aisocode" id="aisocode">
+                                                                </div>
+                                                                <label class="error"></label>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="form-wrap">
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="email" name="memberEnquiryEmail" id="email"
+                                                                        placeholder="Email ID" required="required"
+                                                                        data-error="Valid email is required.">
+                                                                </div>
+                                                                <label class="error"></label>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryAddressLine1" 
+                                                                        placeholder="Address Line 1" required="required">
+                                                                </div>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryAddressLine2" 
+                                                                        placeholder="Address Line 2">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="form-wrap">
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryTown" 
+                                                                        placeholder="Town" required="required">
+                                                                </div>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryPostcode" 
+                                                                        placeholder="Postcode" required="required">
+                                                                </div>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryCounty_or_city" 
+                                                                        placeholder="County/City" required="required">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="form-wrap">
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="date" name="memberEnquiryDateOfBirth" 
+                                                                        placeholder="Date of Birth">
+                                                                </div>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryCompanyName" 
+                                                                        placeholder="Company Name">
+                                                                </div>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryHowDidYouHearAboutOGC" 
+                                                                        placeholder="How did you hear about OGC?">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="form-wrap">
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryNameOfMGCMember" 
+                                                                        placeholder="Name of MGC Member">
+                                                                </div>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryCurrentClub" 
+                                                                        placeholder="Current Club">
+                                                                </div>
+                                                            </div>
+                                                
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <input type="text" name="memberEnquiryHandicap" 
+                                                                        placeholder="Handicap">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="form-wrap">
+                                                            <div class="form-group">
+                                                                <div class="entry-box interest-section">
+                                                                    <label>
+                                                                        <input type="checkbox" name="memberEnquirySocietyDays"> Society Days
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <label>
+                                                                        <input type="checkbox" name="memberEnquiryGroupCoaching"> Group Coaching
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <label>
+                                                                        <input type="checkbox" name="memberEnquiryUkGolfTrips"> UK Golf Trips
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-wrap">
+                                                            <div class="form-group">
+                                                                <div class="entry-box">
+                                                                    <label>
+                                                                        <input type="checkbox" name="memberEnquiryGolfAbroad"> Golf Abroad
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="form-wrap">
+                                                            <div class="entry-box">
+                                                                <textarea name="memberEnquiryMessage" 
+                                                                    placeholder="Additional Message"></textarea>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="form-wrap">
+                                                            <div class="entry-box passport-photo-container">
+                                                                <label class="passport-photo-label">Passport Photo</label>
+                                                                <div class="passport-photo-input">
+                                                                    <input type="file" name="passportPhoto" accept="image/*">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                            
+                                                        <div class="text-center mt-10 mb-30" style="width: 100%;">
+                                                            <button type="submit" class="dsn-button" style="cursor:pointer;">
+                                                                <span class="dsn-border border-color-default"></span>
+                                                                <span class="text-button">Submit</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
                                           
                                           </div>
-                                          
-  
-  
-  
       
                                           <footer class="footer p-relative">
                                       
@@ -780,102 +969,6 @@
   </body>
   
   </html> 
-                        <script>
-                                   var amob = document.querySelector("#amobile"),
-                                       errorMsg = document.querySelector("#error-msg"),
-                                       validMsg = document.querySelector("#valid-msg");
-  
-                                  // Error messages based on the code returned from getValidationError
-                                  var errorMap = [ "Invalid number", "Invalid country code", "Too short", "Too long", "Invalid number"];
-  
-                                  // Initialise plugin
-                                  var intl = window.intlTelInput(amob, {
-                                      //preferredCountries: ['in'],
-                                      onlyCountries: ['in']
-                                  });
-  
-                                  var reset = function() {
-                                      amob.classList.remove("error");
-                                      errorMsg.innerHTML = "";
-                                      errorMsg.classList.add("hide");
-                                      validMsg.classList.add("hide");
-                                  };
-  
-                                  // Validate on blur event
-                                  amob.addEventListener('blur', function() {
-                                      reset();
-                                      if(amob.value.trim()){
-                                          if(intl.isValidNumber()){
-                                              validMsg.classList.remove("hide");
-                                          }else{
-                                              amob.classList.add("error");
-                                              var errorCode = intl.getValidationError();
-                                              errorMsg.innerHTML = errorMap[errorCode];
-                                              errorMsg.classList.remove("hide");
-                                          }
-                                      }
-                                  });
-  
-                                  // Reset on keyup/change event
-                                  amob.addEventListener('change', reset);
-                                  amob.addEventListener('keyup', reset);
-                                  
-                                  $("#amobile").on("blur keyup change countrychange", function() {
-                                      var getName = intl.selectedCountryData["name"];
-                                      var getCode = intl.selectedCountryData["dialCode"];
-                                      var getIso = intl.selectedCountryData["iso2"];
-                                      $("#acountrycode").val(getName);
-                                      $("#adialcode").val(getCode);
-                                      $("#aisocode").val(getIso);
-  
-                                  });
-                                  
-                           </script>
-                          
-                          <script>
-                              $(document).ready(function(e){
-                                  
-                                  $('#regform').validate({
-                                      rules: {
-                                          first_name: { required: true, minlength: 2, maxlength: 15 },
-                                          last_name: { required: true, minlength: 2, maxlength: 15 },
-                                          amobile: { required: true, number: true},
-                                          email: { required: true, email: true },
-                                          
-                                      },
-                                      submitHandler: function(form) {
-                                          $(".loader-sd").addClass("active");
-                                          $.ajax({
-                                              type: 'POST',
-                                              url: '',
-                                              data: $('#regform').serialize(),
-                                              dataType: 'json',
-                                              beforeSend: function(){
-                                              },
-                                              success: function(response){ //console.log(response);
-                                                  if(response.status == 1){
-                                                      alert('Successfully Submitted!');
-                                                      $("#regform")[0].reset();
-                                                      $(".loader-sd").removeClass("active");
-                                                  } else if(response.status == 0){
-                                                      alert('Something Went Wrong! Please try again.');
-                                                      $("#regform")[0].reset();
-                                                      $(".loader-sd").removeClass("active");
-                                                  } else {
-                                                      alert('Something Went Wrong! Please try again.');
-                                                      $("#regform")[0].reset();
-                                                      $(".loader-sd").removeClass("active");
-                                                  }
-                                              }
-                                          });
-                                          
-                                          return false; // required to block normal submit since you used ajax
-                                          
-                                      }
-                                  }); 
-                                  
-                              });
-                          </script>
   
   
   

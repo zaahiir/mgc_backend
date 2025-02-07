@@ -127,3 +127,23 @@ class ContactEnquiryModelSerializers(serializers.ModelSerializer):
     class Meta:
         model = ContactEnquiryModel
         fields = '__all__'
+
+
+class MemberEnquiryModelSerializers(serializers.ModelSerializer):
+    selected_plan_id = serializers.IntegerField(write_only=True)
+    memberEnquiryPlan = serializers.PrimaryKeyRelatedField(queryset=PlanModel.objects.all())
+
+    class Meta:
+        model = MemberEnquiryModel
+        fields = '__all__'
+
+    def create(self, validated_data):
+        plan_id = validated_data.pop('selected_plan_id', None)
+        if plan_id:
+            validated_data['memberEnquiryPlan'] = PlanModel.objects.get(id=plan_id)
+        return super().create(validated_data)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['memberEnquiryPlan'] = instance.memberEnquiryPlan.planName if instance.memberEnquiryPlan else None
+        return representation

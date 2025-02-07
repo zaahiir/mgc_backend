@@ -694,6 +694,40 @@ class ContactEnquiryViewSet(viewsets.ModelViewSet):
         return Response(response)
 
 
+class MemberEnquiryViewSet(viewsets.ModelViewSet):
+    queryset = MemberEnquiryModel.objects.filter(hideStatus=0)
+    serializer_class = MemberEnquiryModelSerializers
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        if pk == "0":
+            serializer = MemberEnquiryModelSerializers(MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
+        else:
+            serializer = MemberEnquiryModelSerializers(MemberEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
+                                              many=True)
+        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
+        return Response(response)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        if pk == "0":
+            serializer = MemberEnquiryModelSerializers(data=request.data)
+        else:
+            serializer = MemberEnquiryModelSerializers(instance=MemberEnquiryModel.objects.get(id=pk), data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            response = {'code': 1, 'message': "Done Successfully"}
+        else:
+            response = {'code': 0, 'message': "Unable to Process Request"}
+        return Response(response)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        MemberEnquiryModel.objects.filter(id=pk).update(hideStatus=1)
+        response = {'code': 1, 'message': "Done Successfully"}
+        return Response(response)
+
+
 def index_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
     blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]

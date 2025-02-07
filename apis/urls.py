@@ -20,6 +20,7 @@ router.register('member', MemberViewSet, basename='member'),
 router.register('course', CourseViewSet, basename='course'),
 router.register('blog', BlogViewSet, basename='blog'),
 router.register('contactEnquiry', ContactEnquiryViewSet, basename='contactEnquiry'),
+router.register('memberEnquiry', MemberEnquiryViewSet, basename='memberEnquiry'),
 
 
 urlpatterns = [
