@@ -669,3 +669,25 @@ def index_view(request):
         'blogs': blogs
     }
     return render(request, 'index.html', context)
+
+
+def membership_view(request):
+    courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
+
+    context = {
+        'courses': courses,
+        'blogs': blogs
+    }
+    return render(request, 'index.html', context)
+
+
+def news_view(request):
+    courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
+
+    context = {
+        'courses': courses,
+        'blogs': blogs
+    }
+    return render(request, 'index.html', context)
