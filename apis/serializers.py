@@ -121,3 +121,9 @@ class BlogModelSerializers(serializers.ModelSerializer):
     class Meta:
         model = BlogModel
         fields = '__all__'
+
+
+class ContactEnquiryModelSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = ContactEnquiryModel
+        fields = '__all__'

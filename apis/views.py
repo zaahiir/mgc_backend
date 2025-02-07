@@ -660,6 +660,40 @@ class BlogViewSet(viewsets.ModelViewSet):
         return Response(response)
 
 
+class ContactEnquiryViewSet(viewsets.ModelViewSet):
+    queryset = ContactEnquiryModel.objects.filter(hideStatus=0)
+    serializer_class = ContactEnquiryModelSerializers
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        if pk == "0":
+            serializer = ContactEnquiryModelSerializers(ContactEnquiryModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
+        else:
+            serializer = ContactEnquiryModelSerializers(ContactEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
+                                              many=True)
+        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
+        return Response(response)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        if pk == "0":
+            serializer = ContactEnquiryModelSerializers(data=request.data)
+        else:
+            serializer = ContactEnquiryModelSerializers(instance=ContactEnquiryModel.objects.get(id=pk), data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            response = {'code': 1, 'message': "Done Successfully"}
+        else:
+            response = {'code': 0, 'message': "Unable to Process Request"}
+        return Response(response)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        ContactEnquiryModel.objects.filter(id=pk).update(hideStatus=1)
+        response = {'code': 1, 'message': "Done Successfully"}
+        return Response(response)
+
+
 def index_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
     blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
@@ -672,14 +706,12 @@ def index_view(request):
 
 
 def membership_view(request):
-    courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
-    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
+    plan = PlanModel.objects.filter(hideStatus=0).order_by('-createdAt')
 
     context = {
-        'courses': courses,
-        'blogs': blogs
+        'plan': plan,
     }
-    return render(request, 'index.html', context)
+    return render(request, 'membership.html', context)
 
 
 def news_view(request):
@@ -690,4 +722,4 @@ def news_view(request):
         'courses': courses,
         'blogs': blogs
     }
-    return render(request, 'index.html', context)
+    return render(request, 'news.html', context)
