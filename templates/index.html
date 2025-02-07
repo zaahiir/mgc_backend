@@ -1391,144 +1391,152 @@ Our concept is built around exclusivity and convenience: a members-only golf res
 					closeOnClick: false,
 					closeOnEsc: false
 				});
-				
-				new jBox('Modal', {
-					attach: '#myModaltmember',
-					content: $('#grabMe'),
-					closeOnClick: false,
-					closeOnEsc: false
-				});
-				
-				new jBox('Modal', {
-					attach: '#myModalfmember',
-					content: $('#grabMe'),
-					closeOnClick: false,
-					closeOnEsc: false
-				});
-				
-				new jBox('Modal', {
-					attach: '#myModalwmember',
-					content: $('#grabMe'),
-					closeOnClick: false,
-					closeOnEsc: false
-				});
-				
-				
-				new jBox('Modal', {
-					attach: '#myModaljmember',
-					content: $('#grabMe'),
-					closeOnClick: false,
-					closeOnEsc: false
-				});
-				
-				new jBox('Modal', {
-					attach: '#myModalscmember',
-					content: $('#grabMe'),
-					closeOnClick: false,
-					closeOnEsc: false
-				});
-				
-				
-				
 			});
 	</script>
+
+	<script>
+		$(document).ready(function() {
+		$("#regform").submit(function(e) {
+			e.preventDefault();
+			
+			var formData = {
+				contactEnquiryFirstName: $("#first_name").val(),
+				contactEnquiryLastName: $("#last_name").val(),
+				contactEnquiryPhoneNumber: $("#amobile").val(),
+				contactEnquiryEmail: $("#email").val(),
+				contactEnquiryMessage: $("#message").val(),
+				acountrycode: $("#acountrycode").val(),
+				adialcode: $("#adialcode").val(),
+				aisocode: $("#aisocode").val()
+			};
+
+			$.ajax({
+				url: '/apis/contactEnquiry/0/processing/',
+				type: 'POST',
+				data: formData,
+				success: function(response) {
+					if(response.code === 1) {
+						alert("Thank you for your message. We will contact you soon!");
+						$("#regform")[0].reset();
+					} else {
+						alert("Something went wrong. Please try again.");
+					}
+				},
+				error: function() {
+					alert("An error occurred. Please try again later.");
+				}
+			});
+		});
+	});
+	</script>
 										
-										<div style="display: none" id="grabMe">
-								
-											<div class="loader-sd">
-												<img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
-												<p>Loading! Please wait!!</p>
-											</div>
-											
-											<div class="mheader">
-												<div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
-													<p class="sub-heading line-shap line-shap-before mb-15">
-														<span class="line-bg-right">Enquiry</span>
-													</p>
-												</div>
-											</div>
-											
-											<div class="mcontent">
-												
-												<form id="regform" name="regform" class="form" method="post">
-												
-												<div class="messages"></div>
-													<div class="input__wrap controls">
-													
-														<div class="form-wrap">
-														
-															<div class="form-group pb-15 mb-10 mr-5">
-																<div class="entry-box">
-																	<!-- <label>Your name *</label> -->
-																	<input type="text" name="first_name" id="first_name"
-																		placeholder="First name" required="required"
-																		data-error="name is required.">
-																</div>
-																<label class="error"></label>
-															</div>
-														
-															<div class="form-group pb-15 mb-10 ml-5">
-																<div class="entry-box">
-																	<!-- <label>Your name *</label> -->
-																	<input type="text" name="last_name" id="last_name"
-																		placeholder="Last name" required="required"
-																		data-error="name is required.">
-																</div>
-																<label class="error"></label>
-															</div>
-															
-														</div>
-													
-														<div class="form-wrap">
-													
-															<div class="form-wrap">
-														
-																<div class="form-group pb-15 mb-10 mr-5">
-																	<div class="entry-box">
-																		<input type="tel" name="amobile" id="amobile"
-																			placeholder="Mobile No" required="required"
-																			data-error="name is required.">
-																			
-																		<input type="hidden" name="acountrycode" id="acountrycode">
-																		<input type="hidden" name="adialcode" id="adialcode">
-																		<input type="hidden" name="aisocode" id="aisocode">
-																	</div>
-																	<label class="error"></label>
-																</div>
+	<div style="display: none" id="grabMe">
 
-																<div class="form-group pb-15 mb-10 ml-5">
-																	<div class="entry-box">
-																		<!-- <label>Your E-Mail *</label> -->
-																		<input type="email" name="email" id="email"
-																			placeholder="Email ID" required="required"
-																			data-error="Valid email is required.">
-																	</div>
-																	<label class="error"></label>
-																</div>
-															
-															</div>
-															
-														
-															
-														</div>
-
-														<div class="text-center mt-10 mb-30">
-															
-															<button type="submit" class="dsn-button" style="cursor:pointer;">
-																<span class="dsn-border border-color-default"></span>
-																<span class="text-button">Submit</span>
-
-															</button>
-															
-														</div>
-														
-													</div>
-												</form>
-											</div>
-											
-											
+		<div class="loader-sd">
+			<img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
+			<p>Loading! Please wait!!</p>
+		</div>
+		
+		<div class="mheader">
+			<div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
+				<p class="sub-heading line-shap line-shap-before mb-15">
+					<span class="line-bg-right">Enquiry</span>
+				</p>
+			</div>
+		</div>
+		
+		<div class="mcontent">
+			
+			<form id="regform" name="regform" class="form" method="post">
+			
+			<div class="messages"></div>
+				<div class="input__wrap controls">
+				
+					<div class="form-wrap">
+					
+						<div class="form-group pb-15 mb-10 mr-5">
+							<div class="entry-box">
+								<!-- <label>Your name *</label> -->
+								<input type="text" name="first_name" id="first_name"
+									placeholder="First name" required="required"
+									data-error="name is required.">
+							</div>
+							<label class="error"></label>
+						</div>
+					
+						<div class="form-group pb-15 mb-10 ml-5">
+							<div class="entry-box">
+								<!-- <label>Your name *</label> -->
+								<input type="text" name="last_name" id="last_name"
+									placeholder="Last name" required="required"
+									data-error="name is required.">
+							</div>
+							<label class="error"></label>
+						</div>
+						
+					</div>
+				
+					<div class="form-wrap">
+				
+						<div class="form-wrap">
+					
+							<div class="form-group pb-15 mb-10 mr-5">
+								<div class="entry-box">
+									<input type="tel" name="amobile" id="amobile"
+										placeholder="Mobile No" required="required"
+										data-error="name is required.">
 										
-										</div>
+									<input type="hidden" name="acountrycode" id="acountrycode">
+									<input type="hidden" name="adialcode" id="adialcode">
+									<input type="hidden" name="aisocode" id="aisocode">
+								</div>
+								<label class="error"></label>
+							</div>
+
+							<div class="form-group pb-15 mb-10 ml-5">
+								<div class="entry-box">
+									<!-- <label>Your E-Mail *</label> -->
+									<input type="email" name="email" id="email"
+										placeholder="Email ID" required="required"
+										data-error="Valid email is required.">
+								</div>
+								<label class="error"></label>
+							</div>
+						
+						</div>													
+					
+						
+					</div>
+				
+					<div class="form-wrap">
+
+						<div class="form-group pb-15 mb-10">
+							<div class="entry-box">
+								<textarea name="message" id="message" 
+									placeholder="Your Message" required="required" 
+									data-error="Message is required."
+									rows="4" style="width: 100%;"></textarea>
+							</div>
+							<label class="error"></label>
+						</div>
+						
+					</div>
+
+					<div class="text-center mt-10 mb-30">
+						
+						<button type="submit" class="dsn-button" style="cursor:pointer;">
+							<span class="dsn-border border-color-default"></span>
+							<span class="text-button">Submit</span>
+
+						</button>
+						
+					</div>
+					
+				</div>
+			</form>
+		</div>
+	
+	</div>
   
 	
 	
