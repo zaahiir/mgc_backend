@@ -19,7 +19,6 @@ CORS_ALLOWED_ORIGINS = [
     'https://mastergolf.lajix.com',  # Add this line
 ]
 
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -64,40 +63,6 @@ TEMPLATES = [
         },
     },
 ]
-
-TINYMCE_API_KEY = 'jrj64u0e25jw0n4a9v0jbajhi9iakdkeyta9ryl58xwmqwz7'
-
-# TinyMCE Configuration
-TINYMCE_DEFAULT_CONFIG = {
-    'height': 360,
-    'width': 'auto',
-    'cleanup_on_startup': True,
-    'custom_undo_redo_levels': 20,
-    'selector': 'textarea',
-    'theme': 'silver',
-    'api_key': TINYMCE_API_KEY,  # Add this line
-    'plugins': '''
-        textcolor save link image media preview codesample contextmenu
-        table code lists fullscreen insertdatetime nonbreaking
-        contextmenu directionality searchreplace wordcount visualblocks
-        visualchars code fullscreen autolink lists charmap print hr
-        anchor pagebreak
-        ''',
-    'toolbar1': '''
-        fullscreen preview bold italic underline | fontselect,
-        fontsizeselect | forecolor backcolor | alignleft alignright |
-        aligncenter alignjustify | indent outdent | bullist numlist table |
-        | link image media | codesample |
-        ''',
-    'toolbar2': '''
-        visualblocks visualchars |
-        charmap hr pagebreak nonbreaking anchor | code |
-        ''',
-    'contextmenu': 'formats | link image',
-    'menubar': True,
-    'statusbar': True,
-}
-
 
 WSGI_APPLICATION = 'mgc.wsgi.application'
 
