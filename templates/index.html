@@ -731,7 +731,7 @@ Our concept is built around exclusivity and convenience: a members-only golf res
                                                         <a href="news">{{ blog.blogTitle }}</a>
                                                     </h4>
                                                     <p>{{ blog.blogDescription|truncatewords:20 }} </p>
-                                                    <a href="news" class="link-vist p-relative mt-20">
+                                                    <a href="{% url 'blog_detail' blog.id %}" class="link-vist p-relative mt-20">
 
                                                         <span class="link-vist-text">Know More</span>
 

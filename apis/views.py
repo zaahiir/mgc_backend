@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import ValidationError
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from .serializers import *
 from django.db.models import Q
 from .utils import PasswordManager
@@ -667,10 +667,12 @@ class ContactEnquiryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
         if pk == "0":
-            serializer = ContactEnquiryModelSerializers(ContactEnquiryModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
+            serializer = ContactEnquiryModelSerializers(
+                ContactEnquiryModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
         else:
-            serializer = ContactEnquiryModelSerializers(ContactEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
-                                              many=True)
+            serializer = ContactEnquiryModelSerializers(
+                ContactEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
+                many=True)
         response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
         return Response(response)
 
@@ -679,7 +681,8 @@ class ContactEnquiryViewSet(viewsets.ModelViewSet):
         if pk == "0":
             serializer = ContactEnquiryModelSerializers(data=request.data)
         else:
-            serializer = ContactEnquiryModelSerializers(instance=ContactEnquiryModel.objects.get(id=pk), data=request.data)
+            serializer = ContactEnquiryModelSerializers(instance=ContactEnquiryModel.objects.get(id=pk),
+                                                        data=request.data)
         if serializer.is_valid():
             serializer.save()
             response = {'code': 1, 'message': "Done Successfully"}
@@ -701,10 +704,12 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
         if pk == "0":
-            serializer = MemberEnquiryModelSerializers(MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id'), many=True)
+            serializer = MemberEnquiryModelSerializers(MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id'),
+                                                       many=True)
         else:
-            serializer = MemberEnquiryModelSerializers(MemberEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
-                                              many=True)
+            serializer = MemberEnquiryModelSerializers(
+                MemberEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
+                many=True)
         response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
         return Response(response)
 
@@ -713,7 +718,8 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
         if pk == "0":
             serializer = MemberEnquiryModelSerializers(data=request.data)
         else:
-            serializer = MemberEnquiryModelSerializers(instance=MemberEnquiryModel.objects.get(id=pk), data=request.data)
+            serializer = MemberEnquiryModelSerializers(instance=MemberEnquiryModel.objects.get(id=pk),
+                                                       data=request.data)
         if serializer.is_valid():
             serializer.save()
             response = {'code': 1, 'message': "Done Successfully"}
@@ -730,7 +736,7 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
 
 def index_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
-    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')
 
     context = {
         'courses': courses,
@@ -750,10 +756,28 @@ def membership_view(request):
 
 def news_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
-    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
+    # blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')
 
     context = {
         'courses': courses,
         'blogs': blogs
+    }
+    return render(request, 'news.html', context)
+
+
+def blog_detail_view(request, blog_id):
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')
+
+    if blog_id:
+        # Get specific blog post if ID is provided
+        current_blog = get_object_or_404(BlogModel, id=blog_id, hideStatus=0)
+    else:
+        # Get the latest blog post if no ID provided
+        current_blog = blogs.first() if blogs.exists() else None
+
+    context = {
+        'blogs': blogs,
+        'current_blog': current_blog,
     }
     return render(request, 'news.html', context)

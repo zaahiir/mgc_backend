@@ -1,4 +1,5 @@
 from django.db import models
+from tinymce.models import HTMLField
 
 
 # Start of Master
@@ -152,7 +153,7 @@ class CourseModel(models.Model):
 class BlogModel(models.Model):
     blogDate = models.DateField()
     blogTitle = models.CharField(max_length=255)
-    blogDescription = models.TextField()
+    blogDescription = HTMLField()
     blogImage = models.ImageField(upload_to='blog_images/', null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)

@@ -158,20 +158,27 @@
             <div class="main-content">
 
                 <!-- ========== Header Normal ========== -->
-                <header
-                    class="header-page over-hidden p-relative header-padding-top header-padding-bottom border-bottom dsn-header-animation" style="background: url('{{ STATIC_URL }}img/banners/promoters.jpg');">
-                    <div class="bg-circle-dotted"></div>
-                    <div class="dsn-container">
-					
-                        <div class="content-hero p-relative d-flex flex-column h-100 dsn-hero-parallax-title">
-                            <p class="subtitle p-relative line-shap  line-shap-after">
-                                <span class="pl-10 pr-10 background-main dsn-load-animate">Golf News</span>
-                            </p>
-                            <h1 class="title mt-10 dsn-load-animate text-transform-upper">
-                                Mauritius promotes top golf courses to lure rich tourists                            </h1>
-                        </div>
-                    </div>
-                </header>
+                <header class="header-page over-hidden p-relative header-padding-top header-padding-bottom border-bottom dsn-header-animation" style="background: url('{{ STATIC_URL }}img/banners/promoters.jpg');">
+					<div class="bg-circle-dotted"></div>
+					<div class="dsn-container">
+						<div class="content-hero p-relative d-flex flex-column h-100 dsn-hero-parallax-title">
+							<p class="subtitle p-relative line-shap line-shap-after">
+								<span class="pl-10 pr-10 background-main dsn-load-animate">Golf News</span>
+							</p>
+							<h1 class="title mt-10 dsn-load-animate text-transform-upper">
+								{% if current_blog %}
+									{{ current_blog.blogTitle }}
+								{% else %}
+									{% for blog in blogs %}
+										{% if forloop.first %}
+											{{ blog.blogTitle }}
+										{% endif %}
+									{% endfor %}
+								{% endif %}
+							</h1>
+						</div>
+					</div>
+				</header>
                 <!-- ========== End Header Normal ========== -->
 <style>
 	.blog-item .box-content .link-vist {
@@ -180,68 +187,38 @@
 </style>
 
 
-                <div class="wrapper">
-                    <div class="root-blog">
-                        <div class="container ">
-                            <div class="dsn-posts">
-                               
+<div class="wrapper">
+    <div class="root-blog">
+        <div class="container">
+            <div class="dsn-posts">
+                <div class="news-content mt-section">
+                    <div class="news-content-inner">
+                        <div class="post-content">
+                            {% if current_blog %}
+                                <p>{{ current_blog.blogDescription|safe }}</p>
+                            {% else %}
+                                {% for blog in blogs %}
+                                    {% if forloop.first %}
+                                        <p>{{ blog.blogDescription|safe }}</p>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
 
-                                <div class="news-content mt-section">
-                                    <div class="news-content-inner">
-
-                                        <div class="post-content">
-<p>
-With the second Major Championship of the year finishing up last Sunday at the Valhalla Golf & Country Club in Louisville, Kentucky, a new Major Winner was welcomed to the list of champions who have managed to win one of golf’s Major titles. The ever-present Californian Xander Schaufelle won the event from Bryson DeChambeau by a single shot and, in doing so, secured his position as the #2 ranked golfer in the world. The golf was amazing all week at Valhalla, and Schaufelle shot a new Major Tournament record of -21 for the four days. However, the week will be remembered more for the events of Friday morning than the golf played.</p>
-											   
-<p>On Friday morning, a fatal pedestrian accident just one kilometer from the entrance to the Valhalla club caused a traffic jam leading to the property, and as such, the event organizers moved <b>tee times</b> back 1 hour and 20 minutes. World #1 Scottie Scheffler was driving his courtesy car to the property and was just 40 yards away from the entrance when the police began to redirect the traffic because of a bus that was also blocking traffic. Scheffler decided to follow another car that had jumped the median, and when he did, a police officer latched onto his car trying to stop him. When Scheffler stopped, the officer pulled him from the vehicle and arrested him on four charges, including assaulting a police officer. He was taken to the county lockup and booked. While all this was going on, there was talk that he would miss his tee time, but the very cool Texan used his time in the police cell to stretch and get ready to play if he made it back to the Valhalla Club.</p>
-											   
-												   
-<p>
-As it turned out, Scheffler made it back to the course in time for tee-off and shot an incredible -5 that day despite the morning's dramas. It is believed that some influential members of the Louisville club spoke to the right people to ensure the very popular Texan was released on time and completed the event. As this is written, it has been reported that all charges against Scheffler will be dropped at the next arraignment in June.
-</p>
-
-<p>
-Golf clubs around the globe are full of influential members, and this is one of the reasons golf club memberships at certain clubs are viewed as being priceless. <b>Golf club memberships</b> at golf clubs such as the Augusta National Club in Augusta, Georgia, cannot be acquired with money but more so by invite from the club's committee, who only allow about six new members in per year. Other clubs such as Shinnecock Hills on Long Island, Winged Foot in New York, and the Los Angeles Country Club in LA all require more than $500,000 as an entry fee on top of their annual membership fees. Golf club memberships at the world's elite courses are very expensive, yet in India, golf club memberships are still very affordable and accessible to those who can afford them.
-</p>
-
-<p>
-The <a href="/membership" target="_blank" style="color:#ff7e0c;">Master Golf Club</a> offers memberships on an annual basis starting at ₹4.2 lakh for individuals, with other <b>golf club memberships</b> such as family and corporate memberships available. Most of the tournament professionals you watch week in and week out on TV belong to clubs in the West Palm Beach and Jupiter areas of Florida. There are two reasons for this: the weather is always ideal for golf, and the state taxes are much lower in Florida. 
-</p>
-
-<p>
-Country club memberships in these areas range from USD $40,000 per annum to in excess of USD $650,000 per annum for those who can afford it, and believe me, there are plenty of wealthy Americans paying this for their exclusive golf club memberships. So the next time you think <a href="/membership" target="_blank" style="color:#ff7e0c;">golf club memberships</a> are expensive, think again, because golf in India and golf club memberships in particular are very affordable.
-</p>
-
-											  
-                       
-
-
-
-
-
-                                           
-
-                                            <div class="post-tags p-relative">
-                                                <a class="fz-16"
-                                                    href="#" >
-                                                    <span class="post_tag post_tag">Blog</span>
-                                                </a>
-                                                <a class="fz-16" href="#">
-                                                    <span class="post_tag post_tag">Creative</span>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                  
-
-
-                                </div>
+                            <div class="post-tags p-relative">
+                                <a class="fz-16" href="#">
+                                    <span class="post_tag post_tag">Blog</span>
+                                </a>
+                                <a class="fz-16" href="#">
+                                    <span class="post_tag post_tag">Creative</span>
+                                </a>
                             </div>
                         </div>
-
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                   
 
