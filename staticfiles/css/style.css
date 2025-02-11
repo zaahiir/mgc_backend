@@ -1079,7 +1079,7 @@ body:not(.v-dark):not(.dsn-line-style).not-home .site-header .border-color-defau
     text-align: center;
   }
   body.dsn-line-style .site-header .inner-header .main-logo {
-    width: calc(var(--body-style-space) - 20px);
+    width: calc(var(--body-style-space) - 30px);
   }
   body.dsn-line-style .site-header .menu-icon {
     position: fixed;

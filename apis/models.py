@@ -144,6 +144,7 @@ class CourseModel(models.Model):
     amenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="amenities")
     courseImage = models.ImageField(upload_to='course_images/', null=True, blank=True)
     golfDescription = models.TextField(null=True, blank=True)
+    golfHighlight = models.TextField(null=True, blank=True)
     golfLocation = models.CharField(max_length=255, null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -153,6 +154,7 @@ class CourseModel(models.Model):
 class BlogModel(models.Model):
     blogDate = models.DateField()
     blogTitle = models.CharField(max_length=255)
+    blogHighlight = models.TextField(null=True, blank=True)
     blogDescription = HTMLField()
     blogImage = models.ImageField(upload_to='blog_images/', null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
