@@ -736,7 +736,7 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
 
 def index_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
-    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-createdAt')
 
     context = {
         'courses': courses,
@@ -757,7 +757,7 @@ def membership_view(request):
 def news_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
     # blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
-    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')
+    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-createdAt')
 
     context = {
         'courses': courses,
