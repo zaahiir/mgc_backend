@@ -123,6 +123,12 @@ class BlogModelSerializers(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class ConceptModelSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = ConceptModel
+        fields = '__all__'
+
+
 class ContactEnquiryModelSerializers(serializers.ModelSerializer):
     class Meta:
         model = ContactEnquiryModel

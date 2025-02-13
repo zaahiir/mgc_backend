@@ -12,6 +12,7 @@ from .utils import PasswordManager
 from django.core.mail import send_mail
 from django.conf import settings
 import json
+import textwrap
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -660,6 +661,37 @@ class BlogViewSet(viewsets.ModelViewSet):
         return Response(response)
 
 
+class ConceptViewSet(viewsets.ModelViewSet):
+    queryset = ConceptModel.objects.filter(hideStatus=0)
+    serializer_class = ConceptModelSerializers
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        # Always return the singleton instance
+        instance = ConceptModel.get_solo()
+        serializer = ConceptModelSerializers(instance)
+        response = {
+            'code': 1,
+            'data': serializer.data,
+            'message': "Retrieved Successfully"
+        }
+        return Response(response)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        instance = ConceptModel.get_solo()
+        serializer = ConceptModelSerializers(
+            instance=instance,
+            data=request.data
+        )
+        if serializer.is_valid():
+            serializer.save()
+            response = {'code': 1, 'message': "Updated Successfully"}
+        else:
+            response = {'code': 0, 'message': "Unable to Process Request"}
+        return Response(response)
+
+
 class ContactEnquiryViewSet(viewsets.ModelViewSet):
     queryset = ContactEnquiryModel.objects.filter(hideStatus=0)
     serializer_class = ContactEnquiryModelSerializers
@@ -737,10 +769,12 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
 def index_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
     blogs = BlogModel.objects.filter(hideStatus=0).order_by('-createdAt')
+    concept = ConceptModel.get_solo()
 
     context = {
         'courses': courses,
-        'blogs': blogs
+        'blogs': blogs,
+        'concepts': [concept]
     }
     return render(request, 'index.html', context)
 
@@ -752,18 +786,6 @@ def membership_view(request):
         'plan': plan,
     }
     return render(request, 'membership.html', context)
-
-
-def news_view(request):
-    courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
-    # blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate')[:7]
-    blogs = BlogModel.objects.filter(hideStatus=0).order_by('-createdAt')
-
-    context = {
-        'courses': courses,
-        'blogs': blogs
-    }
-    return render(request, 'news.html', context)
 
 
 def blog_detail_view(request, blog_id):

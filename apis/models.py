@@ -162,6 +162,38 @@ class BlogModel(models.Model):
     updatedAt = models.DateTimeField(auto_now=True)
 
 
+class ConceptModel(models.Model):
+    conceptHighlight = models.CharField(max_length=255)
+    conceptHeadingOne = models.CharField(max_length=255)
+    conceptParaOne = models.CharField(max_length=1000)
+    conceptHeadingTwo = models.CharField(max_length=255)
+    conceptParaTwo = models.CharField(max_length=1000)
+    conceptHeadingThree = models.CharField(max_length=255)
+    conceptParaThree = models.CharField(max_length=1000)
+    conceptHeadingFour = models.CharField(max_length=255)
+    conceptParaFour = models.CharField(max_length=1000)
+    conceptHeadingFive = models.CharField(max_length=255)
+    conceptParaFive = models.CharField(max_length=1000)
+    conceptHeadingSix = models.CharField(max_length=255)
+    conceptParaSix = models.CharField(max_length=1000)
+    conceptHeadingSeven = models.CharField(max_length=255)
+    conceptParaSeven = models.CharField(max_length=1000)
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_solo(cls):
+        """Get or create the singleton instance"""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def save(self, *args, **kwargs):
+        """Ensure only one instance exists"""
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+
 class ContactEnquiryModel(models.Model):
     contactEnquiryDate = models.DateField(auto_now_add=True)
     contactEnquiryFirstName = models.CharField(max_length=255)

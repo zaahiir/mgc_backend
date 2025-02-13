@@ -315,6 +315,12 @@
 			
 		}
 		
+		.concept-highlight {
+			max-width: 70ch;  /* Approximately 70 characters per line */
+			word-wrap: break-word;
+			margin: 0;
+			line-height: 1.5;
+		}
 	</style>
 
 
@@ -491,99 +497,82 @@
 					<!-- ========== End about ========== --> 
 					
 					 <!-- ==========  Concept  ========== -->
-                    <div class="box-seat box-seat-parallax"  id="concept">
-
-                        <div class="inner-img" data-dsn-grid="move-up" data-overlay="2">
-                            <img class="transform-3d has-bigger-scale" src="{% static 'img/slider/concept_background.jpg' %}" alt="">
-                        </div>
-                        <div class="pro-text dsn-up background-section box-padding" data-dsn-grid="move-section"
-                            data-dsn-responsive="tablet">
-                            <div class="mb-30 d-flex text-left flex-column align-items-start">
-                                <h2 class="section-title dsn-up mb-15">Concept</h2>								
-								<h5 class="user-no-selection d-inline-block text-dark">MGC is a unique and innovative solution designed to meet all your <br> golfing needs, 
-									 offering unparalleled convenience, exclusive access, <br> and exceptional services for both individual and corporate members.
-								</h5>
-                            </div>
-
-                            <div class="accordion-container">
-								<div class="item open">
-									<div class="title">
-										<span class="text-xl">Introduction</span>
-										<span class="fas fa-chevron-down"></span>
-									</div>
-									<p class="text">
-										At Master Golf Club, we offer our privileged members exclusive access to the MGC Collection of courses through a single annual subscription—eliminating the need for green fees, vouchers, loyalty cards, or points-based pay-and-play systems.
-For our corporate clients, the Master Golf Club Concierge provides a seamless, one-stop reservation, ensuring an exceptional golfing experience. Whether for staff, clients, or guests, we guarantee a memorable and hassle-free golfing day.
-With tee times available at a diverse range of courses across London, the South East, and beyond, the MGC Collection is continuously expanding to offer even more choices to our members.
-Our concept is built around exclusivity and convenience: a members-only golf reservation service that provides access to well-located courses featuring outstanding hospitality—creating a truly unique and elevated golfing experience.
-									</p>
-								</div>
-						
-								<div class="item">
-									<div class="title">
-										<span class="text-xl">Want to Play Golf with Friends?</span>
-										<span class="fas fa-chevron-down"></span>
-									</div>
-									<p class="text">
-										It’s easy! Simply fill out our application form and include your friends’ names in the message field. Once your membership is approved and you’ve received your membership cards, you’re ready to go! Book a four-ball at one of the MGC Collection clubs and enjoy a day on the course together.
-									</p>
-								</div>
-						
-								<div class="item">
-									<div class="title">
-										<span class="text-xl">Don’t Have a Regular Group?</span>
-										<span class="fas fa-chevron-down"></span>
-									</div>
-									<p class="text">
-										No problem! If there’s an open slot, join a tee where other Master Golf Club members are playing. It’s the perfect way to make new golfing friends and partners—connecting with like-minded players has never been easier.
-									</p>
-								</div>
-						
-								<div class="item">
-									<div class="title">
-										<span class="text-xl">Enjoy Competition?</span>
-										<span class="fas fa-chevron-down"></span>
-									</div>
-									<p class="text">
-										As a member of Master Golf Club, you’ll be invited to participate in monthly, quarterly, and annual golf events. Becoming part of the Master Golf Club family is simple and rewarding. Plus, with the introduction of the new World Handicap System (WHS), non-club members now have access to a unified and inclusive handicapping system for the first time.
-									</p>
-								</div>
-						
-								<div class="item">
-									<div class="title">
-										<span class="text-xl">Corporate Hospitality?</span>
-										<span class="fas fa-chevron-down"></span>
-									</div>
-									<p class="text">
-										Let One Golf Club take care of all the details to make your golf day truly unique. From branded gifts and tee boxes to scorecards and trophies, we’ll handle it all. Our on-course buggy and service team will manage the event, ensuring its success while you relax and enjoy the day with your guests.
-									</p>
-								</div>
-						
-								<div class="item">
-									<div class="title">
-										<span class="text-xl">Society Golf?</span>
-										<span class="fas fa-chevron-down"></span>
-									</div>
-									<p class="text">Looking to arrange a society day? Master Golf Club offers preferential rates with our partner clubs, along with customizable options like "Nearest the Pin," "Longest Drive," and other awards. We can even arrange after-dinner speakers, a golf show, or a relaxing dinner following your day on the course. With our dedicated MGC Golf Concierge service, you can trust that everything—from tee to green—is taken care of seamlessly.
-
-									</p>
-								</div>
-						
-								<div class="item">
-									<div class="title">
-										<span class="text-xl">Want to Find Out More?</span>
-										<span class="fas fa-chevron-down"></span>
-									</div>
-									<p class="text">It’s easy—just click [here] to fill out our "Contact Us" form.
-										Master Golf Club is your one-stop solution for all your golfing needs. Whether you’re looking to meet new golfing partners or conduct business in a relaxed, social environment, our partner clubs offer premier courses in London and beyond. Membership includes access to exclusive golf-related social events and the best golfing experiences.
-										Membership is limited and criteria-based. Contact us today to learn more and start playing golf the Master Golf Club way!
-									</p>
-								</div>
+					<div class="box-seat box-seat-parallax" id="concept">
+						<div class="inner-img" data-dsn-grid="move-up" data-overlay="2">
+							<img class="transform-3d has-bigger-scale" src="{% static 'img/slider/concept_background.jpg' %}" alt="">
+						</div>
+						<div class="pro-text dsn-up background-section box-padding" data-dsn-grid="move-section" data-dsn-responsive="tablet">
+							<div class="mb-30 d-flex text-left flex-column align-items-start">
+								<h2 class="section-title dsn-up mb-15">Concept</h2>
+								{% for concept in concepts %}
+									<h5 class="user-no-selection d-inline-block text-dark concept-highlight">
+										{{ concept.conceptHighlight }}
+									</h5>
+								{% endfor %}
 							</div>
-                        </div>
 
-                    </div>
-                    <!-- ========== End Concept ========== -->
+							<div class="accordion-container">
+								{% for concept in concepts %}
+									<div class="item {% if forloop.first %}open{% endif %}">
+										<div class="title">
+											<span class="text-xl">{{ concept.conceptHeadingOne }}</span>
+											<span class="fas fa-chevron-down"></span>
+										</div>
+										<p class="text">{{ concept.conceptParaOne }}</p>
+									</div>
+
+									<div class="item">
+										<div class="title">
+											<span class="text-xl">{{ concept.conceptHeadingTwo }}</span>
+											<span class="fas fa-chevron-down"></span>
+										</div>
+										<p class="text">{{ concept.conceptParaTwo }}</p>
+									</div>
+
+									<div class="item">
+										<div class="title">
+											<span class="text-xl">{{ concept.conceptHeadingThree }}</span>
+											<span class="fas fa-chevron-down"></span>
+										</div>
+										<p class="text">{{ concept.conceptParaThree }}</p>
+									</div>
+
+									<div class="item">
+										<div class="title">
+											<span class="text-xl">{{ concept.conceptHeadingFour }}</span>
+											<span class="fas fa-chevron-down"></span>
+										</div>
+										<p class="text">{{ concept.conceptParaFour }}</p>
+									</div>
+
+									<div class="item">
+										<div class="title">
+											<span class="text-xl">{{ concept.conceptHeadingFive }}</span>
+											<span class="fas fa-chevron-down"></span>
+										</div>
+										<p class="text">{{ concept.conceptParaFive }}</p>
+									</div>
+
+									<div class="item">
+										<div class="title">
+											<span class="text-xl">{{ concept.conceptHeadingSix }}</span>
+											<span class="fas fa-chevron-down"></span>
+										</div>
+										<p class="text">{{ concept.conceptParaSix }}</p>
+									</div>
+
+									<div class="item">
+										<div class="title">
+											<span class="text-xl">{{ concept.conceptHeadingSeven }}</span>
+											<span class="fas fa-chevron-down"></span>
+										</div>
+										<p class="text">{{ concept.conceptParaSeven }}</p>
+									</div>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+					<!-- ========== End Concept ========== -->
 					
 					
                     <!-- ========== Collections Section ========== -->

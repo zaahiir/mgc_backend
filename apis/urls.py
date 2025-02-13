@@ -19,6 +19,7 @@ router.register('plan', PlanViewSet, basename='plan'),
 router.register('member', MemberViewSet, basename='member'),
 router.register('course', CourseViewSet, basename='course'),
 router.register('blog', BlogViewSet, basename='blog'),
+router.register('concept', ConceptViewSet, basename='concept'),
 router.register('contactEnquiry', ContactEnquiryViewSet, basename='contactEnquiry'),
 router.register('memberEnquiry', MemberEnquiryViewSet, basename='memberEnquiry'),
 

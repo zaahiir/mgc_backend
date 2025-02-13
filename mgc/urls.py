@@ -3,7 +3,7 @@ from django.urls import path, include
 from apis.views import UserViewSet
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.views.generic import TemplateView
-from apis.views import index_view, membership_view, news_view, blog_detail_view
+from apis.views import index_view, membership_view, blog_detail_view
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -12,7 +12,6 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 urlpatterns = [
     path('', index_view, name='home'),
     path('membership', membership_view, name='membership'),
-    path('news', news_view, name='news'),
     path('news/<int:blog_id>', blog_detail_view, name='blog_detail'),
     path('tinymce/', include('tinymce.urls')),
     path('admin/', admin.site.urls),
