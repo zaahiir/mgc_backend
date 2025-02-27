@@ -6339,7 +6339,6 @@ header .title {
 
 .text-menu.btea-time .dsn-button:before {
 	content: '';
-    background: url(../img/book-a-tee-time.png);
     background-size: 22px 35px;    
 	width: 20px;
     height: 30px;

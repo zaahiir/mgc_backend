@@ -2,6 +2,8 @@ from pathlib import Path
 from datetime import timedelta
 import os
 from django.core.management.utils import get_random_secret_key
+import pymysql
+pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -9,14 +11,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-$8(gz)-bl7c23oy%br2vj%z*@tn752amdlp^o-pla&ze49-f8y')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['mgc.lajix.com', 'www.mgc.lajix.com']
 
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:4200',  # Your local frontend
-    'https://mastergolf.lajix.com',  # Add this line
+    'https://mgc.lajix.com',  # Add this line
 ]
 
 INSTALLED_APPS = [
@@ -66,12 +71,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mgc.wsgi.application'
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'lajix_mastergolfclub',
+#         'USER': 'lajix_mgcadmin',
+#         'PASSWORD': 'C;wDI{3ph;Qd',
+#         'HOST': 'localhost',
+#         'PORT': '3306',
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",  # Database file stored in the project root
     }
 }
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
