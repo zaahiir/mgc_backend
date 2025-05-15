@@ -9,6 +9,7 @@ from django.shortcuts import render, get_object_or_404
 from .serializers import *
 from django.db.models import Q
 from .utils import PasswordManager
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.conf import settings
 import json
@@ -60,8 +61,7 @@ class UserViewSet(viewsets.ViewSet):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"detail": "Logout failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    
+      
     @action(detail=False, methods=['POST'])
     def member_login(self, request):
         """
@@ -94,28 +94,20 @@ class UserViewSet(viewsets.ViewSet):
             input_password = data.get('password')
             authenticated = False
             
-            # DEBUG: Log available password fields (remove in production)
-            print(f"Member found: {member.email}")
-            print(f"Has encrypted_password: {bool(member.encrypted_password)}")
-            print(f"Has hashed_password: {bool(member.hashed_password)}")
-            print(f"Has plain password: {bool(member.password)}")
-            
             # Try authentication using available password fields
             if member.hashed_password:
+                from django.contrib.auth.hashers import check_password
                 authenticated = check_password(input_password, member.hashed_password)
-                print(f"Hashed password auth result: {authenticated}")
             
             if not authenticated and member.encrypted_password:
                 try:
                     decrypted_password = password_manager.decrypt_password(member.encrypted_password)
                     authenticated = (input_password == decrypted_password)
-                    print(f"Encrypted password auth result: {authenticated}")
                 except Exception as e:
                     print(f"Error decrypting password: {e}")
             
             if not authenticated and member.password:
                 authenticated = (input_password == member.password)
-                print(f"Plain password auth result: {authenticated}")
             
             if not authenticated:
                 return Response({
@@ -123,13 +115,34 @@ class UserViewSet(viewsets.ViewSet):
                     'message': 'Invalid username or password'
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
-            # Generate JWT tokens
-            refresh = RefreshToken.for_user(member)
+            # FIXED SOLUTION 1: Create a manual JWT token with correct expiration handling
+            from rest_framework_simplejwt.tokens import RefreshToken
+            import datetime
+            from django.conf import settings
+            
+            # Create the tokens manually
+            refresh = RefreshToken()
+            
+            # Add custom claims
+            refresh['user_id'] = member.id
+            refresh['user_type'] = 'member'
+            refresh['email'] = member.email
+            
+            # Fixed: Use hardcoded durations instead of trying to access settings.SIMPLE_JWT
+            # Standard values for JWT tokens
+            access_lifetime = datetime.timedelta(minutes=60)  # 1 hour for access token
+            refresh_lifetime = datetime.timedelta(days=7)  # 7 days for refresh token
+            
+            # Set token expiry times
+            now = datetime.datetime.now(tz=datetime.timezone.utc)
+            refresh.set_exp(lifetime=refresh_lifetime)
+            access_token = refresh.access_token
+            access_token.set_exp(lifetime=access_lifetime)
             
             return Response({
                 'code': 1,
                 'message': 'Login successful',
-                'access': str(refresh.access_token),
+                'access': str(access_token),
                 'refresh': str(refresh),
                 'user_type': 'member',
                 'user_id': member.id,
@@ -138,112 +151,114 @@ class UserViewSet(viewsets.ViewSet):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())  # Print full traceback for debugging
             return Response({
                 'code': 0,
                 'message': f'Login failed: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        @action(detail=False, methods=['POST'])
-        def member_logout(self, request):
-            """
-            Logout endpoint for members
-            """
-            try:
-                refresh_token = request.data.get('refresh_token')
-                
-                if not refresh_token:
-                    return Response({
-                        'code': 0,
-                        'message': 'Refresh token is required'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Blacklist the refresh token
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-                
-                return Response({
-                    'code': 1,
-                    'message': 'Logout successful'
-                }, status=status.HTTP_200_OK)
-                
-            except Exception as e:
+    @action(detail=False, methods=['POST'])
+    def member_logout(self, request):
+        """
+        Logout endpoint for members
+        """
+        try:
+            refresh_token = request.data.get('refresh_token')
+            
+            if not refresh_token:
                 return Response({
                     'code': 0,
-                    'message': f'Logout failed: {str(e)}'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        @action(detail=False, methods=['POST'])
-        def password_reset(self, request):
-            """
-            Password reset request endpoint
-            """
-            try:
-                email = request.data.get('email')
-                
-                if not email:
-                    return Response({
-                        'code': 0,
-                        'message': 'Email is required'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Find member by email
-                try:
-                    member = MemberModel.objects.get(email=email, hideStatus=0)
-                except MemberModel.DoesNotExist:
-                    return Response({
-                        'code': 0,
-                        'message': 'Email not found'
-                    }, status=status.HTTP_404_NOT_FOUND)
-                
-                # Generate a reset token and save it to the member record
-                reset_token = str(uuid.uuid4())
-                reset_token_expiry = datetime.datetime.now() + datetime.timedelta(hours=24)
-                
-                # Store reset token and expiry in member record
-                # Note: You would need to add these fields to the MemberModel
-                member.reset_token = reset_token
-                member.reset_token_expiry = reset_token_expiry
-                member.save()
-                
-                # Generate reset URL
-                reset_url = f"{settings.FRONTEND_URL}/reset-password/{reset_token}"
-                
-                # Send email with reset link
-                subject = 'Reset Your Golf Club Password'
-                message = f'''
-                Dear {member.firstName or 'Member'},
-
-                You recently requested to reset your password for your golf club account.
-                Click the link below to reset it:
-
-                {reset_url}
-
-                This link will expire in 24 hours.
-
-                If you did not request a password reset, please ignore this email.
-
-                Best regards,
-                Golf Club Management
-                '''
-                
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
-                    fail_silently=False
-                )
-                
-                return Response({
-                    'code': 1,
-                    'message': 'Password reset email sent'
-                }, status=status.HTTP_200_OK)
-                
-            except Exception as e:
+                    'message': 'Refresh token is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Blacklist the refresh token
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            
+            return Response({
+                'code': 1,
+                'message': 'Logout successful'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Logout failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['POST'])
+    def password_reset(self, request):
+        """
+        Password reset request endpoint
+        """
+        try:
+            email = request.data.get('email')
+            
+            if not email:
                 return Response({
                     'code': 0,
-                    'message': f'Password reset request failed: {str(e)}'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    'message': 'Email is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Find member by email
+            try:
+                member = MemberModel.objects.get(email=email, hideStatus=0)
+            except MemberModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Email not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Generate a reset token and save it to the member record
+            reset_token = str(uuid.uuid4())
+            reset_token_expiry = datetime.datetime.now() + datetime.timedelta(hours=24)
+            
+            # Store reset token and expiry in member record
+            # Note: You would need to add these fields to the MemberModel
+            member.reset_token = reset_token
+            member.reset_token_expiry = reset_token_expiry
+            member.save()
+            
+            # Generate reset URL
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/{reset_token}"
+            
+            # Send email with reset link
+            subject = 'Reset Your Golf Club Password'
+            message = f'''
+            Dear {member.firstName or 'Member'},
+
+            You recently requested to reset your password for your golf club account.
+            Click the link below to reset it:
+
+            {reset_url}
+
+            This link will expire in 24 hours.
+
+            If you did not request a password reset, please ignore this email.
+
+            Best regards,
+            Golf Club Management
+            '''
+            
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False
+            )
+            
+            return Response({
+                'code': 1,
+                'message': 'Password reset email sent'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Password reset request failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserTypeViewSet(viewsets.ModelViewSet):
