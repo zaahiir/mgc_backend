@@ -18,6 +18,9 @@ urlpatterns = [
     path('apis/', include('apis.urls')),
     path('apis/login/', UserViewSet.as_view({'post': 'login'}), name='login'),
     path('apis/logout/', UserViewSet.as_view({'post': 'logout'}), name='logout'),
+    path('apis/member_login/', UserViewSet.as_view({'post': 'member_login'}), name='member_login'),
+    path('apis/member_logout/', UserViewSet.as_view({'post': 'member_logout'}), name='member_logout'),
+    path('apis/password_reset/', UserViewSet.as_view({'post': 'password_reset'}), name='password_reset'),
     path('apis/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('apis/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

@@ -11,17 +11,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-$8(gz)-bl7c23oy%br2vj%z*@tn752amdlp^o-pla&ze49-f8y')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['mgc.lajix.com', 'www.mgc.lajix.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'mgc.lajix.com', 'www.mgc.lajix.com']
 
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:4200',  # Your local frontend
-    'https://mgc.lajix.com',  # Add this line
+    'http://localhost:4200',
+    'http://localhost:51212',
+    'http://localhost',
+    'http://127.0.0.1',
 ]
 
 INSTALLED_APPS = [
