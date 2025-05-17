@@ -840,6 +840,26 @@ class BlogViewSet(viewsets.ModelViewSet):
         response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
         return Response(response)
 
+    @action(detail=False, url_path='latest/(?P<count>[^/.]+)', methods=['GET'])
+    def latest(self, request, count=5):
+        """
+        Get the latest blog posts (news items)
+        /api/blog/latest/5/ will return the 5 most recent blog posts
+        """
+        try:
+            count = int(count)
+            if count <= 0:
+                count = 5  # Default to 5 if invalid count
+        except ValueError:
+            count = 5  # Default to 5 if count is not a number
+            
+        # Get the latest blogs by date and ID
+        blogs = BlogModel.objects.filter(hideStatus=0).order_by('-blogDate', '-id')[:count]
+        serializer = BlogModelSerializers(blogs, many=True)
+        
+        response = {'code': 1, 'data': serializer.data, 'message': f"Latest {count} news retrieved"}
+        return Response(response)
+
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
         if pk == "0":
