@@ -1,5 +1,7 @@
 from django.db import models
 from tinymce.models import HTMLField
+from django.core.validators import MaxValueValidator
+from django.db import transaction
 
 
 # Start of Master
@@ -163,21 +165,8 @@ class BlogModel(models.Model):
 
 
 class ConceptModel(models.Model):
-    conceptHighlight = models.CharField(max_length=255)
-    conceptHeadingOne = models.CharField(max_length=255)
-    conceptParaOne = models.CharField(max_length=1000)
-    conceptHeadingTwo = models.CharField(max_length=255)
-    conceptParaTwo = models.CharField(max_length=1000)
-    conceptHeadingThree = models.CharField(max_length=255)
-    conceptParaThree = models.CharField(max_length=1000)
-    conceptHeadingFour = models.CharField(max_length=255)
-    conceptParaFour = models.CharField(max_length=1000)
-    conceptHeadingFive = models.CharField(max_length=255)
-    conceptParaFive = models.CharField(max_length=1000)
-    conceptHeadingSix = models.CharField(max_length=255)
-    conceptParaSix = models.CharField(max_length=1000)
-    conceptHeadingSeven = models.CharField(max_length=255)
-    conceptParaSeven = models.CharField(max_length=1000)
+    conceptHighlight = models.CharField(max_length=1500)
+    conceptCount = models.IntegerField(default=1, validators=[MaxValueValidator(8)])
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -192,6 +181,27 @@ class ConceptModel(models.Model):
         """Ensure only one instance exists"""
         self.pk = 1
         super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Concept"
+        verbose_name_plural = "Concepts"
+
+class ConceptItem(models.Model):
+    concept = models.ForeignKey(ConceptModel, on_delete=models.CASCADE, related_name='items')
+    heading = models.CharField(max_length=255)
+    paragraph = models.TextField(max_length=1000)
+    order = models.IntegerField(default=0)
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order']
+        verbose_name = "Concept Item"
+        verbose_name_plural = "Concept Items"
+
+    def __str__(self):
+        return f"{self.heading} (Order: {self.order})"
 
 
 class ContactEnquiryModel(models.Model):

@@ -8,12 +8,16 @@ from rest_framework.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
 from .serializers import *
 from django.db.models import Q
+from django.db import transaction
 from .utils import PasswordManager
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.conf import settings
 import json
 import textwrap
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class UserViewSet(viewsets.ViewSet):
@@ -881,34 +885,149 @@ class BlogViewSet(viewsets.ModelViewSet):
 
 
 class ConceptViewSet(viewsets.ModelViewSet):
-    queryset = ConceptModel.objects.filter(hideStatus=0)
-    serializer_class = ConceptModelSerializers
+    queryset = ConceptModel.objects.all()
+    serializer_class = ConceptModelSerializer
 
-    @action(detail=True, methods=['GET'])
-    def listing(self, request, pk=None):
-        # Always return the singleton instance
-        instance = ConceptModel.get_solo()
-        serializer = ConceptModelSerializers(instance)
-        response = {
-            'code': 1,
-            'data': serializer.data,
-            'message': "Retrieved Successfully"
-        }
-        return Response(response)
+    @action(detail=False, methods=['GET'], url_path='get_concept')
+    def get_concept(self, request):
+        """Get the single concept instance"""
+        try:
+            instance = ConceptModel.get_solo()
+            serializer = ConceptModelSerializer(instance)
+            return Response({
+                'code': 1,
+                'data': serializer.data,
+                'message': "Retrieved Successfully"
+            })
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['POST'])
-    def processing(self, request, pk=None):
-        instance = ConceptModel.get_solo()
-        serializer = ConceptModelSerializers(
-            instance=instance,
-            data=request.data
-        )
-        if serializer.is_valid():
-            serializer.save()
-            response = {'code': 1, 'message': "Updated Successfully"}
-        else:
-            response = {'code': 0, 'message': "Unable to Process Request"}
-        return Response(response)
+    @action(detail=False, methods=['POST'], url_path='create_or_update_concept')
+    def create_or_update_concept(self, request):
+        """Create or update the concept with items"""
+        try:
+            with transaction.atomic():
+                # Get singleton instance
+                instance = ConceptModel.get_solo()
+                
+                # Validate required fields
+                if 'conceptHighlight' not in request.data:
+                    return Response({
+                        'code': 0,
+                        'message': "conceptHighlight is required"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                if 'items' not in request.data or not request.data['items']:
+                    return Response({
+                        'code': 0,
+                        'message': "At least one item is required"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Update basic fields
+                instance.conceptHighlight = request.data['conceptHighlight']
+                instance.conceptCount = len(request.data['items'])
+                instance.save()
+                
+                # Delete existing items
+                instance.items.all().delete()
+                
+                # Create new items
+                for i, item_data in enumerate(request.data['items']):
+                    if not item_data.get('heading') or not item_data.get('paragraph'):
+                        return Response({
+                            'code': 0,
+                            'message': f"Item {i+1}: heading and paragraph are required"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    ConceptItem.objects.create(
+                        concept=instance,
+                        heading=item_data['heading'],
+                        paragraph=item_data['paragraph'],
+                        order=i + 1
+                    )
+                
+                return Response({
+                    'code': 1,
+                    'message': "Concept saved successfully"
+                })
+                
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f"Error: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['DELETE'], url_path='delete_concept')
+    def delete_concept(self, request):
+        """Delete all concept data"""
+        try:
+            with transaction.atomic():
+                instance = ConceptModel.get_solo()
+                
+                # Delete all items first
+                instance.items.all().delete()
+                
+                # Reset concept to default values
+                instance.conceptHighlight = ""
+                instance.conceptCount = 0
+                instance.save()
+                
+                return Response({
+                    'code': 1,
+                    'message': "Concept deleted successfully"
+                })
+                
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f"Error: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['DELETE'], url_path='delete_item')
+    def delete_item(self, request, pk=None):
+        """Delete a specific concept item"""
+        try:
+            item_id = request.data.get('item_id')
+            if not item_id:
+                return Response({
+                    'code': 0,
+                    'message': "item_id is required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            with transaction.atomic():
+                instance = ConceptModel.get_solo()
+                
+                # Delete the specific item
+                deleted_count = instance.items.filter(id=item_id).delete()[0]
+                
+                if deleted_count == 0:
+                    return Response({
+                        'code': 0,
+                        'message': "Item not found"
+                    }, status=status.HTTP_404_NOT_FOUND)
+                
+                # Update concept count and reorder remaining items
+                remaining_items = instance.items.all().order_by('order')
+                for index, item in enumerate(remaining_items):
+                    item.order = index + 1
+                    item.save()
+                
+                instance.conceptCount = remaining_items.count()
+                instance.save()
+                
+                return Response({
+                    'code': 1,
+                    'message': "Item deleted successfully"
+                })
+                
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f"Error: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ContactEnquiryViewSet(viewsets.ModelViewSet):

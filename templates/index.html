@@ -316,7 +316,7 @@
 		}
 		
 		.concept-highlight {
-			max-width: 70ch;  /* Approximately 70 characters per line */
+			max-width: 90ch;  /* Approximately 70 characters per line */
 			word-wrap: break-word;
 			margin: 0;
 			line-height: 1.5;
@@ -505,69 +505,23 @@
 							<div class="mb-30 d-flex text-left flex-column align-items-start">
 								<h2 class="section-title dsn-up mb-15">Concept</h2>
 								{% for concept in concepts %}
-									<h5 class="user-no-selection d-inline-block text-dark concept-highlight">
+									<p class="user-no-selection d-inline-block text-dark concept-highlight">
 										{{ concept.conceptHighlight }}
-									</h5>
+									</p>
 								{% endfor %}
 							</div>
 
 							<div class="accordion-container">
 								{% for concept in concepts %}
-									<div class="item {% if forloop.first %}open{% endif %}">
-										<div class="title">
-											<span class="text-xl">{{ concept.conceptHeadingOne }}</span>
-											<span class="fas fa-chevron-down"></span>
+									{% for item in concept.items.all %}
+										<div class="item {% if forloop.first %}open{% endif %}">
+											<div class="title">
+												<span class="text-xl">{{ item.heading }}</span>
+												<span class="fas fa-chevron-down"></span>
+											</div>
+											<p class="text">{{ item.paragraph|safe }}</p>
 										</div>
-										<p class="text">{{ concept.conceptParaOne }}</p>
-									</div>
-
-									<div class="item">
-										<div class="title">
-											<span class="text-xl">{{ concept.conceptHeadingTwo }}</span>
-											<span class="fas fa-chevron-down"></span>
-										</div>
-										<p class="text">{{ concept.conceptParaTwo }}</p>
-									</div>
-
-									<div class="item">
-										<div class="title">
-											<span class="text-xl">{{ concept.conceptHeadingThree }}</span>
-											<span class="fas fa-chevron-down"></span>
-										</div>
-										<p class="text">{{ concept.conceptParaThree }}</p>
-									</div>
-
-									<div class="item">
-										<div class="title">
-											<span class="text-xl">{{ concept.conceptHeadingFour }}</span>
-											<span class="fas fa-chevron-down"></span>
-										</div>
-										<p class="text">{{ concept.conceptParaFour }}</p>
-									</div>
-
-									<div class="item">
-										<div class="title">
-											<span class="text-xl">{{ concept.conceptHeadingFive }}</span>
-											<span class="fas fa-chevron-down"></span>
-										</div>
-										<p class="text">{{ concept.conceptParaFive }}</p>
-									</div>
-
-									<div class="item">
-										<div class="title">
-											<span class="text-xl">{{ concept.conceptHeadingSix }}</span>
-											<span class="fas fa-chevron-down"></span>
-										</div>
-										<p class="text">{{ concept.conceptParaSix }}</p>
-									</div>
-
-									<div class="item">
-										<div class="title">
-											<span class="text-xl">{{ concept.conceptHeadingSeven }}</span>
-											<span class="fas fa-chevron-down"></span>
-										</div>
-										<p class="text">{{ concept.conceptParaSeven }}</p>
-									</div>
+									{% endfor %}
 								{% endfor %}
 							</div>
 						</div>

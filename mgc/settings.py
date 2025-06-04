@@ -2,8 +2,8 @@ from pathlib import Path
 from datetime import timedelta
 import os
 from django.core.management.utils import get_random_secret_key
-import pymysql
-pymysql.install_as_MySQLdb()
+# import pymysql
+# pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -13,7 +13,8 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-$8(gz)-bl7c23oy%br2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'mgc.lajix.com', 'www.mgc.lajix.com']
+# ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'mgc.lajix.com', 'www.mgc.lajix.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 SECURE_SSL_REDIRECT = False

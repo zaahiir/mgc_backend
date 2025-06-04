@@ -123,10 +123,17 @@ class BlogModelSerializers(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ConceptModelSerializers(serializers.ModelSerializer):
+class ConceptItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConceptItem
+        fields = ['id', 'heading', 'paragraph', 'order', 'hideStatus']
+
+class ConceptModelSerializer(serializers.ModelSerializer):
+    items = ConceptItemSerializer(many=True, read_only=True)
+    
     class Meta:
         model = ConceptModel
-        fields = '__all__'
+        fields = ['id', 'conceptHighlight', 'conceptCount', 'items', 'hideStatus', 'createdAt', 'updatedAt']
 
 
 class ContactEnquiryModelSerializers(serializers.ModelSerializer):
