@@ -97,6 +97,43 @@ class MemberModelSerializers(serializers.ModelSerializer):
         representation['paymentMethod'] = instance.paymentMethod.methodName if instance.paymentMethod else None
         return representation
 
+# Serializer for QR code response
+class MemberQRDetailSerializer(serializers.ModelSerializer):
+    gender = serializers.SerializerMethodField()
+    nationality = serializers.SerializerMethodField()
+    plan = serializers.SerializerMethodField()
+    fullName = serializers.SerializerMethodField()
+    profilePhotoUrl = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MemberModel
+        fields = [
+            'golfClubId', 'fullName', 'phoneNumber', 'dateOfBirth', 
+            'gender', 'address', 'nationality', 'profilePhotoUrl',
+            'plan', 'membershipStartDate', 'membershipEndDate'
+        ]
+
+    def get_gender(self, obj):
+        return obj.gender.genderName if obj.gender else None
+
+    def get_nationality(self, obj):
+        return obj.nationality.countryName if obj.nationality else None
+
+    def get_plan(self, obj):
+        return obj.plan.planName if obj.plan else None
+
+    def get_fullName(self, obj):
+        first_name = obj.firstName or ""
+        last_name = obj.lastName or ""
+        return f"{first_name} {last_name}".strip()
+
+    def get_profilePhotoUrl(self, obj):
+        if obj.profilePhoto:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profilePhoto.url)
+        return None
+
 
 class CourseModelSerializers(serializers.ModelSerializer):
     amenities = serializers.PrimaryKeyRelatedField(

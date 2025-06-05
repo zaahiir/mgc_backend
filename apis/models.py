@@ -2,6 +2,7 @@ from django.db import models
 from tinymce.models import HTMLField
 from django.core.validators import MaxValueValidator
 from django.db import transaction
+import uuid
 
 
 # Start of Master
@@ -96,7 +97,7 @@ class PlanModel(models.Model):
     updatedAt = models.DateTimeField(auto_now=True)
 
 
-class MemberModel(models.Model):
+class MemberModel(models.Model): 
     id = models.AutoField(primary_key=True)
     firstName = models.CharField(max_length=150, null=True, blank=True)
     lastName = models.CharField(max_length=150, null=True, blank=True)
@@ -127,9 +128,15 @@ class MemberModel(models.Model):
     idProof = models.FileField(upload_to="member_id_proofs/", null=True, blank=True)
     handicap = models.BooleanField(default=False)
     golfClubId = models.CharField(max_length=100, null=True, blank=True)
+    qr_token = models.CharField(max_length=255, null=True, blank=True, unique=True)  # New field for QR security
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.qr_token:
+            self.qr_token = str(uuid.uuid4())
+        super().save(*args, **kwargs)
 
 
 class CourseModel(models.Model):

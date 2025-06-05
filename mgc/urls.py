@@ -13,6 +13,7 @@ urlpatterns = [
     path('', index_view, name='home'),
     path('membership', membership_view, name='membership'),
     path('news/<int:blog_id>', blog_detail_view, name='blog_detail'),
+    path('member/verify/<str:qr_token>/', TemplateView.as_view(template_name='member_verify.html'), name='member_verify'),
     path('tinymce/', include('tinymce.urls')),
     path('admin/', admin.site.urls),
     path('apis/', include('apis.urls')),

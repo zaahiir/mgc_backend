@@ -16,6 +16,13 @@ from django.conf import settings
 import json
 import textwrap
 import logging
+import qrcode
+import io
+import base64
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -617,40 +624,126 @@ class MemberViewSet(viewsets.ModelViewSet):
     queryset = MemberModel.objects.filter(hideStatus=0)
     serializer_class = MemberModelSerializers
 
-    def send_credentials_email(self, email: str, member_id: str, password: str):
+    def generate_qr_code(self, qr_token: str):
         """
-        Send email with credentials to new member
+        Generate QR code for member verification
         """
-        subject = 'Your Golf Club Membership Credentials'
-        message = f'''
-        Dear Member,
-
-        Your golf club membership account has been created successfully.
-
-        Your membership details:
-        Member ID: {member_id}
-
-        Login credentials:
-        Username: {email}
-        Password: {password}
-
-        Please change your password upon first login.
-
-        Best regards,
-        Golf Club Management
-        '''
-
         try:
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
+            # Create QR code URL - adjust the domain as needed
+            qr_url = f"{getattr(settings, 'FRONTEND_URL', 'https://mastergolfclub.com')}/member/verify/{qr_token}"
+            
+            logger.info(f"Generating QR code for URL: {qr_url}")
+            
+            # Generate QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
             )
-            return True
+            qr.add_data(qr_url)
+            qr.make(fit=True)
+
+            # Create QR code image
+            qr_image = qr.make_image(fill_color="black", back_color="white")
+            
+            # Convert to base64 for email attachment
+            buffer = io.BytesIO()
+            qr_image.save(buffer, format='PNG')
+            buffer.seek(0)
+            
+            logger.info("QR code generated successfully")
+            return buffer.getvalue()
+            
         except Exception as e:
-            print(f"Email sending error: {e}")
+            logger.error(f"QR Code generation error: {str(e)}")
+            return None
+
+    def send_credentials_with_qr_email(self, email: str, member_id: str, password: str, qr_token: str):
+        """
+        Send email with credentials and QR code to new member
+        """
+        try:
+            logger.info(f"Attempting to send email to: {email}")
+            
+            # Generate QR code
+            qr_image_data = self.generate_qr_code(qr_token)
+            
+            if not qr_image_data:
+                logger.error("Failed to generate QR code")
+                return False
+
+            subject = 'Your Golf Club Membership Credentials & QR Code'
+            
+            # Text message
+            text_message = f'''
+Dear Member,
+
+Your golf club membership account has been created successfully.
+
+Your membership details:
+Member ID: {member_id}
+
+Login credentials:
+Username: {email}
+Password: {password}
+
+Please find your membership QR code attached. This QR code can be used for quick verification at the club.
+
+Please change your password upon first login.
+
+Best regards,
+Golf Club Management
+            '''
+
+            # HTML message
+            html_message = f'''
+<html>
+<body>
+    <h2>Welcome to Golf Club!</h2>
+    <p>Dear Member,</p>
+    <p>Your golf club membership account has been created successfully.</p>
+    
+    <h3>Your membership details:</h3>
+    <p><strong>Member ID:</strong> {member_id}</p>
+    
+    <h3>Login credentials:</h3>
+    <p><strong>Username:</strong> {email}</p>
+    <p><strong>Password:</strong> {password}</p>
+    
+    <p>Please find your membership QR code attached. This QR code can be used for quick verification at the club.</p>
+    
+    <p><strong>Important:</strong> Please change your password upon first login.</p>
+    
+    <p>Best regards,<br>Golf Club Management</p>
+</body>
+</html>
+            '''
+
+            # Create email message
+            msg = EmailMultiAlternatives(
+                subject,
+                text_message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email]
+            )
+            
+            # Add HTML version
+            msg.attach_alternative(html_message, "text/html")
+            
+            # Attach QR code
+            msg.attach(f'membership_qr_{member_id}.png', qr_image_data, 'image/png')
+            
+            logger.info("Attempting to send email...")
+            
+            # Send email
+            msg.send()
+            
+            logger.info("Email sent successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Email sending error: {str(e)}")
             return False
 
     @action(detail=True, methods=['GET'])
@@ -668,6 +761,7 @@ class MemberViewSet(viewsets.ModelViewSet):
         try:
             data = request.data.copy()
             password_manager = PasswordManager()
+            plain_password = None
 
             # If this is a new member creation
             if pk == "0" and 'password' in data:
@@ -691,29 +785,39 @@ class MemberViewSet(viewsets.ModelViewSet):
 
             if serializer.is_valid():
                 member = serializer.save()
+                logger.info(f"Member saved with ID: {member.id}, QR Token: {member.qr_token}")
 
-                # For new member, send credentials email
-                if pk == "0" and member.email and member.encrypted_password:
-                    # Decrypt password for email
-                    decrypted_password = password_manager.decrypt_password(
-                        member.encrypted_password
-                    )
-
-                    # Send email with credentials
-                    email_sent = self.send_credentials_email(
+                # For new member, send credentials email with QR code
+                if pk == "0" and member.email and plain_password:
+                    logger.info(f"Sending email to new member: {member.email}")
+                    
+                    # Send email with credentials and QR code
+                    email_sent = self.send_credentials_with_qr_email(
                         member.email,
                         member.golfClubId,
-                        decrypted_password
+                        plain_password,  # Use the original plain password
+                        member.qr_token
                     )
 
-                    if not email_sent:
-                        raise Exception("Failed to send credentials email")
-
-                response = {
-                    'code': 1,
-                    'message': "Member created successfully and credentials sent"
-                }
+                    if email_sent:
+                        logger.info("Email sent successfully")
+                        response = {
+                            'code': 1,
+                            'message': "Member created successfully, credentials and QR code sent"
+                        }
+                    else:
+                        logger.warning("Email sending failed, but member was created")
+                        response = {
+                            'code': 1,
+                            'message': "Member created successfully, but email sending failed"
+                        }
+                else:
+                    response = {
+                        'code': 1,
+                        'message': "Member processed successfully"
+                    }
             else:
+                logger.error(f"Serializer validation failed: {serializer.errors}")
                 response = {
                     'code': 0,
                     'message': "Unable to Process Request",
@@ -721,6 +825,7 @@ class MemberViewSet(viewsets.ModelViewSet):
                 }
 
         except Exception as e:
+            logger.error(f"Processing error: {str(e)}")
             response = {'code': 0, 'message': str(e)}
 
         return Response(response)
@@ -730,6 +835,46 @@ class MemberViewSet(viewsets.ModelViewSet):
         MemberModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
+
+    # FIXED: Changed the URL pattern to match what's used in the HTML template
+    @action(detail=False, methods=['GET'], url_path='verify-qr/(?P<qr_token>[^/.]+)')
+    def verify_qr_code(self, request, qr_token=None):
+        """
+        Verify QR code and return member details
+        """
+        try:
+            logger.info(f"Attempting to verify QR token: {qr_token}")
+            
+            # Find member by QR token
+            member = MemberModel.objects.get(qr_token=qr_token, hideStatus=0)
+            
+            logger.info(f"Member found: {member.firstName} {member.lastName}")
+            
+            # Serialize member data
+            serializer = MemberQRDetailSerializer(member, context={'request': request})
+            
+            response = {
+                'code': 1,
+                'data': serializer.data,
+                'message': 'Member details retrieved successfully'
+            }
+            
+            logger.info("QR verification successful")
+            return Response(response)
+            
+        except MemberModel.DoesNotExist:
+            logger.error(f"Member not found for QR token: {qr_token}")
+            return Response({
+                'code': 0,
+                'message': 'Invalid QR code or member not found'
+            }, status=404)
+            
+        except Exception as e:
+            logger.error(f"Error verifying QR code: {str(e)}")
+            return Response({
+                'code': 0,
+                'message': f'Error verifying QR code: {str(e)}'
+            }, status=500)
 
     @action(detail=False, methods=['GET'], url_path='last-member-id/(?P<year>[^/.]+)/(?P<month>[^/.]+)')
     def get_last_member_id(self, request, year=None, month=None):
