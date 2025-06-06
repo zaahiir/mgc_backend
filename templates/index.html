@@ -15,7 +15,6 @@
 
     <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon" />
     <link rel="icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon" />
-    <link rel="preload" href="{% static 'img/circle-dotted.png' %}" as="image" />
 
     <!-- CSS files -->
     <link href="{% static 'css/plugins.css' %}" rel="stylesheet" type="text/css">
@@ -286,6 +285,10 @@
 			z-index: -1000; 
 			 overflow: hidden;
 		}
+
+		.about-img{
+			height: 600px;
+		}
 				
 		@media (min-width: 400px) and (max-width: 767px) {
 			
@@ -381,23 +384,12 @@
 				<p class="sub-heading line-bg-left mb-20 dsn-up" data-dsn="parallax">Master Golf Club</p>
 				<h1 class="title user-no-selection d-inline-block mb-30">Experience the precision on the greens.<br> Discover golf at its finest. </h1>
 				<div class="text-right">
-				
 					 <div class="image-zoom w-auto d-inline-block" style="display:flex;">
                         <a href="/membership" class="dsn-button background-main" data-dsn="parallax">Membership</a>
-						
-                        <a href="https://mastergolf.lajix.com/member/" class="dsn-button background-main" data-dsn="parallax">Member Login</a>
-						
-					</div>		
-
-
-				
+                        <a href="https://member.mastergolfclub.com/" class="dsn-button background-main" data-dsn="parallax">Member Login</a>
+					</div>
 				</div>
 			</div>
-	
-			<div class="scroller scrolle1">
-				<div class="scroll-down2"></div>
-			</div>
-		
 		</div>
 		
 		<div class="section fpsn sec2">
@@ -405,12 +397,7 @@
 			<div class="slide-container">
 				<p class="sub-heading line-bg-left mb-20 dsn-up">Master Golf Club Concept</p> 				
 				<h1 class="title user-no-selection d-inline-block mb-30">MGC is a unique and innovative <br> solution designed to meet all your <br> golfing needs. </h1>		
-			</div>
-	
-			<div class="scroller scrolle2">
-				<div class="scroll-down2"></div>
-			</div>
-		
+			</div>		
 		</div>
 		
 		<div class="section fpsn sec3">
@@ -420,11 +407,6 @@
 
 				<h1 class="title user-no-selection d-inline-block mb-30">Masterpiece Courses<br>One Legendary Experience</h1>
 			</div>
-	
-			<div class="scroller scrolle3">
-				<div class="scroll-down2"></div>
-			</div>
-		
 		</div>
 		
 		
@@ -474,8 +456,8 @@
 									</div>
 								</div>
 
-								<div class="col-lg-6">
-									<div class="background-mask p-20 mt-80 mb-100 h-80 w-100">
+								<div class="col-lg-6 about-img">
+									<div class="background-mask px-20 mt-30 h-80 w-100">
 										<div class="line line-top"></div>
 										<div class="line line-bottom"></div>
 										<div class="line line-left"></div>
@@ -485,6 +467,7 @@
 											<div class="img-container before-z-index" style="height: 100%;" data-dsn-grid="move-up"
 												data-overlay="3">
 												<img class="cover-bg-img" src="{% static 'img/slider/about.jpg' %}" alt="">
+												<!-- <img class="cover-bg-img" src="{% static 'img/slider/matt-aylward-Nmh-pEBRt2Y-unsplash.jpg' %}" alt=""> -->
 											</div>
 										</div>
 									</div>
@@ -989,7 +972,7 @@
                     </a>
                 </div>
 				
-				<div class="menu-left">
+				<!-- <div class="menu-left">
 				
 					<div class="nav-menu nav-content">
 						<div class="nav-menu-inner p-relative">
@@ -1004,7 +987,7 @@
 						</div>
 					</div>
 				
-				</div>
+				</div> -->
 				 
             </div>
 			
@@ -1014,7 +997,7 @@
 				<div class="menu-icon d-flex align-items-baseline">
 					<div class="text-menu tee-time p-relative font-heading text-transform-upper btea-time">
 						<div class="image-zoom w-auto d-inline-block" data-dsn="parallax">
-							<a href="https://mastergolf.lajix.com/member/login" target="_blank" class="dsn-button ">
+							<a href="https://member.mastergolfclub.com/" target="_blank" class="dsn-button ">
 								 <span class="dsn-border border-color-default"></span>
 								 <span class="text-button">Member Login</span>
 							</a>
@@ -1022,7 +1005,7 @@
 					</div>					
 				</div>
 			
-			   <div class="menu-icon mob d-flex align-items-baseline">
+			   <!-- <div class="menu-icon mob d-flex align-items-baseline">
 					<div class="text-menu hmbrg p-relative font-heading text-transform-upper">
 						<div class="p-absolute text-button">Menu</div>
 						<div class="p-absolute text-open">Open</div>
@@ -1042,38 +1025,38 @@
 					<ul class="extend-container p-relative d-flex flex-column justify-content-center h-100">
 
 						<li>
-							<a href="https://mastergolf.lajix.com/" class="user-no-selection">
+							<a href="https://mastergolfclub.com/" class="user-no-selection">
 								<span class="dsn-title-menu">MGC</span>
 							</a>
 						</li>
 
 
 						<li>
-							<a href="https://mastergolf.lajix.com/" class="user-no-selection">
+							<a href="https://mastergolfclub.com/" class="user-no-selection">
 								<span class="dsn-title-menu">Concept</span>
 							</a>
 						</li>
 
 						<li>
-							<a href="https://mastergolf.lajix.com/" class="user-no-selection">
+							<a href="https://mastergolfclub.com/" class="user-no-selection">
 								<span class="dsn-title-menu">Collections</span>
 							</a>
 						</li>
 
 						<li>
-							<a href="https://mastergolf.lajix.com/" class="user-no-selection">
+							<a href="https://mastergolfclub.com/" class="user-no-selection">
 								<span class="dsn-title-menu">News</span>
 							</a>
 						</li>
 
 						<li>
-							<a href="https://mastergolf.lajix.com/" class="user-no-selection">
+							<a href="https://mastergolfclub.com/" class="user-no-selection">
 								<span class="dsn-title-menu">About us</span>
 							</a>
 						</li>
 
 						<li>
-							<a href="https://mastergolf.lajix.com/" class="user-no-selection">
+							<a href="https://mastergolfclub.com/" class="user-no-selection">
 								<span class="dsn-title-menu">Contact</span>
 							</a>
 						</li>
@@ -1122,7 +1105,7 @@
 					</div>
 					
 					
-				</nav>
+				</nav> -->
 			
 			</div>
         </div>
@@ -1146,7 +1129,9 @@
 	<script src="{% static 'js/jquery.waypoints.js' %}"></script>
 
 	
-	<script>// Initialize fullpage
+	<script>
+	
+	// Initialize fullpage
 		new fullpage('#fullpage', {
 			easing: 'easeInOutCubic',
 			easingcss3: 'ease',
@@ -1485,9 +1470,4 @@
 	
 	
 </body>
-</html>
-
-
-
-
-                                        
+</html>                              
