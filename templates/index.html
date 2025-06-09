@@ -1,18 +1,19 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en-US">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="description" content="Master Golf Club" />
-
-    <!--  Title --> 
+    <!--  Title -->
     <title>Master Golf Club</title>
 
     <!-- Font Google -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&amp;family=Poppins:wght@300;400;500;600;700&amp;display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript>	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&amp;family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"></noscript>
-
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&amp;family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+    </noscript>
     <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon" />
     <link rel="icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon" />
 
@@ -29,307 +30,306 @@
     <script src="{% static 'js/jquery-3.1.1.min.js' %}"></script>
     <script src="{% static 'js/jBox.all.min.js' %}"></script>
     <script src="{% static 'js/jquery.validate.js' %}"></script>
-	
-	
-	<style>
-	
-		#fullpage .section:nth-child(1) {
-			background: none;
-		}
-		 
-		#fullpage .section:nth-child(2) {
-			background: url("{% static 'img/slider/tournament.jpg' %}");
-		}
-		
-		#fullpage .section:nth-child(3) {
-			background: url("{% static 'img/slider/events.jpg' %}");
-		}
-		
-		#fullpage .section:nth-child(1) {
-			background-color: rgba(0,0,0,0.5);
-		}
-		
-		#fullpage .section:nth-child(2), #fullpage .section:nth-child(3) {
-			background-color: rgba(0,0,0,0.4);
-			background-blend-mode: overlay;
-			background-size: cover !important;
-		
--moz-background-size: cover !important;
--webkit-background-size: cover !important;
--o-background-size: cover !important;
-
-			background-position: center center;
-			background-repeat: no-repeat;
-		}
-		
-		.line-bg-left.sub-heading:before, .line-bg-right.sub-heading:before {
-			background: #ffffff33 !important;
-		}
-		
-		/* Slide 3 */
-		.section.fpsn > .fp-tableCell h1,
-		.section.fpsn > .fp-tableCell p, 
-		.section.fpsn > .fp-tableCell div.image-zoom,
-		.section.fpsn > .fp-tableCell .scroller {
-			-webkit-transform: translateX(0%);
-					transform: translateX(0%);
-			opacity: 0;
-			-webkit-transition: opacity .66s ease-in-out,
-						-webkit-transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99);
-			transition: opacity .66s ease-in-out,
-						-webkit-transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99);
-			transition: transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99),
-						opacity .66s ease-in-out;
-			transition: transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99),
-						opacity .66s ease-in-out,
-						-webkit-transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99);
-		}
-
-		.section.fpsn.active > .fp-tableCell h1,
-		.section.fpsn.active > .fp-tableCell p, 
-		.section.fpsn.active > .fp-tableCell div.image-zoom,
-		.section.fpsn.active > .fp-tableCell .scroller		{
-			-webkit-transform: translateX(0);
-					transform: translateX(0);
-			opacity: 1;
-		}
-
-		.section.fpsn.active > .fp-tableCell h1 {
-			-webkit-transition-delay: .5s;
-					transition-delay: .5s;
-		}
-
-		.section.fpsn.active > .fp-tableCell p {
-			-webkit-transition-delay: .5s;
-					transition-delay: .5s;
-		}
-
-		.section.fpsn.active > .fp-tableCell div.image-zoom {
-			-webkit-transition-delay: .5s;
-					transition-delay: .5s;
-		}
-
-		.section.fpsn.active > .fp-tableCell .scroller {
-			-webkit-transition-delay: .5s;
-					transition-delay: .5s;
-		}
-		
-		.shrink {
-			animation: shrink 20s linear forwards;
-		}
-		
-		@keyframes shrink {
-		  0% {
-			background-size: 100% auto;
-		  }
-		  100% {
-			background-size: 120% auto;
-		  }
-		}
-		
-		#menu {
-			position: fixed;
-			bottom: 50px;
-			right: 50px;
-			height: 5vh;
-			width: auto;
-			padding: 0;
-			margin: 0 10px;
-			z-index: 9;
-			display: flex;
-		}
-		
-		#menu li {
-		    margin: 0px 15px;
-			color: #fff;
-		}
-		
-		#actions {
-			position: fixed;
-			bottom: 50px;
-			right: -23vw;
-			height: auto;
-			width: 60vw;
-			padding: 0;
-			margin: 0 10px;
-			z-index: 9;
-			display: flex;
-			overflow: hidden;
-		}
-		
-		#actions a {
-		    margin: 0px 10px;
-			color: #fff;
-			width: 15vw;
-			height: 35vh;
-			background: #0000006e;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-		
-		.regular .slick-slide {
-			height: 15vw;    
-			width: 15vw;
-			z-index: 9;
-			cursor: pointer;
-		}
-		
-		.regular .slick-slide div { 
-			height: 100%;
-			box-shadow: 0 10px 10px rgb(0 0 0 / 25%), 0 10px 10px rgb(0 0 0 / 22%)
-		}
-		
-		.regular .slick-slide a,
-		.regular .slick-slide a img {
-			object-fit: cover;
-			height: 100%;
-			width: 100%;
-		}
-		
-		#actions a.active {
-			color: #000;
-		}
-		
-		.actions {
-		    position: fixed;
-			width: 100%;
-			z-index: 9;
-			bottom: 50px;
-			margin-left: 32%;
-		}
-		
-		@media (max-width: 480px){
-			.actions {
-		   display:none;
-		             }
-			
-		}
-		
-		.scroller {
-		    position: absolute;
-			bottom: 50px;
-			left: 80px;
-			z-index: 99;
-		}
-		
-		.fp-scroller {
-			  transition-duration: 500ms !important;
-		}
-		
-		#my-scrollbar {
-		  width: 100%;
-		  height: 100vh;
-		  overflow: auto;
-		}
-		
-		@media (max-width: 480px) {
-			
-			.slick-slide h4 {
-				font-size: 13px;
-			}
-			
-		}
-		
-		@media (min-width: 768px) and (max-width: 992px) {
-			
-			.sec1 .slide-container .title {
-				line-height: 5vw !important;
-				font-size: 3.8vw !important;
-			}
-			
-			footer .box-info-contact ul li {
-				width: 100% !important;
-			}
-			
-			.sm-title-block {
-				letter-spacing: 1px !important;
-				font-size: 15px !important;
-			}
-			
-			.scroll-content .img-box, .scroll-content .box-awards-item { display: none; }
-			
-			.box-awards-item .title {
-				font-size: 6vw !important;
-			}
-			
-			footer .next-page .c-wapp {
-				flex-flow: row !important;
-			}
-			
-			.footer .dark-logo { display: none !important }
-			
-		}
-		
-		@media (min-width: 1025px) {
-			
-			.sec1 .slide-container .title {
-				line-height: 3.2vw !important;
-				font-size: 2.2vw !important;
-			}
-			
-		}
-		
-		.site-header.stiky { display: none !important; }
-			
-		.section video {
-			position: absolute !important;
-			top: 50% !important; 
-			left: 50% !important;
-			-webkit-transform: translateX(-50%) translateY(-50%) !important;
-			transform: translateX(-50%) translateY(-50%) !important;
-			min-width: 100% !important; 
-			min-height: 100% !important; 
-			width: auto !important; 
-			height: auto !important;
-			z-index: -1000; 
-			 overflow: hidden;
-		}
-
-		.about-img{
-			height: 600px;
-		}
-				
-		@media (min-width: 400px) and (max-width: 767px) {
-			
-			.sec1 .slide-container .title {
-				line-height: 20px !important;
-				font-size: 15px !important;
-			}
-			
-			/* .text-menu.btea-time .dsn-button:before { display: none !important; } */
-			
-		}
-		
-		.uevents .blog-item .box-content .link-vist {
-			text-align: left;
-			margin-left: 0px;
-		}
-		
-		@media (min-width: 1025px) and (max-width: 1199px) {
-			
-			.menu-left {
-				display: none !important;
-			}
-	
-			#fullpage .section:nth-child(1), #fullpage .section:nth-child(2), #fullpage .section:nth-child(3), #fullpage .section:nth-child(4) {
-				background-size: cover !important;
-			}
-			
-		}
-		
-		.concept-highlight {
-			max-width: 90ch;  /* Approximately 70 characters per line */
-			word-wrap: break-word;
-			margin: 0;
-			line-height: 1.5;
-		}
-	</style>
 
 
-	<!-- Replace local jQuery reference with CDN -->
-	<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <style>
+        #fullpage .section:nth-child(1) {
+        			background: none;
+        		}
+        		 
+        		#fullpage .section:nth-child(2) {
+        			background: url("{% static 'img/slider/tournament.jpg' %}");
+        		}
+        		
+        		#fullpage .section:nth-child(3) {
+        			background: url("{% static 'img/slider/events.jpg' %}");
+        		}
+        		
+        		#fullpage .section:nth-child(1) {
+        			background-color: rgba(0,0,0,0.5);
+        		}
+        		
+        		#fullpage .section:nth-child(2), #fullpage .section:nth-child(3) {
+        			background-color: rgba(0,0,0,0.4);
+        			background-blend-mode: overlay;
+        			background-size: cover !important;
+        		
+        			-moz-background-size: cover !important;
+        			-webkit-background-size: cover !important;
+        			-o-background-size: cover !important;
+        
+        			background-position: center center;
+        			background-repeat: no-repeat;
+        		}
+        		
+        		.line-bg-left.sub-heading:before, .line-bg-right.sub-heading:before {
+        			background: #ffffff33 !important;
+        		}
+        		
+        		/* Slide 3 */
+        		.section.fpsn > .fp-tableCell h1,
+        		.section.fpsn > .fp-tableCell p, 
+        		.section.fpsn > .fp-tableCell div.image-zoom,
+        		.section.fpsn > .fp-tableCell .scroller {
+        			-webkit-transform: translateX(0%);
+        					transform: translateX(0%);
+        			opacity: 0;
+        			-webkit-transition: opacity .66s ease-in-out,
+        						-webkit-transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99);
+        			transition: opacity .66s ease-in-out,
+        						-webkit-transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99);
+        			transition: transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99),
+        						opacity .66s ease-in-out;
+        			transition: transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99),
+        						opacity .66s ease-in-out,
+        						-webkit-transform .66s cubic-bezier(0.16, 0.68, 0.43, 0.99);
+        		}
+        
+        		.section.fpsn.active > .fp-tableCell h1,
+        		.section.fpsn.active > .fp-tableCell p, 
+        		.section.fpsn.active > .fp-tableCell div.image-zoom,
+        		.section.fpsn.active > .fp-tableCell .scroller		{
+        			-webkit-transform: translateX(0);
+        					transform: translateX(0);
+        			opacity: 1;
+        		}
+        
+        		.section.fpsn.active > .fp-tableCell h1 {
+        			-webkit-transition-delay: .5s;
+        					transition-delay: .5s;
+        		}
+        
+        		.section.fpsn.active > .fp-tableCell p {
+        			-webkit-transition-delay: .5s;
+        					transition-delay: .5s;
+        		}
+        
+        		.section.fpsn.active > .fp-tableCell div.image-zoom {
+        			-webkit-transition-delay: .5s;
+        					transition-delay: .5s;
+        		}
+        
+        		.section.fpsn.active > .fp-tableCell .scroller {
+        			-webkit-transition-delay: .5s;
+        					transition-delay: .5s;
+        		}
+        		
+        		.shrink {
+        			animation: shrink 20s linear forwards;
+        		}
+        		
+        		@keyframes shrink {
+        		  0% {
+        			background-size: 100% auto;
+        		  }
+        		  100% {
+        			background-size: 120% auto;
+        		  }
+        		}
+        		
+        		#menu {
+        			position: fixed;
+        			bottom: 50px;
+        			right: 50px;
+        			height: 5vh;
+        			width: auto;
+        			padding: 0;
+        			margin: 0 10px;
+        			z-index: 9;
+        			display: flex;
+        		}
+        		
+        		#menu li {
+        		    margin: 0px 15px;
+        			color: #fff;
+        		}
+        		
+        		#actions {
+        			position: fixed;
+        			bottom: 50px;
+        			right: -23vw;
+        			height: auto;
+        			width: 60vw;
+        			padding: 0;
+        			margin: 0 10px;
+        			z-index: 9;
+        			display: flex;
+        			overflow: hidden;
+        		}
+        		
+        		#actions a {
+        		    margin: 0px 10px;
+        			color: #fff;
+        			width: 15vw;
+        			height: 35vh;
+        			background: #0000006e;
+        			display: flex;
+        			align-items: center;
+        			justify-content: center;
+        		}
+        		
+        		.regular .slick-slide {
+        			height: 15vw;    
+        			width: 15vw;
+        			z-index: 9;
+        			cursor: pointer;
+        		}
+        		
+        		.regular .slick-slide div { 
+        			height: 100%;
+        			box-shadow: 0 10px 10px rgb(0 0 0 / 25%), 0 10px 10px rgb(0 0 0 / 22%)
+        		}
+        		
+        		.regular .slick-slide a,
+        		.regular .slick-slide a img {
+        			object-fit: cover;
+        			height: 100%;
+        			width: 100%;
+        		}
+        		
+        		#actions a.active {
+        			color: #000;
+        		}
+        		
+        		.actions {
+        		    position: fixed;
+        			width: 100%;
+        			z-index: 9;
+        			bottom: 50px;
+        			margin-left: 32%;
+        		}
+        		
+        		@media (max-width: 480px){
+        			.actions {
+        		   display:none;
+        		             }
+        			
+        		}
+        		
+        		.scroller {
+        		    position: absolute;
+        			bottom: 50px;
+        			left: 80px;
+        			z-index: 99;
+        		}
+        		
+        		.fp-scroller {
+        			  transition-duration: 500ms !important;
+        		}
+        		
+        		#my-scrollbar {
+        		  width: 100%;
+        		  height: 100vh;
+        		  overflow: auto;
+        		}
+        		
+        		@media (max-width: 480px) {
+        			
+        			.slick-slide h4 {
+        				font-size: 13px;
+        			}
+        			
+        		}
+        		
+        		@media (min-width: 768px) and (max-width: 992px) {
+        			
+        			.sec1 .slide-container .title {
+        				line-height: 5vw !important;
+        				font-size: 3.8vw !important;
+        			}
+        			
+        			footer .box-info-contact ul li {
+        				width: 100% !important;
+        			}
+        			
+        			.sm-title-block {
+        				letter-spacing: 1px !important;
+        				font-size: 15px !important;
+        			}
+        			
+        			.scroll-content .img-box, .scroll-content .box-awards-item { display: none; }
+        			
+        			.box-awards-item .title {
+        				font-size: 6vw !important;
+        			}
+        			
+        			footer .next-page .c-wapp {
+        				flex-flow: row !important;
+        			}
+        			
+        			.footer .dark-logo { display: none !important }
+        			
+        		}
+        		
+        		@media (min-width: 1025px) {
+        			
+        			.sec1 .slide-container .title {
+        				line-height: 3.2vw !important;
+        				font-size: 2.2vw !important;
+        			}
+        			
+        		}
+        		
+        		.site-header.stiky { display: none !important; }
+        			
+        		.section video {
+        			position: absolute !important;
+        			top: 50% !important; 
+        			left: 50% !important;
+        			-webkit-transform: translateX(-50%) translateY(-50%) !important;
+        			transform: translateX(-50%) translateY(-50%) !important;
+        			min-width: 100% !important; 
+        			min-height: 100% !important; 
+        			width: auto !important; 
+        			height: auto !important;
+        			z-index: -1000; 
+        			 overflow: hidden;
+        		}
+        
+        		.about-img{
+        			height: 600px;
+        		}
+        				
+        		@media (min-width: 400px) and (max-width: 767px) {
+        			
+        			.sec1 .slide-container .title {
+        				line-height: 20px !important;
+        				font-size: 15px !important;
+        			}
+        			
+        			/* .text-menu.btea-time .dsn-button:before { display: none !important; } */
+        			
+        		}
+        		
+        		.uevents .blog-item .box-content .link-vist {
+        			text-align: left;
+        			margin-left: 0px;
+        		}
+        		
+        		@media (min-width: 1025px) and (max-width: 1199px) {
+        			
+        			.menu-left {
+        				display: none !important;
+        			}
+        	
+        			#fullpage .section:nth-child(1), #fullpage .section:nth-child(2), #fullpage .section:nth-child(3), #fullpage .section:nth-child(4) {
+        				background-size: cover !important;
+        			}
+        			
+        		}
+        		
+        		.concept-highlight {
+        			max-width: 90ch;  /* Approximately 70 characters per line */
+        			word-wrap: break-word;
+        			margin: 0;
+        			line-height: 1.5;
+        		}
+    </style>
+
+
+    <!-- Replace local jQuery reference with CDN -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
 </head>
 
 <body class="v-light dsn-effect-scroll dsn-ajax">
@@ -343,636 +343,600 @@
         </div>
 
         <h1 class="title v-middle">
-           <img class="light-logo" src="{% static 'img/logo.png' %}" alt="Logo" />
-        </h1>
+			<img class="light-logo" src="{% static 'img/logo.png' %}" alt="Logo" />
+		</h1>
     </div>
     <!-- ========== End Loading Page ========== -->
-	
-	<div class="actions">
-		<div class="regular slider">
-			<div id="evnt" data-slide="1">
-				<a href="#concept">
-					<img src="{% static 'img/slider/tournaments-thumb.jpg' %}">
-					<h4>MGC Concept</h4>
-				</a>
-			</div>
-			<div id="trnt" data-slide="3">
-				<a href="#collection">
-					<img src="{% static 'img/slider/events.jpg' %}">
-					<h4>Collection</h4> 
-				</a>
-			</div>
-			<div id="exp" data-slide="4">
-				<a href="#about">
-					<img src="{% static 'img/slider/golf-experience.jpg' %}">
-					<h4>Master Golf Club</h4>
-				</a>
-			</div>
-		</div>
-	</div>
-	
-	
-	<div id="fullpage">
-	
-		<div class="section fpsn sec1">
-		
-			<video data-keepplaying autoplay loop muted id="BGVideo" style="width: 100%; height: auto; position: absolute; z-index: -1; position: absolute; top: 0; left: 0; right: 0;">
+
+    <div class="actions">
+        <div class="regular slider">
+            <div id="evnt" data-slide="1">
+                <a href="#concept">
+                    <img src="{% static 'img/slider/tournaments-thumb.jpg' %}">
+                </a>
+            </div>
+            <div id="trnt" data-slide="3">
+                <a href="#collection">
+                    <img src="{% static 'img/slider/events.jpg' %}">
+                </a>
+            </div>
+            <div id="exp" data-slide="4">
+                <a href="#about">
+                    <img src="{% static 'img/slider/about.jpg' %}">
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="fullpage">
+        <div class="section fpsn sec1">
+            <video data-keepplaying autoplay loop muted id="BGVideo" style="width: 100%; height: auto; position: absolute; z-index: -1; position: absolute; top: 0; left: 0; right: 0;">
                 <source src="{% static 'videos/banner-video-new.mp4' %}" type="video/mp4">
             </video>
-		
-			<div class="slide-container">
-				<p class="sub-heading line-bg-left mb-20 dsn-up" data-dsn="parallax">Master Golf Club</p>
-				<h1 class="title user-no-selection d-inline-block mb-30">Experience the precision on the greens.<br> Discover golf at its finest. </h1>
-				<div class="text-right">
-					 <div class="image-zoom w-auto d-inline-block" style="display:flex;">
+            <div class="slide-container">
+                <p class="sub-heading line-bg-left mb-20 dsn-up" data-dsn="parallax">Master Golf Club</p>
+                <h1 class="title user-no-selection d-inline-block mb-30">Experience the precision on the greens.<br>
+					Discover golf at its finest. </h1>
+                <div class="text-right">
+                    <div class="image-zoom w-auto d-inline-block" style="display:flex;">
                         <a href="/membership" class="dsn-button background-main" data-dsn="parallax">Membership</a>
                         <a href="https://member.mastergolfclub.com/" class="dsn-button background-main" data-dsn="parallax">Member Login</a>
-					</div>
-				</div>
-			</div>
-		</div>
-		
-		<div class="section fpsn sec2">
-		
-			<div class="slide-container">
-				<p class="sub-heading line-bg-left mb-20 dsn-up">Master Golf Club Concept</p> 				
-				<h1 class="title user-no-selection d-inline-block mb-30">MGC is a unique and innovative <br> solution designed to meet all your <br> golfing needs. </h1>		
-			</div>		
-		</div>
-		
-		<div class="section fpsn sec3">
-		
-			<div class="slide-container">
-				<p class="sub-heading line-bg-left mb-20 dsn-up">Collection at Master Golf Club</p> 
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section fpsn sec2">
+            <div class="slide-container">
+                <p class="sub-heading line-bg-left mb-20 dsn-up">Master Golf Club Concept</p>
+                <h1 class="title user-no-selection d-inline-block mb-30">MGC is a unique and innovative <br> solution
+					designed to meet all your <br> golfing needs. </h1>
+            </div>
+        </div>
+        <div class="section fpsn sec3">
+            <div class="slide-container">
+                <p class="sub-heading line-bg-left mb-20 dsn-up">Collection at Master Golf Club</p>
+                <h1 class="title user-no-selection d-inline-block mb-30">Masterpiece Courses<br>One Legendary Experience
+				</h1>
+            </div>
+        </div>
+        <div class="section sec4">
+            <div id="contentScrollbar" data-scrollbar style="width: 100%; height: 100vh; overflow: auto;">
 
-				<h1 class="title user-no-selection d-inline-block mb-30">Masterpiece Courses<br>One Legendary Experience</h1>
-			</div>
-		</div>
-		
-		
-		<div class="section sec4">
-		
-			<div id="contentScrollbar" data-scrollbar style="width: 100%; height: 100vh; overflow: auto;">
+                <!-- ==========  about  ========== -->
+                <section class="about-section p-relative section-margin" id="about" data-dsn-title="" data-dsn-animate-multi data-dsn-animate="section">
+                    <div class="container">
+                        <div class="row fill-right-container">
+                            <div class="col-lg-6">
+                                <div class="box-info pt-100 pb-100">
+                                    <div class="title-move z-index-1 " data-dsn-grid="move-section" data-dsn-move="-70" data-dsn-duration="100%" data-dsn-opacity="1.2" data-dsn-responsive="tablet">
+                                        <h2 class="section-title mb-30 dsn-up dsn-text-shadow text-transform-upper">
+											Exclusive Access to<br /> Top-Tier Golf Courses
+										</h2>
+                                    </div>
+                                    <p class="max-w570 dsn-up mb-10" style="text-align:justify;">
+                                        Master Golf Club is the ultimate private members' club, offering unparalleled privileges to its members. Our ethos is rooted in providing exclusive access to a wide variety of prestigious golf courses under one comprehensive membership.
+                                        <br> For our corporate clients, we offer access to our network of partner clubs, complemented by our bespoke Golf Concierge services and an experienced in-house team specializing in golf event management. At Master
+                                        Golf Club, we deliver a seamless and elevated golfing experience tailored to the needs of our discerning members.
 
-					<!-- ==========  about  ========== -->                    
-					<section class="about-section p-relative section-margin" id="about" data-dsn-title="" data-dsn-animate-multi data-dsn-animate="section">
-						<div class="container">
-							<div class="row fill-right-container">
-								<div class="col-lg-6">
-									<div class="box-info pt-100 pb-100">
-										<div class="title-move z-index-1 " data-dsn-grid="move-section"
-											data-dsn-move="-70" data-dsn-duration="100%" data-dsn-opacity="1.2"
-											data-dsn-responsive="tablet">
-											<h2 class="section-title mb-30 dsn-up dsn-text-shadow text-transform-upper">
-												Exclusive Access to<br /> Top-Tier Golf Courses
-											</h2>
-										</div>
-										<p class="max-w570 dsn-up mb-10" style="text-align:justify;">
-											Master Golf Club is the ultimate private members' club, offering unparalleled privileges to its members. 
-											Our ethos is rooted in providing exclusive access to a wide variety of prestigious golf courses under one comprehensive membership.
-											<br>
-											For our corporate clients, we offer access to our network of partner clubs, complemented by our bespoke Golf Concierge services and an experienced in-house team specializing in golf event management. 
-											At Master Golf Club, we deliver a seamless and elevated golfing experience tailored to the needs of our discerning members.
-	
-										</p>
-										
-										<div class="box-awards d-grid dsn-up grid-md-2  mt-30">
-											<div class="box-awards-item has-border dsn-up ">
-												<h5 class="number background-section p-10">
-													<span class="title" style="color:black;">18</span>
-													<span class="sm-title-block">Partner
-														<br> golf course</span>
-												</h5>
-											</div>
+                                    </p>
 
-											<div class="box-awards-item has-border dsn-up">
-												<h5 class="number background-section p-10">
-													<span class="title" style="color:black;">10</span>
-													<span class="sm-title-block">Sucessfull <br> years</span>
-												</h5>
-											</div>
-										</div>
-										
-									</div>
-								</div>
+                                    <div class="box-awards d-grid dsn-up grid-md-2  mt-30">
+                                        <div class="box-awards-item has-border dsn-up ">
+                                            <h5 class="number background-section p-10">
+												<span class="title" style="color:black;">18</span>
+												<span class="sm-title-block">Partner
+													<br> golf course</span>
+											</h5>
+                                        </div>
 
-								<div class="col-lg-6 about-img">
-									<div class="background-mask px-20 mt-30 h-80 w-100">
-										<div class="line line-top"></div>
-										<div class="line line-bottom"></div>
-										<div class="line line-left"></div>
-										<div class="line line-right"></div>
-
-										<div class="img-box" style="height: 100%;">
-											<div class="img-container before-z-index" style="height: 100%;" data-dsn-grid="move-up"
-												data-overlay="3">
-												<img class="cover-bg-img" src="{% static 'img/slider/about.jpg' %}" alt="">
-												<!-- <img class="cover-bg-img" src="{% static 'img/slider/matt-aylward-Nmh-pEBRt2Y-unsplash.jpg' %}" alt=""> -->
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-
-						</div>
-
-					</section>                   
-					<!-- ========== End about ========== --> 
-					
-					 <!-- ==========  Concept  ========== -->
-					<div class="box-seat box-seat-parallax" id="concept">
-						<div class="inner-img" data-dsn-grid="move-up" data-overlay="2">
-							<img class="transform-3d has-bigger-scale" src="{% static 'img/slider/concept_background.jpg' %}" alt="">
-						</div>
-						<div class="pro-text dsn-up background-section box-padding" data-dsn-grid="move-section" data-dsn-responsive="tablet">
-							<div class="mb-30 d-flex text-left flex-column align-items-start">
-								<h2 class="section-title dsn-up mb-15">Concept</h2>
-								{% for concept in concepts %}
-									<p class="user-no-selection d-inline-block text-dark concept-highlight">
-										{{ concept.conceptHighlight }}
-									</p>
-								{% endfor %}
-							</div>
-
-							<div class="accordion-container">
-								{% for concept in concepts %}
-									{% for item in concept.items.all %}
-										<div class="item {% if forloop.first %}open{% endif %}">
-											<div class="title">
-												<span class="text-xl">{{ item.heading }}</span>
-												<span class="fas fa-chevron-down"></span>
-											</div>
-											<p class="text">{{ item.paragraph|safe }}</p>
-										</div>
-									{% endfor %}
-								{% endfor %}
-							</div>
-						</div>
-					</div>
-					<!-- ========== End Concept ========== -->
-					
-					
-                    <!-- ========== Collections Section ========== -->
-                    <section class="testimonials testimonials-personal section-margin mb-100" id="collections" data-dsn-title="Testimonial">
-                        <div class="container d-flex text-right flex-column align-items-center mb-70">
-                            <div class="">
-                                <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
-                                    <span class="line-bg-right">
-                                        Collections
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div class="container">
-                            <div class="testimonials-box box-padding p-relative w-100">
-                                <div class="corner corner-left-top"></div>
-                                <div class="corner corner-left-bottom"></div>
-                                <div class="corner corner-right-top"></div>
-                                <div class="corner corner-right-bottom"></div>
-
-                                <div class="testimonials-inner p-relative w-100 dsn-swiper"
-                                    data-dsn-controller=".testimonial-content"
-                                    data-dsn-option='{"slidesPerView":3,"spaceBetween":50 }'>
-
-                                    <div class="testimonial-nav text-center">
-                                        <div class="testimonial-nav-inner">
-                                            <div class="swiper-container">
-                                                <div class="swiper-wrapper">
-                                                    {% for course in courses %}
-                                                    <div class="swiper-slide">
-                                                        <div class="box-img mb-15" data-swiper-parallax-scale="0.7">
-                                                            {% if course.courseImage %}
-                                                                <img src="{{ course.courseImage.url }}" alt="{{ course.courseName }}">
-                                                            {% else %}
-                                                                <img src="{% static 'img/collections/1.jpg' %}" alt="Default">
-                                                            {% endif %}
-                                                        </div>
-                                                        <div class="box-text" data-swiper-parallax="30%"
-                                                            data-swiper-parallax-opacity="0">
-                                                            <h4 class="title-block mb-10">{{ course.courseName }}</h4>
-                                                        </div>
-                                                    </div>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
+                                        <div class="box-awards-item has-border dsn-up">
+                                            <h5 class="number background-section p-10">
+												<span class="title" style="color:black;">10</span>
+												<span class="sm-title-block">Sucessfull <br> years</span>
+											</h5>
                                         </div>
                                     </div>
 
-                                    <div class="testimonial-content text-center">
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6 about-img">
+                                <div class="background-mask px-20 mt-30 h-80 w-100">
+                                    <div class="line line-top"></div>
+                                    <div class="line line-bottom"></div>
+                                    <div class="line line-left"></div>
+                                    <div class="line line-right"></div>
+
+                                    <div class="img-box" style="height: 100%;">
+                                        <div class="img-container before-z-index" style="height: 100%;" data-dsn-grid="move-up" data-overlay="3">
+                                            <img class="cover-bg-img" src="{% static 'img/slider/about.jpg' %}" alt="">
+                                            <!-- <img class="cover-bg-img" src="{% static 'img/slider/matt-aylward-Nmh-pEBRt2Y-unsplash.jpg' %}" alt=""> -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </section>
+                <!-- ========== End about ========== -->
+
+                <!-- ==========  Concept  ========== -->
+                <div class="box-seat box-seat-parallax" id="concept">
+                    <div class="inner-img" data-dsn-grid="move-up" data-overlay="2">
+                        <img class="transform-3d has-bigger-scale" src="{% static 'img/slider/concept_background.jpg' %}" alt="">
+                    </div>
+                    <div class="pro-text dsn-up background-section box-padding" data-dsn-grid="move-section" data-dsn-responsive="tablet">
+                        <div class="mb-30 d-flex text-left flex-column align-items-start">
+                            <h2 class="section-title dsn-up mb-15">Concept</h2> {% for concept in concepts %}
+                            <p class="user-no-selection d-inline-block text-dark concept-highlight">
+                                {{ concept.conceptHighlight }}
+                            </p>
+                            {% endfor %}
+                        </div>
+
+                        <div class="accordion-container">
+                            {% for concept in concepts %} {% for item in concept.items.all %}
+                            <div class="item {% if forloop.first %}open{% endif %}">
+                                <div class="title">
+                                    <span class="text-xl">{{ item.heading }}</span>
+                                    <span class="fas fa-chevron-down"></span>
+                                </div>
+                                <p class="text">{{ item.paragraph|safe }}</p>
+                            </div>
+                            {% endfor %} {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <!-- ========== End Concept ========== -->
+
+
+                <!-- ========== Collections Section ========== -->
+                <section class="testimonials testimonials-personal section-margin mb-100" id="collections" data-dsn-title="Testimonial">
+                    <div class="container d-flex text-right flex-column align-items-center mb-70">
+                        <div class="">
+                            <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
+                                <span class="line-bg-right">
+									Collections
+								</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="container">
+                        <div class="testimonials-box box-padding p-relative w-100">
+                            <div class="corner corner-left-top"></div>
+                            <div class="corner corner-left-bottom"></div>
+                            <div class="corner corner-right-top"></div>
+                            <div class="corner corner-right-bottom"></div>
+
+                            <div class="testimonials-inner p-relative w-100 dsn-swiper" data-dsn-controller=".testimonial-content" data-dsn-option='{"slidesPerView":3,"spaceBetween":50 }'>
+
+                                <div class="testimonial-nav text-center">
+                                    <div class="testimonial-nav-inner">
                                         <div class="swiper-container">
                                             <div class="swiper-wrapper">
                                                 {% for course in courses %}
                                                 <div class="swiper-slide">
-                                                    <p class="p-larg" data-swiper-parallax="90%"
-                                                        data-swiper-parallax-opacity="0">
-                                                        {% if course.golfHighlight %}
-                                                            "{{ course.golfHighlight|truncatechars:200 }}"
-                                                        {% else %}
-                                                            "Experience the beauty of {{ course.courseName }}"
-                                                        {% endif %}
-                                                    </p>
+                                                    <div class="box-img mb-15" data-swiper-parallax-scale="0.7">
+                                                        {% if course.courseImage %}
+                                                        <img src="{{ course.courseImage.url }}" alt="{{ course.courseName }}"> {% else %}
+                                                        <img src="{% static 'img/collections/1.jpg' %}" alt="Default"> {% endif %}
+                                                    </div>
+                                                    <div class="box-text" data-swiper-parallax="30%" data-swiper-parallax-opacity="0">
+                                                        <h4 class="title-block mb-10">{{ course.courseName }}</h4>
+                                                    </div>
                                                 </div>
                                                 {% endfor %}
                                             </div>
-
-                                            <div class="dsn-pagination mt-30 dsn-container d-flex justify-content-between">
-                                                <div class="swiper-next">
-                                                    <div class="next-container">
-                                                        <div class="container-inner">
-                                                            <div class="triangle"></div>
-                                                            <svg class="circle" xmlns="http://www.w3.org/2000/svg"
-                                                                width="24" height="24" viewBox="0 0 24 24">
-                                                                <g class="circle-wrap" fill="none" stroke-width="1"
-                                                                    stroke-linejoin="round" stroke-miterlimit="10">
-                                                                    <circle cx="12" cy="12" r="10.5"></circle>
-                                                                </g>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="swiper-prev">
-                                                    <div class="prev-container">
-                                                        <div class="container-inner">
-                                                            <div class="triangle"></div>
-                                                            <svg class="circle" xmlns="http://www.w3.org/2000/svg"
-                                                                viewBox="0 0 24 24">
-                                                                <g class="circle-wrap" fill="none" stroke-width="1"
-                                                                    stroke-linejoin="round" stroke-miterlimit="100">
-                                                                    <circle cx="12" cy="12" r="10.5"></circle>
-                                                                </g>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                    <!-- ========== End Collections Section ========== -->
-					
-					
-					<!-- ========== News Section ========== -->
-                    <section class="our-blog uevents section-margin p-relative dsn-swiper"  id="news" data-dsn-animate="section"
-                        data-dsn-option='{"slidesPerView":1.5  }' data-dsn-title="Lasts post">
-                        <div class="container mb-70 d-flex text-center flex-column align-items-center">
-                            <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
-                                <span class="line-bg-right">
-                                   News
-                                </span>
-                            </p>
-                        </div>
-
-
-                        <div class="dsn-container">
-                            <div class="swiper-container">
-                                <div class="swiper-wrapper">
-									{% for blog in blogs %}
-                                    <div class="swiper-slide blog-classic-item">
-                                        <div class=" blog-item p-relative d-flex align-items-center h-100 w-100"
-                                            data-swiper-parallax-scale="0.85">
-                                            <div class="box-meta">
-                                                <div class="entry-date">
-                                                    <a href="">NEWS</a>
-                                                </div>
-                                            </div>
-
-                                            <div class="box-img over-hidden">
-												{% if blog.blogImage %}
-													<img class="cover-bg-img" src="{{ blog.blogImage.url }}" alt="{{ blog.blogTitle }}">
-												{% else %}
-													<img class="cover-bg-img" src="{% static 'img/news/1.jpg' %}" alt="Default News">
-												{% endif %}
-                                            </div>
-                                            <div class="box-content p-relative">
-
-                                                <div class="box-content-body">
-                                                    <div class="metas">
-                                                        <span class="mb-5">{{ blog.blogDate|date:"d M Y" }}</span>
-                                                    </div>
-                                                    <h4 class="title-block mb-10">
-                                                        <a href="news">{{ blog.blogTitle }}</a>
-                                                    </h4>
-                                                    <p>{{ blog.blogHighlight|truncatewords:20 }} </p>
-                                                    <a href="{% url 'blog_detail' blog.id %}" class="link-vist p-relative mt-20">
-
-                                                        <span class="link-vist-text">Know More</span>
-
-                                                        <div class="link-vist-arrow">
-                                                            <svg viewBox="0 0 80 80">
-                                                                <polyline points="19.89 15.25 64.03 15.25 64.03 59.33">
-                                                                </polyline>
-                                                                <line x1="64.03" y1="15.25" x2="14.03" y2="65.18">
-                                                                </line>
-                                                            </svg>
-                                                        </div>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-									{% endfor %}    
-                                </div>
-                                <div class="dsn-pagination mt-30 dsn-container d-flex justify-content-between">
-                                    <div class="swiper-next">
-                                        <div class="next-container">
-                                            <div class="container-inner">
-                                                <div class="triangle"></div>
-                                                <svg class="circle" xmlns="http://www.w3.org/2000/svg" width="24"
-                                                    height="24" viewBox="0 0 24 24">
-                                                    <g class="circle-wrap" fill="none" stroke-width="1"
-                                                        stroke-linejoin="round" stroke-miterlimit="10">
-                                                        <circle cx="12" cy="12" r="10.5"></circle>
-                                                    </g>
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="swiper-prev">
-                                        <div class="prev-container">
-                                            <div class="container-inner">
-                                                <div class="triangle"></div>
-                                                <svg class="circle" xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 24 24">
-                                                    <g class="circle-wrap" fill="none" stroke-width="1"
-                                                        stroke-linejoin="round" stroke-miterlimit="10">
-                                                        <circle cx="12" cy="12" r="10.5"></circle>
-                                                    </g>
-                                                </svg>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                            </div>
-                        </div>
-                    </section>
-                    <!-- ========== End News Section ========== -->					
-					
-					 <!-- ========== Contact Section ========== -->				
-					<div class="box-gallery-vertical box-gallery-content section-margin" id="contact" data-dsn-duration="100%" data-dsn="color">
-                        <div class="container mb-70 d-flex text-center flex-column align-items-center">
-                            <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
-                                <span class="line-bg-right">
-									Contact
-                                </span>
-                            </p>
-                        </div>
-						<div class="container">
-							<div class="row dsn-z-index-2">
-								<div class="col-lg-6 box-content pr-0">
-
-									<div class="box-info h-100 box-padding background-section ">
-										<div class="box-info-inner">
-											<div class="title-cover dsn-move-section" style="opacity: 0.0577; visibility: inherit; transform: translate3d(0px, -42.2652%, 0px);">
-												Contact</div>
-											<div class=" mb-30 d-flex text-left flex-column align-items-start">
-												
-												<h2 class="section-title">Reach us</h2>
-											</div>
-											
-											<p class="sub-heading line-shap line-shap-after mb-15">
-													<span >Our Location</span>
-
-												</p>
-											<p class="mb-10">
-												Master Golf Club, Lorem,<br> Lorem Post, Lorem, Taluk,<br>
-											Belgium, London-125460
-											</p>
-											
-											<p class="sub-heading line-shap line-shap-after mb-15">
-													<span  >Email</span>
-
-												</p>
-											<p class="mb-10">
-											<a href="" target="_new"><span class="__cf_email__" >mastergolfclulb@gmail.com</span></a>
-											</p>											
-
-											<a href="javascript:void()" id="myModalomember" class="mt-30 dsn-button image-zoom" data-dsn="parallax">
-												<span class="dsn-border border-color-reverse-color"></span>
-												Get in touch <span>⟶</span>
-											</a>	
-
-											<div class="border-bottom mt-30 mb-30"></div>
-
-											<div class="d-block a-item-center">
-												<p class="sub-heading line-shap line-shap-after mb-15">
-													<span>Social Media</span>
-												</p>
-
-												<ul class="box-social ct">
-													<li>
-														<a href="https://www.facebook.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/facebook.svg' %}" style="width: 30px;" alt=""></a>
-													</li>
-													<li>
-														<a href="https://www.youtube.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/youtube.svg' %}" style="width: 30px;" alt=""></a>
-													</li>
-													<li>
-														<a href="https://www.linkedin.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/linkedin.svg' %}" style="width: 30px;" alt=""></a>
-													</li>
-													<li>
-														<a href="https://twitter.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/twitter.svg' %}" style="width: 30px;" alt=""></a>
-													</li>
-													<li>
-														<a href="https://www.instagram.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/instagram.svg' %}" style="width: 30px;" alt=""></a>
-													</li>
-												</ul>
-												
-												
-											</div>
-										</div>
-									</div>
-								</div>							
-								
-								<div class="col-lg-6  dsn-z-index-2 pl-0">
-									<iframe 
-										src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d158858.47340002653!2d-0.24168120642536509!3d51.52855824164916!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47d8a00baf21de75%3A0x52963a5addd52a99!2sLondon%2C%20UK!5e0!3m2!1sen!2s!4v1629696377526!5m2!1sen!2s"
-										width="100%" height="700" style="border:0;" allowfullscreen="" loading="lazy">
-									</iframe>
-								</div>
-
-							</div>
-						</div>
-					</div>
-                    <!-- ========== End Contact ========== -->
-					
-					
-					 <!-- ========== Golf Membership Section ========== -->
-                    <div class="box-gallery-vertical box-gallery-content section-margin"  id="membership" data-dsn-animate="section"
-                        data-dsn-duration="100%" data-dsn="color">
-                        <div class="container mb-70 d-flex text-center flex-column align-items-center">
-                            <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
-                                <span class="line-bg-right">
-									Membership
-                                </span>
-                            </p>
-                        </div>
-                        <div class="container">
-                            <div class="row dsn-z-index-2">
-                                <div class="col-lg-6  dsn-z-index-2 p-0">
-                                    <div class="box-im h-100 " style="position: relative;">
-									
-									<img class="cover-bg-img" src="{% static 'img/slider/club-membership.jpg' %}" alt="">
-                                     
-
-                                    </div>
-                                </div>
-                                <div class="col-lg-6 box-content p-0">
-
-                                    <div class="box-info h-100 box-padding background-section dsn-up">
-                                        <div class="box-info-inner">
-                                            <div class=" mb-30 d-flex text-left flex-column align-items-start">
-                                                <p class="sub-heading line-shap line-shap-after mb-15">
-                                                    <span class="line-bg-right">Club Membership</span>
+                                <div class="testimonial-content text-center">
+                                    <div class="swiper-container">
+                                        <div class="swiper-wrapper">
+                                            {% for course in courses %}
+                                            <div class="swiper-slide">
+                                                <p class="p-larg" data-swiper-parallax="90%" data-swiper-parallax-opacity="0">
+                                                    {% if course.golfHighlight %} "{{ course.golfHighlight|truncatechars:200 }}" {% else %} "Experience the beauty of {{ course.courseName }}" {% endif %}
                                                 </p>
-												
-                                                <h2 class="section-title">Become a Member at Master Golf Club</h2>
-												
                                             </div>
-                                            <p class="max-w570 mb-10 ">
-                                                No matter what level of golfer you are this course is for everyone! It’s a tranquil setting that undulates its way through India’s premier golf residential development shadowed by the Mountains. Being a member of the Master Golf Club is one of the world’s great golfing privileges. To have access to this course and the amenities it offers is a pure delight. When you hear the terminology “Membership has its privileges” this is never more true than at Master Golf Club.
-                                            </p>
+                                            {% endfor %}
+                                        </div>
 
-											<a href="membership" class="mt-30 dsn-button image-zoom" data-dsn="parallax">
-												<span class="dsn-border border-color-reverse-color"></span>
-												Become A Member <span>⟶</span>
-											</a>
-
+                                        <div class="dsn-pagination mt-30 dsn-container d-flex justify-content-between">
+                                            <div class="swiper-next">
+                                                <div class="next-container">
+                                                    <div class="container-inner">
+                                                        <div class="triangle"></div>
+                                                        <svg class="circle" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                                            <g class="circle-wrap" fill="none" stroke-width="1" stroke-linejoin="round" stroke-miterlimit="10">
+                                                                <circle cx="12" cy="12" r="10.5"></circle>
+                                                            </g>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="swiper-prev">
+                                                <div class="prev-container">
+                                                    <div class="container-inner">
+                                                        <div class="triangle"></div>
+                                                        <svg class="circle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                            <g class="circle-wrap" fill="none" stroke-width="1" stroke-linejoin="round" stroke-miterlimit="100">
+                                                                <circle cx="12" cy="12" r="10.5"></circle>
+                                                            </g>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <!-- ========== End Golf Membership ========== -->
-	
-					<footer class="footer p-relative">
-									
-						<section class="next-page p-relative section-padding border-bottom">
-							<div class="bg-circle-dotted"></div>
-							<div class="bg-circle-dotted bg-circle-dotted-right"></div>
-							<div class="container">
-							
-								<div class="c-wapp d-flex">
-								
-									<div class="d-flex flex-column">
-								
-										<div class="box-info-contact">
+                </section>
+                <!-- ========== End Collections Section ========== -->
 
-											<ul>
-												<li>
-													<h5 class="title-block mb-15">Address</h5>
-													<p class="text-p"><strong>Master Golf Club</strong>,<br>Lorem Hills Road, Lorem Post,<br>Lorem Epsom, Taluk,<br>Lorem, London, 124586.</p>
-												</li>
-											</ul>
-										</div>
-									</div>
-									<div class="d-flex flex-column"></div>			
-									<div class="d-flex flex-column"></div>
-									<div class="d-flex flex-column"></div>
-									<div class="d-flex flex-column">
-								
-										<div class="box-info-contact">
 
-											<ul>
-											
-												<li>
-													<h5 class="title-block mb-15">Reservations</h5>
-													<p class="text-p ">Golf : <a href="tel:+91 72598 06632">+91 12345 12345</a></p>
-												</li>
-												
-											</ul>
-										</div>
-									</div>
-									<div class="d-flex flex-column"></div>			
-									<div class="d-flex flex-column"></div>
-									<div class="d-flex flex-column"></div>
-								
-									<div class="d-flex flex-column">
-								
-										<div class="box-info-contact">
+                <!-- ========== News Section ========== -->
+                <section class="our-blog uevents section-margin p-relative dsn-swiper" id="news" data-dsn-animate="section" data-dsn-option='{"slidesPerView":1.5  }' data-dsn-title="Lasts post">
+                    <div class="container mb-70 d-flex text-center flex-column align-items-center">
+                        <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
+                            <span class="line-bg-right">
+								News
+							</span>
+                        </p>
+                    </div>
 
-											<ul>
-												
-												<li>
-													<h5 class="title-block mb-15">Membership</h5>
-													<p class="text-p ">Golf : <a href="tel:+91 76250 31836">+91 12345 12345</a></p>
-												</li>
-												
-											</ul>
-										</div>
-									</div>
 
-				
+                    <div class="dsn-container">
+                        <div class="swiper-container">
+                            <div class="swiper-wrapper">
+                                {% for blog in blogs %}
+                                <div class="swiper-slide blog-classic-item">
+                                    <div class=" blog-item p-relative d-flex align-items-center h-100 w-100" data-swiper-parallax-scale="0.85">
+                                        <div class="box-meta">
+                                            <div class="entry-date">
+                                                <a href="">NEWS</a>
+                                            </div>
+                                        </div>
 
-								</div>
-							
-						
-							</div>
-						</section>
-									
-						<div class="container">
-							<div class="footer-container">
-								<div class="d-flex align-items-center h-100">
-									<div class="column-left">
-										<div class="footer-social p-relative">
-											<ul>
-												<li class="over-hidden">
-													<a href="https://www.facebook.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/facebook.svg' %}" alt="Facebook"></a>
-												</li>
-												
-												<li class="over-hidden">
-													<a href="https://www.youtube.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/youtube.svg' %}" alt="Youtube"></a>
-												</li>
-												
-												<li class="over-hidden">
-													<a href="https://www.linkedin.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/linkedin.svg' %}" alt="Linkedin"></a>
-												</li>
-												
-												<li class="over-hidden">
-													<a href="https://twitter.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/twitter.svg' %}" alt="Twitter"></a>
-												</li>
-												
-												<li class="over-hidden">
-													<a href="https://www.instagram.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/instagram.svg' %}" alt="Instagram"></a>
-												</li>
-											</ul>
-										</div>
-									</div>
+                                        <div class="box-img over-hidden">
+                                            {% if blog.blogImage %}
+                                            <img class="cover-bg-img" src="{{ blog.blogImage.url }}" alt="{{ blog.blogTitle }}"> {% else %}
+                                            <img class="cover-bg-img" src="{% static 'img/news/1.jpg' %}" alt="Default News"> {% endif %}
+                                        </div>
+                                        <div class="box-content p-relative">
 
-									<div class="column-right">
-										<h5 data-dsn="parallax">2025 © Master Golf Club. Powered by <a class="link-hover" data-hover-text="Smartxoft" target="_blank" rel="nofollow" href="https://smartxoft.com/">Smartxoft</a>
-										</h5>
-									</div>
-								</div>
-							</div>
-						</div>
-					</footer>
-					
-			</div>
-			
-		</div>
-		
-		
-	</div>
-		
+                                            <div class="box-content-body">
+                                                <div class="metas">
+                                                    <span class="mb-5">{{ blog.blogDate|date:"d M Y" }}</span>
+                                                </div>
+                                                <h4 class="title-block mb-10">
+													<a href="news">{{ blog.blogTitle }}</a>
+												</h4>
+                                                <p>{{ blog.blogHighlight|truncatewords:20 }} </p>
+                                                <a href="{% url 'blog_detail' blog.id %}" class="link-vist p-relative mt-20">
+
+                                                    <span class="link-vist-text">Know More</span>
+
+                                                    <div class="link-vist-arrow">
+                                                        <svg viewBox="0 0 80 80">
+                                                            <polyline points="19.89 15.25 64.03 15.25 64.03 59.33">
+                                                            </polyline>
+                                                            <line x1="64.03" y1="15.25" x2="14.03" y2="65.18">
+                                                            </line>
+                                                        </svg>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="dsn-pagination mt-30 dsn-container d-flex justify-content-between">
+                                <div class="swiper-next">
+                                    <div class="next-container">
+                                        <div class="container-inner">
+                                            <div class="triangle"></div>
+                                            <svg class="circle" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                                <g class="circle-wrap" fill="none" stroke-width="1" stroke-linejoin="round" stroke-miterlimit="10">
+                                                    <circle cx="12" cy="12" r="10.5"></circle>
+                                                </g>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="swiper-prev">
+                                    <div class="prev-container">
+                                        <div class="container-inner">
+                                            <div class="triangle"></div>
+                                            <svg class="circle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                <g class="circle-wrap" fill="none" stroke-width="1" stroke-linejoin="round" stroke-miterlimit="10">
+                                                    <circle cx="12" cy="12" r="10.5"></circle>
+                                                </g>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+                <!-- ========== End News Section ========== -->
+
+                <!-- ========== Contact Section ========== -->
+                <div class="box-gallery-vertical box-gallery-content section-margin" id="contact" data-dsn-duration="100%" data-dsn="color">
+                    <div class="container mb-70 d-flex text-center flex-column align-items-center">
+                        <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
+                            <span class="line-bg-right">
+								Contact
+							</span>
+                        </p>
+                    </div>
+                    <div class="container">
+                        <div class="row dsn-z-index-2">
+                            <div class="col-lg-6 box-content pr-0">
+
+                                <div class="box-info h-100 box-padding background-section ">
+                                    <div class="box-info-inner">
+                                        <div class="title-cover dsn-move-section" style="opacity: 0.0577; visibility: inherit; transform: translate3d(0px, -42.2652%, 0px);">
+                                            Contact</div>
+                                        <div class=" mb-30 d-flex text-left flex-column align-items-start">
+
+                                            <h2 class="section-title">Reach us</h2>
+                                        </div>
+
+                                        <p class="sub-heading line-shap line-shap-after mb-15">
+                                            <span>Our Location</span>
+
+                                        </p>
+                                        <p class="mb-10">
+                                            Master Golf Club, Lorem,
+                                            <br> Lorem Post, Lorem, Taluk,
+                                            <br> Belgium, London-125460
+                                        </p>
+
+                                        <p class="sub-heading line-shap line-shap-after mb-15">
+                                            <span>Email</span>
+
+                                        </p>
+                                        <p class="mb-10">
+                                            <a href="" target="_new"><span
+													class="__cf_email__">mastergolfclulb@gmail.com</span></a>
+                                        </p>
+
+                                        <a href="javascript:void()" id="myModalomember" class="mt-30 dsn-button image-zoom" data-dsn="parallax">
+                                            <span class="dsn-border border-color-reverse-color"></span> Get in touch <span>⟶</span>
+                                        </a>
+
+                                        <div class="border-bottom mt-30 mb-30"></div>
+
+                                        <div class="d-block a-item-center">
+                                            <p class="sub-heading line-shap line-shap-after mb-15">
+                                                <span>Social Media</span>
+                                            </p>
+
+                                            <ul class="box-social ct">
+                                                <li>
+                                                    <a href="https://www.facebook.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/facebook.svg' %}" style="width: 30px;" alt=""></a>
+                                                </li>
+                                                <li>
+                                                    <a href="https://www.youtube.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/youtube.svg' %}" style="width: 30px;" alt=""></a>
+                                                </li>
+                                                <li>
+                                                    <a href="https://www.linkedin.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/linkedin.svg' %}" style="width: 30px;" alt=""></a>
+                                                </li>
+                                                <li>
+                                                    <a href="https://twitter.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/twitter.svg' %}" style="width: 30px;" alt=""></a>
+                                                </li>
+                                                <li>
+                                                    <a href="https://www.instagram.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/instagram.svg' %}" style="width: 30px;" alt=""></a>
+                                                </li>
+                                            </ul>
+
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6  dsn-z-index-2 pl-0">
+                                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d158858.47340002653!2d-0.24168120642536509!3d51.52855824164916!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47d8a00baf21de75%3A0x52963a5addd52a99!2sLondon%2C%20UK!5e0!3m2!1sen!2s!4v1629696377526!5m2!1sen!2s"
+                                width="100%" height="700" style="border:0;" allowfullscreen="" loading="lazy">
+                                </iframe>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <!-- ========== End Contact ========== -->
+
+
+                <!-- ========== Golf Membership Section ========== -->
+                <div class="box-gallery-vertical box-gallery-content section-margin" id="membership" data-dsn-animate="section" data-dsn-duration="100%" data-dsn="color">
+                    <div class="container mb-70 d-flex text-center flex-column align-items-center">
+                        <p class="sub-heading line-shap line-shap-before mb-15 dsn-up">
+                            <span class="line-bg-right">
+								Membership
+							</span>
+                        </p>
+                    </div>
+                    <div class="container">
+                        <div class="row dsn-z-index-2">
+                            <div class="col-lg-6  dsn-z-index-2 p-0">
+                                <div class="box-im h-100 " style="position: relative;">
+
+                                    <img class="cover-bg-img" src="{% static 'img/slider/club-membership.jpg' %}" alt="">
+
+
+                                </div>
+                            </div>
+                            <div class="col-lg-6 box-content p-0">
+
+                                <div class="box-info h-100 box-padding background-section dsn-up">
+                                    <div class="box-info-inner">
+                                        <div class=" mb-30 d-flex text-left flex-column align-items-start">
+                                            <p class="sub-heading line-shap line-shap-after mb-15">
+                                                <span class="line-bg-right">Club Membership</span>
+                                            </p>
+
+                                            <h2 class="section-title">Become a Member at Master Golf Club</h2>
+
+                                        </div>
+                                        <p class="max-w570 mb-10 ">
+                                            No matter what level of golfer you are this course is for everyone! It’s a tranquil setting that undulates its way through India’s premier golf residential development shadowed by the Mountains. Being a member of the Master Golf Club is one of the world’s
+                                            great golfing privileges. To have access to this course and the amenities it offers is a pure delight. When you hear the terminology “Membership has its privileges” this is never more true than at Master Golf
+                                            Club.
+                                        </p>
+
+                                        <a href="membership" class="mt-30 dsn-button image-zoom" data-dsn="parallax">
+                                            <span class="dsn-border border-color-reverse-color"></span> Become A Member <span>⟶</span>
+                                        </a>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ========== End Golf Membership ========== -->
+
+                <footer class="footer p-relative">
+
+                    <section class="next-page p-relative section-padding border-bottom">
+                        <div class="bg-circle-dotted"></div>
+                        <div class="bg-circle-dotted bg-circle-dotted-right"></div>
+                        <div class="container">
+
+                            <div class="c-wapp d-flex">
+
+                                <div class="d-flex flex-column">
+
+                                    <div class="box-info-contact">
+
+                                        <ul>
+                                            <li>
+                                                <h5 class="title-block mb-15">Address</h5>
+                                                <p class="text-p"><strong>Master Golf Club</strong>,
+                                                    <br>Lorem Hills Road, Lorem Post,
+                                                    <br>Lorem Epsom, Taluk,
+                                                    <br>Lorem, London, 124586.
+                                                </p>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column"></div>
+                                <div class="d-flex flex-column"></div>
+                                <div class="d-flex flex-column"></div>
+                                <div class="d-flex flex-column">
+
+                                    <div class="box-info-contact">
+
+                                        <ul>
+
+                                            <li>
+                                                <h5 class="title-block mb-15">Reservations</h5>
+                                                <p class="text-p ">Golf : <a href="tel:+91 72598 06632">+91 12345
+														12345</a></p>
+                                            </li>
+
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column"></div>
+                                <div class="d-flex flex-column"></div>
+                                <div class="d-flex flex-column"></div>
+
+                                <div class="d-flex flex-column">
+
+                                    <div class="box-info-contact">
+
+                                        <ul>
+
+                                            <li>
+                                                <h5 class="title-block mb-15">Membership</h5>
+                                                <p class="text-p ">Golf : <a href="tel:+91 76250 31836">+91 12345
+														12345</a></p>
+                                            </li>
+
+                                        </ul>
+                                    </div>
+                                </div>
+
+
+
+                            </div>
+
+
+                        </div>
+                    </section>
+
+                    <div class="container">
+                        <div class="footer-container">
+                            <div class="d-flex align-items-center h-100">
+                                <div class="column-left">
+                                    <div class="footer-social p-relative">
+                                        <ul>
+                                            <li class="over-hidden">
+                                                <a href="https://www.facebook.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/facebook.svg' %}" alt="Facebook"></a>
+                                            </li>
+
+                                            <li class="over-hidden">
+                                                <a href="https://www.youtube.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/youtube.svg' %}" alt="Youtube"></a>
+                                            </li>
+
+                                            <li class="over-hidden">
+                                                <a href="https://www.linkedin.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/linkedin.svg' %}" alt="Linkedin"></a>
+                                            </li>
+
+                                            <li class="over-hidden">
+                                                <a href="https://twitter.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/twitter.svg' %}" alt="Twitter"></a>
+                                            </li>
+
+                                            <li class="over-hidden">
+                                                <a href="https://www.instagram.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/instagram.svg' %}" alt="Instagram"></a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="column-right">
+                                    <h5 data-dsn="parallax">2025 © Master Golf Club. Powered by <a class="link-hover"
+											data-hover-text="Smartxoft" target="_blank" rel="nofollow"
+											href="https://smartxoft.com/">Smartxoft</a>
+									</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
     <!-- ========== Menu ========== -->
     <div class="site-header dsn-container dsn-load-animate">
         <div class="extend-container d-flex w-100 align-items-baseline justify-content-between align-items-end">
             <div class="inner-header p-relative d-flex">
                 <div class="main-logo">
                     <a href="/">
-                        <img class="light-logo"
-						src="{% static 'img/logo.png' %}" alt="" />
-                        <img class="dark-logo"
-						src="{% static 'img/logo.png' %}" alt="" />
+                        <img class="light-logo" src="{% static 'img/logo.png' %}" alt="" />
+                        <img class="dark-logo" src="{% static 'img/logo.png' %}" alt="" />
                     </a>
                 </div>
-				
-				<!-- <div class="menu-left">
+
+                <!-- <div class="menu-left">
 				
 					<div class="nav-menu nav-content">
 						<div class="nav-menu-inner p-relative">
@@ -988,24 +952,24 @@
 					</div>
 				
 				</div> -->
-				 
+
             </div>
-			
-			<div class="inner-header p-relative d-flex">
-				
-				
-				<div class="menu-icon d-flex align-items-baseline">
-					<div class="text-menu tee-time p-relative font-heading text-transform-upper btea-time">
-						<div class="image-zoom w-auto d-inline-block" data-dsn="parallax">
-							<a href="https://member.mastergolfclub.com/" target="_blank" class="dsn-button ">
-								 <span class="dsn-border border-color-default"></span>
-								 <span class="text-button">Member Login</span>
-							</a>
-						</div>
-					</div>					
-				</div>
-			
-			   <!-- <div class="menu-icon mob d-flex align-items-baseline">
+
+            <div class="inner-header p-relative d-flex">
+
+
+                <div class="menu-icon d-flex align-items-baseline">
+                    <div class="text-menu tee-time p-relative font-heading text-transform-upper btea-time">
+                        <div class="image-zoom w-auto d-inline-block" data-dsn="parallax">
+                            <a href="https://member.mastergolfclub.com/" target="_blank" class="dsn-button ">
+                                <span class="dsn-border border-color-default"></span>
+                                <span class="text-button">Member Login</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- <div class="menu-icon mob d-flex align-items-baseline">
 					<div class="text-menu hmbrg p-relative font-heading text-transform-upper">
 						<div class="p-absolute text-button">Menu</div>
 						<div class="p-absolute text-open">Open</div>
@@ -1106,8 +1070,8 @@
 					
 					
 				</nav> -->
-			
-			</div>
+
+            </div>
         </div>
     </div>
     <!-- ========== End Menu ========== -->
@@ -1115,359 +1079,348 @@
 
     <!-- ========== Line left & right with creative page ========== -->
     <div class="line-border-style w-100 h-100"></div>
-										
+
 
     <!-- Optional JavaScript -->
-	<script src="{% static 'js/jquery-1.11.0.min.js' %}"></script>
-	<script src="{% static 'js/jquery-migrate-1.2.1.min.js' %}"></script>
-	<script src="{% static 'js/plugins.min.js' %}"></script>
-	<script src="{% static 'js/dsn-grid.min.js' %}"></script>
-	<script src="{% static 'js/custom.js' %}"></script>
-	<script src="{% static 'js/fullpage.js' %}"></script>
-	<script src="{% static 'js/slick.js' %}"></script>
-	<script src="{% static 'js/smooth-scrollbar.js' %}"></script>
-	<script src="{% static 'js/jquery.waypoints.js' %}"></script>
+    <script src="{% static 'js/jquery-1.11.0.min.js' %}"></script>
+    <script src="{% static 'js/jquery-migrate-1.2.1.min.js' %}"></script>
+    <script src="{% static 'js/plugins.min.js' %}"></script>
+    <script src="{% static 'js/dsn-grid.min.js' %}"></script>
+    <script src="{% static 'js/custom.js' %}"></script>
+    <script src="{% static 'js/fullpage.js' %}"></script>
+    <script src="{% static 'js/slick.js' %}"></script>
+    <script src="{% static 'js/smooth-scrollbar.js' %}"></script>
+    <script src="{% static 'js/jquery.waypoints.js' %}"></script>
 
-	
-	<script>
-	
-	// Initialize fullpage
-		new fullpage('#fullpage', {
-			easing: 'easeInOutCubic',
-			easingcss3: 'ease',
-			onLeave: function(origin, destination, direction) {
-				$('.regular').slick('slickGoTo', destination.index);
-				
-				if(direction = "down" && destination.index == 3) {
-					$('.slick-slide').fadeOut(300);
-					$('.site-header').fadeOut(300);
-				}
-			},
-			afterLoad: function(origin, destination, direction) {
-				$(".scroller.scrolle"+(destination.index + 1)).fadeIn(300);
-				$(".scroller.scrolle"+(destination.index)).hide();
-				$(".sec"+(destination.index + 1)).addClass('shrink');
-				$(".sec"+(destination.index)).removeClass('shrink');
-				
-				if(direction = "up" && destination.index == 2) {
-					$('.slick-slide').fadeIn(300);
-					$('.site-header').fadeIn(300);
-					fullpage_api.setAllowScrolling(true);
-				}
-			}
-		});
-		
-		// Initialize Smooth Scrollbar
-		const scrollbar = Scrollbar.init(document.querySelector("#contentScrollbar"), {
-			damping: 0.2,
-		});
-		
-		scrollbar.track.xAxis.element.remove();
-		
-		scrollbar.addListener(({ offset }) => {
-			if(offset.y > 0) {
-				fullpage_api.setAllowScrolling(false);
-			} else {
-				fullpage_api.setAllowScrolling(true);
-			}
-		});
-		
-		// Enhanced menu navigation system
-		document.addEventListener('DOMContentLoaded', () => {
-			// Map menu items to their corresponding sections and scroll positions
-			const sectionMap = {
-				'MGC': {
-					selector: '#about',
-					offset: 0
-				},
-				'Concept': {
-					selector: '#concept',
-					offset: 0
-				},
-				'Collections': {
-					selector: '#collections',
-					offset: 0
-				},
-				'News': {
-					selector: '#news',
-					offset: 0
-				},
-				'About us': {
-					selector: '#about',
-					offset: 0
-				},
-				'Contact': {
-					selector: '#contact',
-					offset: 0
-				}
-			};
-		
-			// Handle both main menu and mobile menu clicks
-			const menuItems = document.querySelectorAll('.nav-menu a[data-dsn="parallax"], .accent-menu a.user-no-selection');
-			
-			menuItems.forEach(item => {
-				item.addEventListener('click', (e) => {
-					e.preventDefault();
-					
-					// Get the menu text and find corresponding section
-					const menuText = item.textContent.trim();
-					const sectionInfo = sectionMap[menuText];
-					
-					if (sectionInfo) {
-						// First move to the fourth section (where scrollable content is)
-						fullpage_api.moveTo(4);
-						
-						// Wait for the section transition to complete
-						setTimeout(() => {
-							const targetSection = document.querySelector(sectionInfo.selector);
-							if (targetSection) {
-								// Scroll to the target section with smooth animation
-								scrollbar.scrollIntoView(targetSection, {
-									offsetTop: sectionInfo.offset,
-									onlyScrollIfNeeded: false,
-									duration: 1000,
-									easing: t => t * (2 - t) // Smooth easing function
-								});
-								
-								// Add highlight effect to the target section
-								targetSection.classList.add('section-highlight');
-								setTimeout(() => {
-									targetSection.classList.remove('section-highlight');
-								}, 1000);
-							}
-						}, 700);
-					}
-				});
-			});
-		
-			// Close mobile menu after click (if it exists)
-			const mobileMenuButton = document.querySelector('.menu-icon.mob');
-			const mobileMenu = document.querySelector('.accent-menu');
-			
-			if (mobileMenuButton && mobileMenu) {
-				menuItems.forEach(item => {
-					item.addEventListener('click', () => {
-						mobileMenu.classList.remove('dsn-active');
-						document.body.classList.remove('dsn-nav-active');
-					});
-				});
-			}
-		});
-		
-		// Initialize slick slider (keeping existing functionality)
-		$(document).ready(function() {
-			$(".scroller").hide();
-			$(".scroller.scrolle1").fadeIn(300);
-			
-			var slider = $('.regular').slick({
-				dots: false,
-				arrows: false,
-				infinite: true,
-				slidesToShow: 2,
-				slidesToScroll: 1,
-				responsive: [
-					{
-						breakpoint: 1024,
-						settings: {
-							slidesToShow: 2,
-							slidesToScroll: 1,
-						}
-					},
-					{
-						breakpoint: 768,
-						settings: {
-							slidesToShow: 2,
-							slidesToScroll: 1
-						}
-					},
-					{
-						breakpoint: 479,
-						settings: {
-							slidesToShow: 2,
-							slidesToScroll: 1
-						}
-					}
-				]
-			});
-			
-			slider.slick("slickSetOption", "accessibility", false, false);
-			slider.slick("slickSetOption", "draggable", false, false);
-			slider.slick("slickSetOption", "swipe", false, false);
-			slider.slick("slickSetOption", "touchMove", false, false);
-		});
-	</script>
 
-	<script>
-		const items = document.querySelectorAll('.item');
-		lastOpen = 0;
-		items.forEach((el, i) => {
-		el.addEventListener('click', (e) => {
-			if (lastOpen != i) {
-			items[lastOpen].classList.remove('open');
-			}
-			el.classList.toggle('open');
-			lastOpen = i;
-		})
-		})
-	</script>
-			
-	<script>
-			$(document).ready(function() {
-				new jBox('Modal', {
-					attach: '#myModalomember',
-					content: $('#grabMe'),
-					closeOnClick: false,
-					closeOnEsc: false
-				});
-			});
-	</script>
+    <script>
+        // Initialize fullpage
+        		new fullpage('#fullpage', {
+        			easing: 'easeInOutCubic',
+        			easingcss3: 'ease',
+        			onLeave: function (origin, destination, direction) {
+        				$('.regular').slick('slickGoTo', destination.index);
+        
+        				if (direction = "down" && destination.index == 3) {
+        					$('.slick-slide').fadeOut(300);
+        					$('.site-header').fadeOut(300);
+        				}
+        			},
+        			afterLoad: function (origin, destination, direction) {
+        				$(".scroller.scrolle" + (destination.index + 1)).fadeIn(300);
+        				$(".scroller.scrolle" + (destination.index)).hide();
+        				$(".sec" + (destination.index + 1)).addClass('shrink');
+        				$(".sec" + (destination.index)).removeClass('shrink');
+        
+        				if (direction = "up" && destination.index == 2) {
+        					$('.slick-slide').fadeIn(300);
+        					$('.site-header').fadeIn(300);
+        					fullpage_api.setAllowScrolling(true);
+        				}
+        			}
+        		});
+        
+        		// Initialize Smooth Scrollbar
+        		const scrollbar = Scrollbar.init(document.querySelector("#contentScrollbar"), {
+        			damping: 0.2,
+        		});
+        
+        		scrollbar.track.xAxis.element.remove();
+        
+        		scrollbar.addListener(({ offset }) => {
+        			if (offset.y > 0) {
+        				fullpage_api.setAllowScrolling(false);
+        			} else {
+        				fullpage_api.setAllowScrolling(true);
+        			}
+        		});
+        
+        		// Enhanced menu navigation system
+        		document.addEventListener('DOMContentLoaded', () => {
+        			// Map menu items to their corresponding sections and scroll positions
+        			const sectionMap = {
+        				'MGC': {
+        					selector: '#about',
+        					offset: 0
+        				},
+        				'Concept': {
+        					selector: '#concept',
+        					offset: 0
+        				},
+        				'Collections': {
+        					selector: '#collections',
+        					offset: 0
+        				},
+        				'News': {
+        					selector: '#news',
+        					offset: 0
+        				},
+        				'About us': {
+        					selector: '#about',
+        					offset: 0
+        				},
+        				'Contact': {
+        					selector: '#contact',
+        					offset: 0
+        				}
+        			};
+        
+        			// Handle both main menu and mobile menu clicks
+        			const menuItems = document.querySelectorAll('.nav-menu a[data-dsn="parallax"], .accent-menu a.user-no-selection');
+        
+        			menuItems.forEach(item => {
+        				item.addEventListener('click', (e) => {
+        					e.preventDefault();
+        
+        					// Get the menu text and find corresponding section
+        					const menuText = item.textContent.trim();
+        					const sectionInfo = sectionMap[menuText];
+        
+        					if (sectionInfo) {
+        						// First move to the fourth section (where scrollable content is)
+        						fullpage_api.moveTo(4);
+        
+        						// Wait for the section transition to complete
+        						setTimeout(() => {
+        							const targetSection = document.querySelector(sectionInfo.selector);
+        							if (targetSection) {
+        								// Scroll to the target section with smooth animation
+        								scrollbar.scrollIntoView(targetSection, {
+        									offsetTop: sectionInfo.offset,
+        									onlyScrollIfNeeded: false,
+        									duration: 1000,
+        									easing: t => t * (2 - t) // Smooth easing function
+        								});
+        
+        								// Add highlight effect to the target section
+        								targetSection.classList.add('section-highlight');
+        								setTimeout(() => {
+        									targetSection.classList.remove('section-highlight');
+        								}, 1000);
+        							}
+        						}, 700);
+        					}
+        				});
+        			});
+        
+        			// Close mobile menu after click (if it exists)
+        			const mobileMenuButton = document.querySelector('.menu-icon.mob');
+        			const mobileMenu = document.querySelector('.accent-menu');
+        
+        			if (mobileMenuButton && mobileMenu) {
+        				menuItems.forEach(item => {
+        					item.addEventListener('click', () => {
+        						mobileMenu.classList.remove('dsn-active');
+        						document.body.classList.remove('dsn-nav-active');
+        					});
+        				});
+        			}
+        		});
+        
+        		// Initialize slick slider (keeping existing functionality)
+        		$(document).ready(function () {
+        			$(".scroller").hide();
+        			$(".scroller.scrolle1").fadeIn(300);
+        
+        			var slider = $('.regular').slick({
+        				dots: false,
+        				arrows: false,
+        				infinite: true,
+        				slidesToShow: 2,
+        				slidesToScroll: 1,
+        				responsive: [
+        					{
+        						breakpoint: 1024,
+        						settings: {
+        							slidesToShow: 2,
+        							slidesToScroll: 1,
+        						}
+        					},
+        					{
+        						breakpoint: 768,
+        						settings: {
+        							slidesToShow: 2,
+        							slidesToScroll: 1
+        						}
+        					},
+        					{
+        						breakpoint: 479,
+        						settings: {
+        							slidesToShow: 2,
+        							slidesToScroll: 1
+        						}
+        					}
+        				]
+        			});
+        
+        			slider.slick("slickSetOption", "accessibility", false, false);
+        			slider.slick("slickSetOption", "draggable", false, false);
+        			slider.slick("slickSetOption", "swipe", false, false);
+        			slider.slick("slickSetOption", "touchMove", false, false);
+        		});
+    </script>
 
-	<script>
-		$(document).ready(function() {
-		$("#regform").submit(function(e) {
-			e.preventDefault();
-			
-			var formData = {
-				contactEnquiryFirstName: $("#first_name").val(),
-				contactEnquiryLastName: $("#last_name").val(),
-				contactEnquiryPhoneNumber: $("#amobile").val(),
-				contactEnquiryEmail: $("#email").val(),
-				contactEnquiryMessage: $("#message").val(),
-				acountrycode: $("#acountrycode").val(),
-				adialcode: $("#adialcode").val(),
-				aisocode: $("#aisocode").val()
-			};
+    <script>
+        const items = document.querySelectorAll('.item');
+        		lastOpen = 0;
+        		items.forEach((el, i) => {
+        			el.addEventListener('click', (e) => {
+        				if (lastOpen != i) {
+        					items[lastOpen].classList.remove('open');
+        				}
+        				el.classList.toggle('open');
+        				lastOpen = i;
+        			})
+        		})
+    </script>
 
-			$.ajax({
-				url: '/apis/contactEnquiry/0/processing/',
-				type: 'POST',
-				data: formData,
-				success: function(response) {
-					if(response.code === 1) {
-						alert("Thank you for your message. We will contact you soon!");
-						$("#regform")[0].reset();
-					} else {
-						alert("Something went wrong. Please try again.");
-					}
-				},
-				error: function() {
-					alert("An error occurred. Please try again later.");
-				}
-			});
-		});
-	});
-	</script>
-										
-	<div style="display: none" id="grabMe">
+    <script>
+        $(document).ready(function () {
+        			new jBox('Modal', {
+        				attach: '#myModalomember',
+        				content: $('#grabMe'),
+        				closeOnClick: false,
+        				closeOnEsc: false
+        			});
+        		});
+    </script>
 
-		<div class="loader-sd">
-			<img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
-			<p>Loading! Please wait!!</p>
-		</div>
-		
-		<div class="mheader">
-			<div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
-				<p class="sub-heading line-shap line-shap-before mb-15">
-					<span class="line-bg-right">Enquiry</span>
-				</p>
-			</div>
-		</div>
-		
-		<div class="mcontent">
-			
-			<form id="regform" name="regform" class="form" method="post">
-			{% csrf_token %}
-			<div class="messages"></div>
-				<div class="input__wrap controls">
-				
-					<div class="form-wrap">
-					
-						<div class="form-group pb-15 mb-10 mr-5">
-							<div class="entry-box">
-								<!-- <label>Your name *</label> -->
-								<input type="text" name="first_name" id="first_name"
-									placeholder="First name" required="required"
-									data-error="name is required.">
-							</div>
-							<label class="error"></label>
-						</div>
-					
-						<div class="form-group pb-15 mb-10 ml-5">
-							<div class="entry-box">
-								<!-- <label>Your name *</label> -->
-								<input type="text" name="last_name" id="last_name"
-									placeholder="Last name" required="required"
-									data-error="name is required.">
-							</div>
-							<label class="error"></label>
-						</div>
-						
-					</div>
-				
-					<div class="form-wrap">
-				
-						<div class="form-wrap">
-					
-							<div class="form-group pb-15 mb-10 mr-5">
-								<div class="entry-box">
-									<input type="tel" name="amobile" id="amobile"
-										placeholder="Mobile No" required="required"
-										data-error="name is required.">
-										
-									<input type="hidden" name="acountrycode" id="acountrycode">
-									<input type="hidden" name="adialcode" id="adialcode">
-									<input type="hidden" name="aisocode" id="aisocode">
-								</div>
-								<label class="error"></label>
-							</div>
+    <script>
+        $(document).ready(function () {
+        			$("#regform").submit(function (e) {
+        				e.preventDefault();
+        
+        				var formData = {
+        					contactEnquiryFirstName: $("#first_name").val(),
+        					contactEnquiryLastName: $("#last_name").val(),
+        					contactEnquiryPhoneNumber: $("#amobile").val(),
+        					contactEnquiryEmail: $("#email").val(),
+        					contactEnquiryMessage: $("#message").val(),
+        					acountrycode: $("#acountrycode").val(),
+        					adialcode: $("#adialcode").val(),
+        					aisocode: $("#aisocode").val()
+        				};
+        
+        				$.ajax({
+        					url: '/apis/contactEnquiry/0/processing/',
+        					type: 'POST',
+        					data: formData,
+        					success: function (response) {
+        						if (response.code === 1) {
+        							alert("Thank you for your message. We will contact you soon!");
+        							$("#regform")[0].reset();
+        						} else {
+        							alert("Something went wrong. Please try again.");
+        						}
+        					},
+        					error: function () {
+        						alert("An error occurred. Please try again later.");
+        					}
+        				});
+        			});
+        		});
+    </script>
 
-							<div class="form-group pb-15 mb-10 ml-5">
-								<div class="entry-box">
-									<!-- <label>Your E-Mail *</label> -->
-									<input type="email" name="email" id="email"
-										placeholder="Email ID" required="required"
-										data-error="Valid email is required.">
-								</div>
-								<label class="error"></label>
-							</div>
-						
-						</div>													
-					
-						
-					</div>
-				
-					<div class="form-wrap">
+    <div style="display: none" id="grabMe">
 
-						<div class="form-group pb-15 mb-10">
-							<div class="entry-box">
-								<textarea name="message" id="message" 
-									placeholder="Your Message" required="required" 
-									data-error="Message is required."
-									rows="4" style="width: 100%;"></textarea>
-							</div>
-							<label class="error"></label>
-						</div>
-						
-					</div>
+        <div class="loader-sd">
+            <img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
+            <p>Loading! Please wait!!</p>
+        </div>
 
-					<div class="text-center mt-10 mb-30">
-						
-						<button type="submit" class="dsn-button" style="cursor:pointer;">
-							<span class="dsn-border border-color-default"></span>
-							<span class="text-button">Submit</span>
+        <div class="mheader">
+            <div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
+                <p class="sub-heading line-shap line-shap-before mb-15">
+                    <span class="line-bg-right">Enquiry</span>
+                </p>
+            </div>
+        </div>
 
-						</button>
-						
-					</div>
-					
-				</div>
-			</form>
-		</div>
-	
-	</div>
-  
-	
-	
-	
+        <div class="mcontent">
+
+            <form id="regform" name="regform" class="form" method="post">
+                {% csrf_token %}
+                <div class="messages"></div>
+                <div class="input__wrap controls">
+
+                    <div class="form-wrap">
+
+                        <div class="form-group pb-15 mb-10 mr-5">
+                            <div class="entry-box">
+                                <!-- <label>Your name *</label> -->
+                                <input type="text" name="first_name" id="first_name" placeholder="First name" required="required" data-error="name is required.">
+                            </div>
+                            <label class="error"></label>
+                        </div>
+
+                        <div class="form-group pb-15 mb-10 ml-5">
+                            <div class="entry-box">
+                                <!-- <label>Your name *</label> -->
+                                <input type="text" name="last_name" id="last_name" placeholder="Last name" required="required" data-error="name is required.">
+                            </div>
+                            <label class="error"></label>
+                        </div>
+
+                    </div>
+
+                    <div class="form-wrap">
+
+                        <div class="form-wrap">
+
+                            <div class="form-group pb-15 mb-10 mr-5">
+                                <div class="entry-box">
+                                    <input type="tel" name="amobile" id="amobile" placeholder="Mobile No" required="required" data-error="name is required.">
+
+                                    <input type="hidden" name="acountrycode" id="acountrycode">
+                                    <input type="hidden" name="adialcode" id="adialcode">
+                                    <input type="hidden" name="aisocode" id="aisocode">
+                                </div>
+                                <label class="error"></label>
+                            </div>
+
+                            <div class="form-group pb-15 mb-10 ml-5">
+                                <div class="entry-box">
+                                    <!-- <label>Your E-Mail *</label> -->
+                                    <input type="email" name="email" id="email" placeholder="Email ID" required="required" data-error="Valid email is required.">
+                                </div>
+                                <label class="error"></label>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                    <div class="form-wrap">
+
+                        <div class="form-group pb-15 mb-10">
+                            <div class="entry-box">
+                                <textarea name="message" id="message" placeholder="Your Message" required="required" data-error="Message is required." rows="4" style="width: 100%;"></textarea>
+                            </div>
+                            <label class="error"></label>
+                        </div>
+
+                    </div>
+
+                    <div class="text-center mt-10 mb-30">
+
+                        <button type="submit" class="dsn-button" style="cursor:pointer;">
+                            <span class="dsn-border border-color-default"></span>
+                            <span class="text-button">Submit</span>
+
+                        </button>
+
+                    </div>
+
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+
+
+
 </body>
-</html>                              
+
+</html>

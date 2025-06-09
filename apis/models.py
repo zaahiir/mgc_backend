@@ -72,14 +72,6 @@ class PlanCycleModel(models.Model):
     updatedAt = models.DateTimeField(auto_now=True)
 
 
-class AmenitiesModel(models.Model):
-    id = models.AutoField(primary_key=True)
-    amenityName = models.CharField(max_length=200, null=True, blank=True)
-    hideStatus = models.IntegerField(default=0)
-    createdAt = models.DateTimeField(auto_now_add=True)
-    updatedAt = models.DateTimeField(auto_now=True)
-
-
 # Start of Master
 class PlanModel(models.Model):
     id = models.AutoField(primary_key=True)
@@ -139,7 +131,44 @@ class MemberModel(models.Model):
         super().save(*args, **kwargs)
 
 
-class CourseModel(models.Model):
+class AmenitiesModel(models.Model):
+    id = models.AutoField(primary_key=True)
+    amenityName = models.CharField(max_length=200, null=True, blank=True)
+    amenityIcon = models.TextField(null=True, blank=True)  # Changed to TextField for SVG content
+    amenityTooltip = models.CharField(max_length=500, null=True, blank=True)
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.amenityName or f"Amenity {self.id}"
+    
+    @property
+    def amenity_icon_svg(self):
+        """Return the SVG content of the amenity icon"""
+        return self.amenityIcon
+
+    def get_icon_path_only(self):
+        """Extract only the path data from SVG for flexible rendering"""
+        if self.amenityIcon:
+            import re
+            # Extract path data from SVG
+            path_match = re.search(r'<path[^>]*d="([^"]*)"', self.amenityIcon)
+            if path_match:
+                return path_match.group(1)
+        return None
+
+    def get_viewbox(self):
+        """Extract viewBox from SVG for proper scaling"""
+        if self.amenityIcon:
+            import re
+            viewbox_match = re.search(r'viewBox="([^"]*)"', self.amenityIcon)
+            if viewbox_match:
+                return viewbox_match.group(1)
+        return "0 0 448 512"  # Default Font Awesome viewBox
+    
+
+class CourseModel(models.Model): 
     id = models.AutoField(primary_key=True)
     courseName = models.CharField(max_length=255, null=True, blank=True)
     courseNumber = models.CharField(max_length=50, null=True, blank=True)
@@ -150,7 +179,8 @@ class CourseModel(models.Model):
     country = models.CharField(max_length=100, null=True, blank=True)
     phoneNumber = models.CharField(max_length=20, null=True, blank=True)
     website = models.URLField(max_length=255, null=True, blank=True)
-    amenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="amenities")
+    timing = models.CharField(max_length=255, null=True, blank=True)  # New field for timing info
+    amenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="courses")
     courseImage = models.ImageField(upload_to='course_images/', null=True, blank=True)
     golfDescription = models.TextField(null=True, blank=True)
     golfHighlight = models.TextField(null=True, blank=True)
@@ -158,6 +188,21 @@ class CourseModel(models.Model):
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.courseName or f"Course {self.id}"
+
+    @property
+    def full_address(self):
+        """Return formatted full address"""
+        address_parts = []
+        if self.streetName:
+            address_parts.append(self.streetName)
+        if self.locality:
+            address_parts.append(self.locality)
+        if self.town:
+            address_parts.append(self.town)
+        return ', '.join(address_parts)
 
 
 class BlogModel(models.Model):
