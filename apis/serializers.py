@@ -151,30 +151,28 @@ class AmenitiesModelSerializers(serializers.ModelSerializer):
         """Return viewBox for proper scaling"""
         return obj.get_viewbox()
 
-class CourseModelSerializers(serializers.ModelSerializer):
-    amenities = serializers.SerializerMethodField()
+
+class CollectionSerializer(serializers.ModelSerializer):
+    """Optimized serializer for collection view - only necessary fields"""
+    id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(source='courseName', read_only=True)
-    lane = serializers.CharField(source='streetName', read_only=True)
-    address = serializers.SerializerMethodField()
-    code = serializers.CharField(source='postcode', read_only=True)
-    phone = serializers.CharField(source='phoneNumber', read_only=True)
+    address = serializers.CharField(source='courseAddress', read_only=True)
+    timing = serializers.CharField(source='courseOpenFrom', read_only=True)
+    phone = serializers.CharField(source='coursePhoneNumber', read_only=True)
+    website = serializers.URLField(source='courseWebsite', read_only=True)
     imageUrl = serializers.SerializerMethodField()
+    amenities = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseModel
         fields = [
-            'id', 'name', 'lane', 'address', 'code', 'timing', 'phone', 
-            'website', 'imageUrl', 'amenities', 'golfDescription', 
-            'golfHighlight', 'golfLocation'
+            'id', 'name', 'address', 'timing', 
+            'phone', 'website', 'imageUrl', 'amenities'
         ]
 
     def get_amenities(self, obj):
         """Return amenity IDs as expected by frontend"""
-        return list(obj.amenities.values_list('id', flat=True))
-
-    def get_address(self, obj):
-        """Return formatted address"""
-        return obj.full_address
+        return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
 
     def get_imageUrl(self, obj):
         """Return full image URL"""
@@ -183,14 +181,47 @@ class CourseModelSerializers(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.courseImage.url)
             return obj.courseImage.url
-        return 'assets/images/news/default-course.jpg'  # Default image
+        return 'assets/images/news/default-course.jpg'
+
+
+class CourseDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for detailed course view"""
+    name = serializers.CharField(source='courseName', read_only=True)
+    address = serializers.CharField(source='courseAddress', read_only=True)
+    timing = serializers.CharField(source='courseOpenFrom', read_only=True)
+    phone = serializers.CharField(source='coursePhoneNumber', read_only=True)
+    alternatePhone = serializers.CharField(source='courseAlternatePhoneNumber', read_only=True)
+    website = serializers.URLField(source='courseWebsite', read_only=True)
+    description = serializers.CharField(source='courseDescription', read_only=True)
+    location = serializers.CharField(source='courseLocation', read_only=True)
+    imageUrl = serializers.SerializerMethodField()
+    amenities = serializers.SerializerMethodField()
+    allContacts = serializers.ReadOnlyField(source='all_contacts')
+
+    class Meta:
+        model = CourseModel
+        fields = [
+            'id', 'name', 'address', 'timing', 'phone', 'alternatePhone',
+            'website', 'description', 'location', 'imageUrl', 'amenities', 'allContacts'
+        ]
+
+    def get_amenities(self, obj):
+        """Return amenity IDs as expected by frontend"""
+        return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
+
+    def get_imageUrl(self, obj):
+        """Return full image URL"""
+        if obj.courseImage:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.courseImage.url)
+            return obj.courseImage.url
+        return 'assets/images/news/default-course.jpg'
+
 
 class CourseCreateUpdateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for creating and updating courses
-    Handles form data including file uploads
-    """
-    amenities = serializers.ListField(
+    """Serializer for creating and updating courses"""
+    courseAmenities = serializers.ListField(
         child=serializers.IntegerField(),
         required=False,
         allow_empty=True
@@ -199,13 +230,13 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseModel
         fields = [
-            'courseName', 'courseNumber', 'streetName', 'locality', 'town',
-            'postcode', 'country', 'phoneNumber', 'website', 'timing',
-            'courseImage', 'golfDescription', 'golfHighlight', 'golfLocation',
-            'amenities', 'hideStatus'
+            'courseName', 'courseAddress', 'courseOpenFrom', 
+            'coursePhoneNumber', 'courseAlternatePhoneNumber', 'courseWebsite',
+            'courseDescription', 'courseLocation', 'courseImage', 
+            'courseAmenities', 'hideStatus'
         ]
     
-    def validate_amenities(self, value):
+    def validate_courseAmenities(self, value):
         """Validate that all amenity IDs exist"""
         if value:
             existing_ids = set(AmenitiesModel.objects.filter(
@@ -221,16 +252,16 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         return value
     
     def create(self, validated_data):
-        amenities_data = validated_data.pop('amenities', [])
+        amenities_data = validated_data.pop('courseAmenities', [])
         course = CourseModel.objects.create(**validated_data)
         
         if amenities_data:
-            course.amenities.set(amenities_data)
+            course.courseAmenities.set(amenities_data)
         
         return course
     
     def update(self, instance, validated_data):
-        amenities_data = validated_data.pop('amenities', None)
+        amenities_data = validated_data.pop('courseAmenities', None)
         
         # Update all other fields
         for attr, value in validated_data.items():
@@ -239,9 +270,71 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         
         # Update amenities if provided
         if amenities_data is not None:
-            instance.amenities.set(amenities_data)
+            instance.courseAmenities.set(amenities_data)
         
         return instance
+
+
+class LegacyCollectionSerializer(serializers.ModelSerializer):
+    """Serializer to maintain compatibility with existing frontend structure"""
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(source='courseName', read_only=True)
+    lane = serializers.SerializerMethodField()  # Extract first part of address
+    address = serializers.SerializerMethodField()  # Extract remaining address
+    code = serializers.SerializerMethodField()  # Extract postcode if present
+    timing = serializers.CharField(source='courseOpenFrom', read_only=True)
+    phone = serializers.CharField(source='coursePhoneNumber', read_only=True)
+    website = serializers.URLField(source='courseWebsite', read_only=True)
+    imageUrl = serializers.SerializerMethodField()
+    amenities = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseModel
+        fields = [
+            'id', 'name', 'lane', 'address', 'code', 'timing',
+            'phone', 'website', 'imageUrl', 'amenities'
+        ]
+
+    def get_lane(self, obj):
+        """Extract first part of address as lane"""
+        if obj.courseAddress:
+            parts = obj.courseAddress.split(',')
+            return parts[0].strip() if parts else ""
+        return ""
+
+    def get_address(self, obj):
+        """Extract remaining address parts"""
+        if obj.courseAddress:
+            parts = obj.courseAddress.split(',')
+            if len(parts) > 1:
+                return ', '.join(part.strip() for part in parts[1:-1])
+        return ""
+
+    def get_code(self, obj):
+        """Extract postcode (assumed to be last part of address)"""
+        if obj.courseAddress:
+            parts = obj.courseAddress.split(',')
+            if len(parts) > 1:
+                last_part = parts[-1].strip()
+                # Simple postcode pattern check
+                import re
+                if re.match(r'^[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}$', last_part):
+                    return last_part
+        return ""
+
+    def get_amenities(self, obj):
+        """Return amenity IDs as expected by frontend"""
+        return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
+
+    def get_imageUrl(self, obj):
+        """Return full image URL"""
+        if obj.courseImage:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.courseImage.url)
+            return obj.courseImage.url
+        return 'assets/images/news/default-course.jpg'
+
 
 class BlogModelSerializers(serializers.ModelSerializer):
     class Meta:

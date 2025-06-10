@@ -134,7 +134,7 @@ class MemberModel(models.Model):
 class AmenitiesModel(models.Model):
     id = models.AutoField(primary_key=True)
     amenityName = models.CharField(max_length=200, null=True, blank=True)
-    amenityIcon = models.TextField(null=True, blank=True)  # Changed to TextField for SVG content
+    amenityIcon = models.TextField(null=True, blank=True)  # SVG content
     amenityTooltip = models.CharField(max_length=500, null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -152,7 +152,6 @@ class AmenitiesModel(models.Model):
         """Extract only the path data from SVG for flexible rendering"""
         if self.amenityIcon:
             import re
-            # Extract path data from SVG
             path_match = re.search(r'<path[^>]*d="([^"]*)"', self.amenityIcon)
             if path_match:
                 return path_match.group(1)
@@ -166,25 +165,21 @@ class AmenitiesModel(models.Model):
             if viewbox_match:
                 return viewbox_match.group(1)
         return "0 0 448 512"  # Default Font Awesome viewBox
-    
+
 
 class CourseModel(models.Model): 
     id = models.AutoField(primary_key=True)
     courseName = models.CharField(max_length=255, null=True, blank=True)
-    courseNumber = models.CharField(max_length=50, null=True, blank=True)
-    streetName = models.CharField(max_length=255, null=True, blank=True)
-    locality = models.CharField(max_length=255, null=True, blank=True)
-    town = models.CharField(max_length=255, null=True, blank=True)
-    postcode = models.CharField(max_length=20, null=True, blank=True)
-    country = models.CharField(max_length=100, null=True, blank=True)
-    phoneNumber = models.CharField(max_length=20, null=True, blank=True)
-    website = models.URLField(max_length=255, null=True, blank=True)
-    timing = models.CharField(max_length=255, null=True, blank=True)  # New field for timing info
-    amenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="courses")
+    courseAddress = models.TextField(null=True, blank=True)
+    courseOpenFrom = models.CharField(max_length=255, null=True, blank=True)
+    coursePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
+    courseAlternatePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
+    courseWebsite = models.URLField(max_length=255, null=True, blank=True)
+    courseDescription = models.TextField(null=True, blank=True)
+    courseLocation = models.CharField(max_length=500, null=True, blank=True, 
+                                    help_text="GPS coordinates or detailed location for directions")
     courseImage = models.ImageField(upload_to='course_images/', null=True, blank=True)
-    golfDescription = models.TextField(null=True, blank=True)
-    golfHighlight = models.TextField(null=True, blank=True)
-    golfLocation = models.CharField(max_length=255, null=True, blank=True)
+    courseAmenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="courses")
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -193,16 +188,24 @@ class CourseModel(models.Model):
         return self.courseName or f"Course {self.id}"
 
     @property
-    def full_address(self):
-        """Return formatted full address"""
-        address_parts = []
-        if self.streetName:
-            address_parts.append(self.streetName)
-        if self.locality:
-            address_parts.append(self.locality)
-        if self.town:
-            address_parts.append(self.town)
-        return ', '.join(address_parts)
+    def formatted_address(self):
+        """Return formatted address for display"""
+        return self.courseAddress or "Address not available"
+    
+    @property 
+    def primary_contact(self):
+        """Return primary phone number"""
+        return self.coursePhoneNumber or self.courseAlternatePhoneNumber
+
+    @property
+    def all_contacts(self):
+        """Return all available contact numbers"""
+        contacts = []
+        if self.coursePhoneNumber:
+            contacts.append(self.coursePhoneNumber)
+        if self.courseAlternatePhoneNumber:
+            contacts.append(self.courseAlternatePhoneNumber)
+        return contacts
 
 
 class BlogModel(models.Model):

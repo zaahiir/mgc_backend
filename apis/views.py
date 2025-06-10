@@ -884,29 +884,28 @@ class AmenitiesViewSet(viewsets.ModelViewSet):
     serializer_class = AmenitiesModelSerializers
 
     @action(detail=False, methods=['GET'])
-    def list_all(self, request):
-        """Get all amenities for frontend consumption"""
+    def collection_amenities(self, request):
+        """Get all amenities formatted for collection component"""
         amenities = AmenitiesModel.objects.filter(hideStatus=0).order_by('id')
         serializer = AmenitiesModelSerializers(amenities, many=True, context={'request': request})
         
-        # Format for frontend
+        # Format for frontend collection component
         formatted_amenities = []
         for amenity in serializer.data:
             formatted_amenities.append({
                 'id': amenity['id'],
                 'title': amenity['amenityName'],
                 'tooltip': amenity['amenityTooltip'] or amenity['amenityName'],
-                'icon_svg': amenity['amenity_icon_svg'],  # Full SVG content
-                'icon_path': amenity['amenity_icon_path'],  # Just the path data
-                'viewbox': amenity['amenity_viewbox'],  # ViewBox for scaling
+                'icon_svg': amenity['amenity_icon_svg'],
+                'icon_path': amenity['amenity_icon_path'],
+                'viewbox': amenity['amenity_viewbox'],
             })
         
-        response = {
+        return Response({
             'code': 1, 
             'data': formatted_amenities, 
-            'message': "All Retrieved"
-        }
-        return Response(response)
+            'message': "Amenities retrieved successfully"
+        })
 
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
@@ -922,17 +921,14 @@ class AmenitiesViewSet(viewsets.ModelViewSet):
                 many=True,
                 context={'request': request}
             )
-        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
-        return Response(response)
+        return Response({'code': 1, 'data': serializer.data, 'message': "All Retrieved"})
 
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
         try:
             if pk == "0":
-                # Creating new amenity
                 serializer = AmenitiesModelSerializers(data=request.data, context={'request': request})
             else:
-                # Updating existing amenity
                 instance = AmenitiesModel.objects.get(id=pk)
                 serializer = AmenitiesModelSerializers(
                     instance=instance, 
@@ -942,61 +938,123 @@ class AmenitiesViewSet(viewsets.ModelViewSet):
             
             if serializer.is_valid():
                 serializer.save()
-                response = {'code': 1, 'message': "Done Successfully"}
+                return Response({'code': 1, 'message': "Done Successfully"})
             else:
-                response = {'code': 0, 'message': "Unable to Process Request", 'errors': serializer.errors}
+                return Response({'code': 0, 'message': "Unable to Process Request", 'errors': serializer.errors})
         except AmenitiesModel.DoesNotExist:
-            response = {'code': 0, 'message': "Amenity not found"}
+            return Response({'code': 0, 'message': "Amenity not found"})
         except Exception as e:
-            response = {'code': 0, 'message': f"Error processing request: {str(e)}"}
-        
-        return Response(response)
+            return Response({'code': 0, 'message': f"Error processing request: {str(e)}"})
 
     @action(detail=True, methods=['GET'])
     def deletion(self, request, pk=None):
         try:
-            amenity = AmenitiesModel.objects.get(id=pk)
             AmenitiesModel.objects.filter(id=pk).update(hideStatus=1)
-            response = {'code': 1, 'message': "Done Successfully"}
-        except AmenitiesModel.DoesNotExist:
-            response = {'code': 0, 'message': "Amenity not found"}
+            return Response({'code': 1, 'message': "Done Successfully"})
         except Exception as e:
-            response = {'code': 0, 'message': f"Error deleting amenity: {str(e)}"}
-            
-        return Response(response)
+            return Response({'code': 0, 'message': f"Error deleting amenity: {str(e)}"})
 
 
-class CourseViewSet(viewsets.ModelViewSet):
+class CollectionViewSet(viewsets.ModelViewSet):
+    """Optimized ViewSet for collection view with minimal data"""
     queryset = CourseModel.objects.filter(hideStatus=0)
-    serializer_class = CourseModelSerializers
+    serializer_class = CollectionSerializer
 
     def get_queryset(self):
-        return CourseModel.objects.filter(hideStatus=0).prefetch_related('amenities').order_by('-id')
+        return CourseModel.objects.filter(hideStatus=0).prefetch_related('courseAmenities').order_by('-id')
 
     @action(detail=False, methods=['GET'])
-    def collection_data(self, request):
-        """Get courses formatted for the collection component"""
+    def list_courses(self, request):
+        """Get courses formatted for the collection component - optimized response"""
         courses = self.get_queryset()
-        serializer = CourseModelSerializers(courses, many=True, context={'request': request})
         
-        response = {
+        # Use legacy serializer for backward compatibility with existing frontend
+        use_legacy = request.query_params.get('legacy', 'false').lower() == 'true'
+        
+        if use_legacy:
+            serializer = LegacyCollectionSerializer(courses, many=True, context={'request': request})
+        else:
+            serializer = CollectionSerializer(courses, many=True, context={'request': request})
+        
+        return Response({
             'code': 1, 
             'data': serializer.data, 
             'message': "Collection data retrieved successfully",
             'total': courses.count()
-        }
-        return Response(response)
+        })
+
+    @action(detail=True, methods=['GET'])
+    def course_detail(self, request, pk=None):
+        """Get detailed course information for booking page"""
+        try:
+            course = CourseModel.objects.get(id=pk, hideStatus=0)
+            serializer = CourseDetailSerializer(course, context={'request': request})
+            
+            return Response({
+                'code': 1,
+                'data': serializer.data,
+                'message': "Course details retrieved successfully"
+            })
+        except CourseModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': "Course not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['GET'])
+    def search(self, request):
+        """Search courses by name or location"""
+        query = request.query_params.get('q', '')
+        location = request.query_params.get('location', '')
+        amenity_ids = request.query_params.getlist('amenities[]')
+
+        queryset = self.get_queryset()
+
+        if query:
+            queryset = queryset.filter(courseName__icontains=query)
+        
+        if location:
+            queryset = queryset.filter(
+                models.Q(courseAddress__icontains=location) |
+                models.Q(courseLocation__icontains=location)
+            )
+        
+        if amenity_ids:
+            queryset = queryset.filter(courseAmenities__id__in=amenity_ids).distinct()
+
+        # Use legacy serializer for backward compatibility
+        use_legacy = request.query_params.get('legacy', 'false').lower() == 'true'
+        
+        if use_legacy:
+            serializer = LegacyCollectionSerializer(queryset, many=True, context={'request': request})
+        else:
+            serializer = CollectionSerializer(queryset, many=True, context={'request': request})
+        
+        return Response({
+            'code': 1,
+            'data': serializer.data,
+            'message': "Search results retrieved",
+            'total': queryset.count()
+        })
+
+
+class CourseManagementViewSet(viewsets.ModelViewSet):
+    """ViewSet for course management (admin operations)"""
+    queryset = CourseModel.objects.filter(hideStatus=0)
+    serializer_class = CourseDetailSerializer
+
+    def get_queryset(self):
+        return CourseModel.objects.filter(hideStatus=0).prefetch_related('courseAmenities').order_by('-id')
 
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
         if pk == "0":
             queryset = self.get_queryset()
         else:
-            queryset = CourseModel.objects.filter(hideStatus=0, id=pk).prefetch_related('amenities')
+            queryset = CourseModel.objects.filter(hideStatus=0, id=pk).prefetch_related('courseAmenities')
 
-        serializer = CourseModelSerializers(queryset, many=True, context={'request': request})
-        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
-        return Response(response)
+        serializer = CourseDetailSerializer(queryset, many=True, context={'request': request})
+        return Response({'code': 1, 'data': serializer.data, 'message': "All Retrieved"})
 
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
@@ -1010,11 +1068,15 @@ class CourseViewSet(viewsets.ModelViewSet):
                 data = request.data.copy()
 
             # Parse amenities if it's a JSON string
-            if 'amenities' in data and isinstance(data['amenities'], str):
+            if 'courseAmenities' in data and isinstance(data['courseAmenities'], str):
                 try:
-                    data['amenities'] = json.loads(data['amenities'])
+                    data['courseAmenities'] = json.loads(data['courseAmenities'])
                 except json.JSONDecodeError:
-                    data['amenities'] = []
+                    data['courseAmenities'] = []
+
+            # Handle legacy field names for backward compatibility
+            if 'amenities' in data and 'courseAmenities' not in data:
+                data['courseAmenities'] = data.pop('amenities')
 
             serializer = CourseCreateUpdateSerializer(
                 instance=instance,
@@ -1026,17 +1088,16 @@ class CourseViewSet(viewsets.ModelViewSet):
                 course = serializer.save()
                 
                 # Handle amenities separately if provided
-                if 'amenities' in data:
-                    course.amenities.set(data['amenities'])
+                if 'courseAmenities' in data:
+                    course.courseAmenities.set(data['courseAmenities'])
 
-                # Return the course data in the format expected by frontend
-                response_serializer = CourseModelSerializers(course, context={'request': request})
-                response = {
+                # Return the course data
+                response_serializer = CourseDetailSerializer(course, context={'request': request})
+                return Response({
                     'code': 1,
                     'message': "Done Successfully",
                     'data': response_serializer.data
-                }
-                return Response(response)
+                })
             else:
                 return Response({
                     'code': 0,
@@ -1059,45 +1120,12 @@ class CourseViewSet(viewsets.ModelViewSet):
     def deletion(self, request, pk=None):
         try:
             CourseModel.objects.filter(id=pk).update(hideStatus=1)
-            response = {'code': 1, 'message': "Done Successfully"}
-            return Response(response)
+            return Response({'code': 1, 'message': "Done Successfully"})
         except Exception as e:
             return Response({
                 'code': 0,
                 'message': f"Error: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=False, methods=['GET'])
-    def search(self, request):
-        """Search courses by name, location, or amenities"""
-        query = request.query_params.get('q', '')
-        location = request.query_params.get('location', '')
-        amenity_ids = request.query_params.getlist('amenities[]')
-
-        queryset = self.get_queryset()
-
-        if query:
-            queryset = queryset.filter(courseName__icontains=query)
-        
-        if location:
-            queryset = queryset.filter(
-                models.Q(town__icontains=location) |
-                models.Q(locality__icontains=location) |
-                models.Q(golfLocation__icontains=location)
-            )
-        
-        if amenity_ids:
-            queryset = queryset.filter(amenities__id__in=amenity_ids).distinct()
-
-        serializer = CourseModelSerializers(queryset, many=True, context={'request': request})
-        
-        response = {
-            'code': 1,
-            'data': serializer.data,
-            'message': "Search results retrieved",
-            'total': queryset.count()
-        }
-        return Response(response)
     
 
 class BlogViewSet(viewsets.ModelViewSet):
