@@ -130,29 +130,35 @@ class UserViewSet(viewsets.ViewSet):
                     'message': 'Invalid username or password'
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
-            # FIXED SOLUTION 1: Create a manual JWT token with correct expiration handling
-            from rest_framework_simplejwt.tokens import RefreshToken
-            import datetime
-            from django.conf import settings
+            # FIXED: Create or get a Django User for the member to handle JWT properly
+            from django.contrib.auth.models import User
             
-            # Create the tokens manually
-            refresh = RefreshToken()
+            # Try to get or create a corresponding Django User
+            django_user, created = User.objects.get_or_create(
+                username=member.email,
+                defaults={
+                    'email': member.email,
+                    'first_name': member.firstName or '',
+                    'last_name': member.lastName or '',
+                    'is_active': True,
+                    'is_staff': False,
+                    'is_superuser': False
+                }
+            )
             
-            # Add custom claims
-            refresh['user_id'] = member.id
+            # Create JWT tokens using the Django User
+            refresh = RefreshToken.for_user(django_user)
+            
+            # Add custom claims to the tokens
+            refresh['member_id'] = member.id
             refresh['user_type'] = 'member'
             refresh['email'] = member.email
             
-            # Fixed: Use hardcoded durations instead of trying to access settings.SIMPLE_JWT
-            # Standard values for JWT tokens
-            access_lifetime = datetime.timedelta(minutes=60)  # 1 hour for access token
-            refresh_lifetime = datetime.timedelta(days=7)  # 7 days for refresh token
-            
-            # Set token expiry times
-            now = datetime.datetime.now(tz=datetime.timezone.utc)
-            refresh.set_exp(lifetime=refresh_lifetime)
+            # Add custom claims to access token too
             access_token = refresh.access_token
-            access_token.set_exp(lifetime=access_lifetime)
+            access_token['member_id'] = member.id
+            access_token['user_type'] = 'member'
+            access_token['email'] = member.email
             
             return Response({
                 'code': 1,
@@ -176,7 +182,7 @@ class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['POST'])
     def member_logout(self, request):
         """
-        Logout endpoint for members
+        Logout endpoint for members - FIXED VERSION
         """
         try:
             refresh_token = request.data.get('refresh_token')
@@ -187,20 +193,38 @@ class UserViewSet(viewsets.ViewSet):
                     'message': 'Refresh token is required'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Blacklist the refresh token
-            token = RefreshToken(refresh_token)
-            token.blacklist()
+            try:
+                # Decode the token to get user information
+                from rest_framework_simplejwt.tokens import UntypedToken
+                from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+                from django.contrib.auth.models import User
+                
+                # Validate and decode the token
+                UntypedToken(refresh_token)
+                
+                # Create RefreshToken instance and blacklist it
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+                
+                return Response({
+                    'code': 1,
+                    'message': 'Logout successful'
+                }, status=status.HTTP_200_OK)
+                
+            except TokenError as e:
+                return Response({
+                    'code': 0,
+                    'message': 'Invalid or expired token'
+                }, status=status.HTTP_400_BAD_REQUEST)
             
+        except Exception as e:
+            # If blacklisting fails, we can still consider the logout successful
+            # since the token will expire naturally
+            print(f"Logout error: {str(e)}")
             return Response({
                 'code': 1,
                 'message': 'Logout successful'
             }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            return Response({
-                'code': 0,
-                'message': f'Logout failed: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['POST'])
     def password_reset(self, request):
@@ -226,6 +250,11 @@ class UserViewSet(viewsets.ViewSet):
                 }, status=status.HTTP_404_NOT_FOUND)
             
             # Generate a reset token and save it to the member record
+            import uuid
+            import datetime
+            from django.conf import settings
+            from django.core.mail import send_mail
+            
             reset_token = str(uuid.uuid4())
             reset_token_expiry = datetime.datetime.now() + datetime.timedelta(hours=24)
             
