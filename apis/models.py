@@ -101,20 +101,20 @@ class MemberModel(models.Model):
     phoneNumber = models.CharField(max_length=20, null=True, blank=True)
     alternatePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
     dateOfBirth = models.DateField(null=True, blank=True)
-    gender = models.ForeignKey(GenderModel, on_delete=models.CASCADE, null=True, blank=True,
+    gender = models.ForeignKey('GenderModel', on_delete=models.CASCADE, null=True, blank=True,
                                related_name="memberGender")
-    nationality = models.ForeignKey(CountryModel, on_delete=models.CASCADE, null=True, blank=True,
+    nationality = models.ForeignKey('CountryModel', on_delete=models.CASCADE, null=True, blank=True,
                                     related_name="memberNationality")
     address = models.TextField(null=True, blank=True)
-    plan = models.ForeignKey(PlanModel, on_delete=models.CASCADE, null=True, blank=True, related_name="memberPlan")
+    plan = models.ForeignKey('PlanModel', on_delete=models.CASCADE, null=True, blank=True, related_name="memberPlan")
     membershipStartDate = models.DateField(null=True, blank=True)
     membershipEndDate = models.DateField(null=True, blank=True)
     emergencyContactName = models.CharField(max_length=200, null=True, blank=True)
     emergencyContactPhone = models.CharField(max_length=20, null=True, blank=True)
     emergencyContactRelation = models.CharField(max_length=100, null=True, blank=True)
-    paymentStatus = models.ForeignKey(PaymentStatusModel, on_delete=models.CASCADE, null=True, blank=True,
+    paymentStatus = models.ForeignKey('PaymentStatusModel', on_delete=models.CASCADE, null=True, blank=True,
                                       related_name="memberPaymentStatus")
-    paymentMethod = models.ForeignKey(PaymentMethodModel, on_delete=models.CASCADE, null=True, blank=True,
+    paymentMethod = models.ForeignKey('PaymentMethodModel', on_delete=models.CASCADE, null=True, blank=True,
                                       related_name="memberPaymentMethod")
     referredBy = models.CharField(max_length=200, null=True, blank=True)
     profilePhoto = models.ImageField(upload_to="member_photos/", null=True, blank=True)
@@ -122,6 +122,11 @@ class MemberModel(models.Model):
     handicap = models.BooleanField(default=False)
     golfClubId = models.CharField(max_length=100, null=True, blank=True)
     qr_token = models.CharField(max_length=255, null=True, blank=True, unique=True)  # New field for QR security
+    
+    # Enquiry related fields
+    enquiryId = models.CharField(max_length=50, null=True, blank=True, help_text="ID of the original enquiry if member was created from enquiry")
+    enquiryMessage = models.TextField(null=True, blank=True, help_text="Original enquiry message")
+    
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -130,6 +135,13 @@ class MemberModel(models.Model):
         if not self.qr_token:
             self.qr_token = str(uuid.uuid4())
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.firstName} {self.lastName} ({self.golfClubId})"
+
+    class Meta:
+        verbose_name = 'Member'
+        verbose_name_plural = 'Members'
 
 
 class AmenitiesModel(models.Model):
