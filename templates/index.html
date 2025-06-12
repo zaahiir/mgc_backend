@@ -1276,49 +1276,70 @@
 
     <script>
         $(document).ready(function () {
-        			new jBox('Modal', {
-        				attach: '#myModalomember',
-        				content: $('#grabMe'),
-        				closeOnClick: false,
-        				closeOnEsc: false
-        			});
-        		});
-    </script>
+            // Initialize the modal and store reference
+            var contactModal = new jBox('Modal', {
+                attach: '#myModalomember',
+                content: $('#grabMe'),
+                closeOnClick: false,
+                closeOnEsc: false,
+                onOpen: function() {
+                    // Hide loader when modal opens
+                    $('.loader-sd').hide();
+                    $('.mheader, .mcontent').show();
+                }
+            });
 
-    <script>
-        $(document).ready(function () {
-        			$("#regform").submit(function (e) {
-        				e.preventDefault();
-        
-        				var formData = {
-        					contactEnquiryFirstName: $("#first_name").val(),
-        					contactEnquiryLastName: $("#last_name").val(),
-        					contactEnquiryPhoneNumber: $("#amobile").val(),
-        					contactEnquiryEmail: $("#email").val(),
-        					contactEnquiryMessage: $("#message").val(),
-        					acountrycode: $("#acountrycode").val(),
-        					adialcode: $("#adialcode").val(),
-        					aisocode: $("#aisocode").val()
-        				};
-        
-        				$.ajax({
-        					url: '/apis/contactEnquiry/0/processing/',
-        					type: 'POST',
-        					data: formData,
-        					success: function (response) {
-        						if (response.code === 1) {
-        							alert("Thank you for your message. We will contact you soon!");
-        							$("#regform")[0].reset();
-        						} else {
-        							alert("Something went wrong. Please try again.");
-        						}
-        					},
-        					error: function () {
-        						alert("An error occurred. Please try again later.");
-        					}
-        				});
-        			});
-        		});
+            // Form submission handler
+            $("#regform").submit(function (e) {
+                e.preventDefault();
+                
+                // Show loader
+                $('.loader-sd').show();
+                $('.mheader, .mcontent').hide();
+
+                var formData = {
+                    contactEnquiryFirstName: $("#first_name").val(),
+                    contactEnquiryLastName: $("#last_name").val(),
+                    contactEnquiryPhoneNumber: $("#amobile").val(),
+                    contactEnquiryEmail: $("#email").val(),
+                    contactEnquiryMessage: $("#message").val()
+                };
+
+                $.ajax({
+                    url: '/apis/contactEnquiry/0/processing/',
+                    type: 'POST',
+                    data: formData,
+                    success: function (response) {
+                        // Hide loader
+                        $('.loader-sd').hide();
+                        $('.mheader, .mcontent').show();
+                        
+                        if (response.code === 1) {
+                            // Show success message
+                            alert("Thank you for your message. We will contact you soon!");
+                            
+                            // Reset form
+                            $("#regform")[0].reset();
+                            
+                            // Close modal after short delay
+                            setTimeout(function() {
+                                contactModal.close();
+                            }, 500);
+                            
+                        } else {
+                            alert("Something went wrong. Please try again.");
+                        }
+                    },
+                    error: function () {
+                        // Hide loader
+                        $('.loader-sd').hide();
+                        $('.mheader, .mcontent').show();
+                        
+                        alert("An error occurred. Please try again later.");
+                    }
+                });
+            });
+        });
     </script>
 
     <div style="display: none" id="grabMe">

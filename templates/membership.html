@@ -553,375 +553,281 @@
               
               <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-    $(document).ready(function() {
-        var memberEnquiryModal;
+$(document).ready(function() {
+    var memberEnquiryModal;
 
-        // Initialize modal with 80% width
-        memberEnquiryModal = new jBox('Modal', {
-            attach: '.interest-btn',
-            content: $('#grabMe'),
-            closeOnClick: false,
-            closeOnEsc: false,
-            width: '80%'
-        });
-    
-        // Capture selected plan details when "Interested" button is clicked
-        $('.interest-btn').on('click', function() {
-            var planId = $(this).data('plan-id');
-            var planName = $(this).data('plan-name');
-            
-            $('#selected-plan-id').val(planId);
-            $('#selected-plan-name').val(planName);
-        });
-    
-        // Form submission via AJAX
-        $('#memberEnquiryForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            var formData = new FormData(this);
-            
-            $.ajax({
-                url: '/apis/memberEnquiry/0/processing/',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.code === 1) {
-                        alert('Enquiry submitted successfully!');
-                        
-                        // Close the modal
-                        if (memberEnquiryModal) {
-                            memberEnquiryModal.close();
-                        }
-                        
-                        // Optional: Reset the form
-                        $('#memberEnquiryForm')[0].reset();
-                    } else {
-                        alert('Unable to submit enquiry. Please try again.');
+    // Initialize modal with 80% width
+    memberEnquiryModal = new jBox('Modal', {
+        attach: '.interest-btn',
+        content: $('#grabMe'),
+        closeOnClick: false,
+        closeOnEsc: true,
+        width: '80%',
+        maxWidth: '800px',
+        height: 'auto'
+    });
+
+    // Capture selected plan details when "Interested" button is clicked
+    $('.interest-btn').on('click', function() {
+        var planId = $(this).data('plan-id');
+        var planName = $(this).data('plan-name');
+        
+        $('#selected-plan-id').val(planId);
+        $('#selected-plan-name').val(planName);
+        
+        // Clear any previous form data
+        $('#memberEnquiryForm')[0].reset();
+        $('#selected-plan-id').val(planId);
+        $('#selected-plan-name').val(planName);
+    });
+
+    // Form submission via AJAX
+    $('#memberEnquiryForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        $('.loader-sd').show();
+        $('.mheader, .mcontent').hide();
+        
+        var formData = new FormData(this);
+        
+        $.ajax({
+            url: '/apis/memberEnquiry/0/processing/',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                // Hide loading state
+                $('.loader-sd').hide();
+                $('.mheader, .mcontent').show();
+                
+                if (response.code === 1) {
+                    // Show success message
+                    alert('Thank you! Your membership enquiry has been submitted successfully. We will contact you soon.');
+                    
+                    // Close the modal
+                    if (memberEnquiryModal) {
+                        memberEnquiryModal.close();
                     }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
+                    
+                    // Reset the form
+                    $('#memberEnquiryForm')[0].reset();
+                } else {
+                    alert('Unable to submit enquiry. Please try again.');
                 }
-            });
+            },
+            error: function(xhr, status, error) {
+                // Hide loading state
+                $('.loader-sd').hide();
+                $('.mheader, .mcontent').show();
+                
+                console.error('Error:', error);
+                alert('An error occurred while submitting your enquiry. Please try again.');
+            }
         });
     });
-    </script>
+
+    // Close modal when clicking outside (optional)
+    $(document).on('click', '.jBox-overlay', function() {
+        if (memberEnquiryModal) {
+            memberEnquiryModal.close();
+        }
+    });
+});
+</script>
                                           
-                                          <div style="display: none" id="grabMe">
-                                  
-                                              <div class="loader-sd">
-                                                  <img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
-                                                  <p>Loading! Please wait!!</p>
-                                              </div>
-                                              
-                                              <div class="mheader">
-                                                  <div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
-                                                      <p class="sub-heading line-shap line-shap-before mb-15">
-                                                          <span class="line-bg-right">Membership Enquiry</span>
-                                                      </p>
-                                                  </div>
-                                              </div>
-                                              
-                                              <div id="grabMe" class="mcontent modal-80-width">
-                                                <form id="memberEnquiryForm" name="regform" class="form" method="post" enctype="multipart/form-data">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" id="selected-plan-id" name="selected_plan_id">
-                                                    <input type="hidden" id="selected-plan-name" name="selected_plan_name">
+    <div style="display: none" id="grabMe">
+        <div class="loader-sd">
+            <img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
+            <p>Loading! Please wait!!</p>
+        </div>
                                             
-                                                    <div class="messages"></div>
-                                                    <div class="input__wrap controls">
-                                                        <div class="form-wrap">
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryFirstName" id="first_name"
-                                                                        placeholder="First name" required="required"
-                                                                        data-error="First name is required.">
-                                                                </div>
-                                                                <label class="error"></label>
-                                                            </div>
-                                                        
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryLastName" id="last_name"
-                                                                        placeholder="Last name" required="required"
-                                                                        data-error="Last name is required.">
-                                                                </div>
-                                                                <label class="error"></label>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="tel" name="memberEnquiryPhoneNumber" id="amobile"
-                                                                        placeholder="Mobile No" required="required"
-                                                                        data-error="Mobile number is required.">
-                                                                    
-                                                                    <input type="hidden" name="acountrycode" id="acountrycode">
-                                                                    <input type="hidden" name="adialcode" id="adialcode">
-                                                                    <input type="hidden" name="aisocode" id="aisocode">
-                                                                </div>
-                                                                <label class="error"></label>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="form-wrap">
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="email" name="memberEnquiryEmail" id="email"
-                                                                        placeholder="Email ID" required="required"
-                                                                        data-error="Valid email is required.">
-                                                                </div>
-                                                                <label class="error"></label>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryAddressLine1" 
-                                                                        placeholder="Address Line 1" required="required">
-                                                                </div>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryAddressLine2" 
-                                                                        placeholder="Address Line 2">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="form-wrap">
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryTown" 
-                                                                        placeholder="Town" required="required">
-                                                                </div>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryPostcode" 
-                                                                        placeholder="Postcode" required="required">
-                                                                </div>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryCounty_or_city" 
-                                                                        placeholder="County/City" required="required">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="form-wrap">
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="date" name="memberEnquiryDateOfBirth" 
-                                                                        placeholder="Date of Birth">
-                                                                </div>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryCompanyName" 
-                                                                        placeholder="Company Name">
-                                                                </div>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryHowDidYouHearAboutOGC" 
-                                                                        placeholder="How did you hear about OGC?">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="form-wrap">
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryNameOfMGCMember" 
-                                                                        placeholder="Name of MGC Member">
-                                                                </div>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryCurrentClub" 
-                                                                        placeholder="Current Club">
-                                                                </div>
-                                                            </div>
-                                                
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <input type="text" name="memberEnquiryHandicap" 
-                                                                        placeholder="Handicap">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="form-wrap">
-                                                            <div class="form-group">
-                                                                <div class="entry-box interest-section">
-                                                                    <label>
-                                                                        <input type="checkbox" name="memberEnquirySocietyDays"> Society Days
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <label>
-                                                                        <input type="checkbox" name="memberEnquiryGroupCoaching"> Group Coaching
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <label>
-                                                                        <input type="checkbox" name="memberEnquiryUkGolfTrips"> UK Golf Trips
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="form-wrap">
-                                                            <div class="form-group">
-                                                                <div class="entry-box">
-                                                                    <label>
-                                                                        <input type="checkbox" name="memberEnquiryGolfAbroad"> Golf Abroad
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="form-wrap">
-                                                            <div class="entry-box">
-                                                                <textarea name="memberEnquiryMessage" 
-                                                                    placeholder="Additional Message"></textarea>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="form-wrap">
-                                                            <div class="entry-box passport-photo-container">
-                                                                <label class="passport-photo-label">Passport Photo</label>
-                                                                <div class="passport-photo-input">
-                                                                    <input type="file" name="passportPhoto" accept="image/*">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            
-                                                        <div class="text-center mt-10 mb-30" style="width: 100%;">
-                                                            <button type="submit" class="dsn-button" style="cursor:pointer;">
-                                                                <span class="dsn-border border-color-default"></span>
-                                                                <span class="text-button">Submit</span>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                          
-                                          </div>
-      
-                                          <footer class="footer p-relative">
-                                      
-                                              <section class="next-page p-relative section-padding border-bottom">
-                                                  <div class="bg-circle-dotted"></div>
-                                                  <div class="bg-circle-dotted bg-circle-dotted-right"></div>
-                                                  <div class="container">
-                                                  
-                                                      <div class="c-wapp d-flex">
-                                                      
-                                                          <div class="d-flex flex-column">
-                                                      
-                                                              <div class="box-info-contact">
-                      
-                                                                  <ul>
-                                                                      <li>
-                                                                          <h5 class="title-block mb-15">Address</h5>
-                                                                          <p class="text-p"><strong>Master Golf Club</strong>,<br>Lorem Hills Road, Lorem Post,<br>Lorem Epsom, Taluk,<br>Lorem, London, 124586.</p>
-                                                                      </li>
-                                                                  </ul>
-                                                              </div>
-                                                          </div>
-                                                          <div class="d-flex flex-column"></div>			
-                                                          <div class="d-flex flex-column"></div>
-                                                          <div class="d-flex flex-column"></div>
-                                                          <div class="d-flex flex-column">
-                                                      
-                                                              <div class="box-info-contact">
-                      
-                                                                  <ul>
-                                                                  
-                                                                      <li>
-                                                                          <h5 class="title-block mb-15">Reservations</h5>
-                                                                          <p class="text-p ">Golf : <a href="tel:+91 72598 06632">+91 12345 12345</a></p>
-                                                                      </li>
-                                                                      
-                                                                  </ul>
-                                                              </div>
-                                                          </div>
-                                                          <div class="d-flex flex-column"></div>			
-                                                          <div class="d-flex flex-column"></div>
-                                                          <div class="d-flex flex-column"></div>
-                                                      
-                                                          <div class="d-flex flex-column">
-                                                      
-                                                              <div class="box-info-contact">
-                      
-                                                                  <ul>
-                                                                      
-                                                                      <li>
-                                                                          <h5 class="title-block mb-15">Membership</h5>
-                                                                          <p class="text-p ">Golf : <a href="tel:+91 76250 31836">+91 12345 12345</a></p>
-                                                                      </li>
-                                                                      
-                                                                  </ul>
-                                                              </div>
-                                                          </div>
-                      
-                                      
-                      
-                                                      </div>
-                                                  
-                                              
-                                                  </div>
-                                              </section>
-                                                          
-                                              <div class="container">
-                                                  <div class="footer-container">
-                                                      <div class="d-flex align-items-center h-100">
-                                                          <div class="column-left">
-                                                              <div class="footer-social p-relative">
-                                                                  <ul>
-                                                                      <li class="over-hidden">
-                                                                          <a href="https://www.facebook.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/facebook.svg' %}" alt=""></a>
-                                                                      </li>
-                                                                      
-                                                                      <li class="over-hidden">
-                                                                          <a href="https://www.youtube.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/youtube.svg' %}" alt=""></a>
-                                                                      </li>
-                                                                      
-                                                                      <li class="over-hidden">
-                                                                          <a href="https://www.linkedin.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/linkedin.svg' %}" alt=""></a>
-                                                                      </li>
-                                                                      
-                                                                      <li class="over-hidden">
-                                                                          <a href="https://twitter.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/twitter.svg' %}" alt=""></a>
-                                                                      </li>
-                                                                      
-                                                                      <li class="over-hidden">
-                                                                          <a href="https://www.instagram.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/instagram.svg' %}" alt=""></a>
-                                                                      </li>
-                                                                  </ul>
-                                                              </div>
-                                                          </div>
-                      
-                                                          <div class="column-right">
-                                                              <h5 data-dsn="parallax">2025 © Master Golf Club. Powered by <a class="link-hover" data-hover-text="Smartxoft" target="_blank" rel="nofollow" href="https://smartxoft.com/">Smartxoft</a>
-                                                              </h5>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </div>
-                                          </footer>
+        <div class="mheader">
+            <div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
+                <p class="sub-heading line-shap line-shap-before mb-15">
+                    <span class="line-bg-right">Membership Enquiry</span>
+                </p>
+            </div>
+        </div>
+        
+        <div id="grabMe" class="mcontent modal-80-width">
+            <form id="memberEnquiryForm" name="regform" class="form" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="csrfmiddlewaretoken" value="">
+                <input type="hidden" id="selected-plan-id" name="selected_plan_id">
+                <input type="hidden" id="selected-plan-name" name="selected_plan_name">
+
+                <div class="messages"></div>
+                <div class="input__wrap controls">
+                    <!-- First Row -->
+                    <div class="form-wrap">
+                        <div class="form-group">
+                            <div class="entry-box">
+                                <input type="text" name="memberEnquiryFirstName" id="first_name"
+                                    placeholder="First name" required="required"
+                                    data-error="First name is required.">
+                            </div>
+                            <label class="error"></label>
+                        </div>
+                    
+                        <div class="form-group">
+                            <div class="entry-box">
+                                <input type="text" name="memberEnquiryLastName" id="last_name"
+                                    placeholder="Last name" required="required"
+                                    data-error="Last name is required.">
+                            </div>
+                            <label class="error"></label>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="entry-box">
+                                <input type="email" name="memberEnquiryEmail" id="email"
+                                    placeholder="Email ID" required="required"
+                                    data-error="Valid email is required.">
+                            </div>
+                            <label class="error"></label>
+                        </div>
+                    </div>
+
+                    <!-- Second Row -->
+                    <div class="form-wrap">
+                        <div class="form-group">
+                            <div class="entry-box">
+                                <input type="tel" name="memberEnquiryPhoneNumber" id="amobile"
+                                    placeholder="Phone Number" required="required"
+                                    data-error="Phone number is required.">
+                            </div>
+                            <label class="error"></label>
+                        </div>
+
+                        <!-- Empty columns for consistent layout -->
+                        <div class="form-group"></div>
+                        <div class="form-group"></div>
+                    </div>
+
+                    <!-- Message Row -->
+                    <div class="form-wrap">
+                        <div class="entry-box" style="width: 100%;">
+                            <textarea name="memberEnquiryMessage" 
+                                placeholder="Additional Message (Optional)" rows="4"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="text-center mt-20 mb-30" style="width: 100%;">
+                        <button type="submit" class="dsn-button" style="cursor:pointer;">
+                            <span class="dsn-border border-color-default"></span>
+                            <span class="text-button">Submit Enquiry</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+        <footer class="footer p-relative">
+    
+            <section class="next-page p-relative section-padding border-bottom">
+                <div class="bg-circle-dotted"></div>
+                <div class="bg-circle-dotted bg-circle-dotted-right"></div>
+                <div class="container">
+                
+                    <div class="c-wapp d-flex">
+                    
+                        <div class="d-flex flex-column">
+                    
+                            <div class="box-info-contact">
+
+                                <ul>
+                                    <li>
+                                        <h5 class="title-block mb-15">Address</h5>
+                                        <p class="text-p"><strong>Master Golf Club</strong>,<br>Lorem Hills Road, Lorem Post,<br>Lorem Epsom, Taluk,<br>Lorem, London, 124586.</p>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column"></div>			
+                        <div class="d-flex flex-column"></div>
+                        <div class="d-flex flex-column"></div>
+                        <div class="d-flex flex-column">
+                    
+                            <div class="box-info-contact">
+
+                                <ul>
+                                
+                                    <li>
+                                        <h5 class="title-block mb-15">Reservations</h5>
+                                        <p class="text-p ">Golf : <a href="tel:+91 72598 06632">+91 12345 12345</a></p>
+                                    </li>
+                                    
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column"></div>			
+                        <div class="d-flex flex-column"></div>
+                        <div class="d-flex flex-column"></div>
+                    
+                        <div class="d-flex flex-column">
+                    
+                            <div class="box-info-contact">
+
+                                <ul>
+                                    
+                                    <li>
+                                        <h5 class="title-block mb-15">Membership</h5>
+                                        <p class="text-p ">Golf : <a href="tel:+91 76250 31836">+91 12345 12345</a></p>
+                                    </li>
+                                    
+                                </ul>
+                            </div>
+                        </div>
+
+    
+
+                    </div>
+                
+            
+                </div>
+            </section>
+                        
+            <div class="container">
+                <div class="footer-container">
+                    <div class="d-flex align-items-center h-100">
+                        <div class="column-left">
+                            <div class="footer-social p-relative">
+                                <ul>
+                                    <li class="over-hidden">
+                                        <a href="https://www.facebook.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/facebook.svg' %}" alt=""></a>
+                                    </li>
+                                    
+                                    <li class="over-hidden">
+                                        <a href="https://www.youtube.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/youtube.svg' %}" alt=""></a>
+                                    </li>
+                                    
+                                    <li class="over-hidden">
+                                        <a href="https://www.linkedin.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/linkedin.svg' %}" alt=""></a>
+                                    </li>
+                                    
+                                    <li class="over-hidden">
+                                        <a href="https://twitter.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/twitter.svg' %}" alt=""></a>
+                                    </li>
+                                    
+                                    <li class="over-hidden">
+                                        <a href="https://www.instagram.com/" data-dsn="parallax" target="_blank" rel="nofollow"><img src="{% static 'img/instagram.svg' %}" alt=""></a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="column-right">
+                            <h5 data-dsn="parallax">2025 © Master Golf Club. Powered by <a class="link-hover" data-hover-text="Smartxoft" target="_blank" rel="nofollow" href="https://smartxoft.com/">Smartxoft</a>
+                            </h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
   
       </div>
       </div>

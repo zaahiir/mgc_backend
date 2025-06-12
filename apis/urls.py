@@ -22,8 +22,6 @@ router.register('collection', CollectionViewSet, basename='collection'),
 router.register('blog', BlogViewSet, basename='blog'),
 router.register('concept', ConceptViewSet, basename='concept'),
 router.register('contactEnquiry', ContactEnquiryViewSet, basename='contactEnquiry'),
-router.register('memberEnquiry', MemberEnquiryViewSet, basename='memberEnquiry'),
-
 
 urlpatterns = [
     path('', include(router.urls)),

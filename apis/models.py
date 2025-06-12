@@ -3,6 +3,7 @@ from tinymce.models import HTMLField
 from django.core.validators import MaxValueValidator
 from django.db import transaction
 import uuid
+import datetime
 
 
 # Start of Master
@@ -273,29 +274,26 @@ class ContactEnquiryModel(models.Model):
 
 class MemberEnquiryModel(models.Model):
     memberEnquiryDate = models.DateField(auto_now_add=True)
-    memberEnquiryPlan = models.ForeignKey(PlanModel, on_delete=models.CASCADE, null=True, blank=True,
-                                          related_name="memberEnquiryPlan")
-    memberEnquiryFirstName = models.CharField(max_length=255)
-    memberEnquiryLastName = models.CharField(max_length=255)
-    memberEnquiryPhoneNumber = models.CharField(max_length=20, null=True, blank=True)
+    memberEnquiryPlan = models.ForeignKey(
+        PlanModel, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True,
+        related_name="memberEnquiryPlan"
+    )
+    memberEnquiryFirstName = models.CharField(max_length=150, null=True, blank=True)
+    memberEnquiryLastName = models.CharField(max_length=150, null=True, blank=True)
     memberEnquiryEmail = models.EmailField(null=True, blank=True)
-    memberEnquiryAddressLine1 = models.CharField(max_length=255)
-    memberEnquiryAddressLine2 = models.CharField(max_length=255, null=True, blank=True)
-    memberEnquiryTown = models.CharField(max_length=100)
-    memberEnquiryPostcode = models.CharField(max_length=20)
-    memberEnquiryCounty_or_city = models.CharField(max_length=100)
-    memberEnquiryDateOfBirth = models.DateField(null=True, blank=True)
-    memberEnquiryCompanyName = models.CharField(max_length=255, null=True, blank=True)
-    memberEnquiryHowDidYouHearAboutOGC = models.CharField(max_length=255, null=True, blank=True)
-    memberEnquiryNameOfMGCMember = models.CharField(max_length=255, null=True, blank=True)
-    memberEnquiryCurrentClub = models.CharField(max_length=255, null=True, blank=True)
-    memberEnquiryHandicap = models.CharField(max_length=10, null=True, blank=True)
-    memberEnquirySocietyDays = models.BooleanField(default=False)
-    memberEnquiryGroupCoaching = models.BooleanField(default=False)
-    memberEnquiryUkGolfTrips = models.BooleanField(default=False)
-    memberEnquiryGolfAbroad = models.BooleanField(default=False)
-    memberEnquiryMessage = models.TextField()
-    passportPhoto = models.ImageField(upload_to='member_photos/', null=True, blank=True)
+    memberEnquiryPhoneNumber = models.CharField(max_length=20, null=True, blank=True)
+    memberEnquiryMessage = models.TextField(null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.memberEnquiryFirstName} {self.memberEnquiryLastName} - {self.memberEnquiryPlan}"
+
+    class Meta:
+        verbose_name = "Member Enquiry"
+        verbose_name_plural = "Member Enquiries"
+        ordering = ['-createdAt']

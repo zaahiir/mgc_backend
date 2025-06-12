@@ -362,20 +362,59 @@ class ContactEnquiryModelSerializers(serializers.ModelSerializer):
 
 
 class MemberEnquiryModelSerializers(serializers.ModelSerializer):
-    selected_plan_id = serializers.IntegerField(write_only=True)
-    memberEnquiryPlan = serializers.PrimaryKeyRelatedField(queryset=PlanModel.objects.all())
+    selected_plan_id = serializers.IntegerField(write_only=True, required=False)
+    memberEnquiryPlan = serializers.PrimaryKeyRelatedField(
+        queryset=PlanModel.objects.all(), 
+        required=False, 
+        allow_null=True
+    )
 
     class Meta:
         model = MemberEnquiryModel
-        fields = '__all__'
+        fields = [
+            'id',
+            'memberEnquiryDate',
+            'memberEnquiryPlan',
+            'memberEnquiryFirstName',
+            'memberEnquiryLastName',
+            'memberEnquiryEmail',
+            'memberEnquiryPhoneNumber',
+            'memberEnquiryMessage',
+            'selected_plan_id',
+            'createdAt',
+            'updatedAt'
+        ]
+        read_only_fields = ['id', 'memberEnquiryDate', 'createdAt', 'updatedAt']
 
     def create(self, validated_data):
-        plan_id = validated_data.pop('selected_plan_id', None)
-        if plan_id:
-            validated_data['memberEnquiryPlan'] = PlanModel.objects.get(id=plan_id)
+        selected_plan_id = validated_data.pop('selected_plan_id', None)
+        if selected_plan_id:
+            try:
+                plan = PlanModel.objects.get(id=selected_plan_id)
+                validated_data['memberEnquiryPlan'] = plan
+            except PlanModel.DoesNotExist:
+                pass  # Handle plan not found gracefully
+        
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        selected_plan_id = validated_data.pop('selected_plan_id', None)
+        if selected_plan_id:
+            try:
+                plan = PlanModel.objects.get(id=selected_plan_id)
+                validated_data['memberEnquiryPlan'] = plan
+            except PlanModel.DoesNotExist:
+                pass  # Handle plan not found gracefully
+        
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['memberEnquiryPlan'] = instance.memberEnquiryPlan.planName if instance.memberEnquiryPlan else None
+        if instance.memberEnquiryPlan:
+            representation['memberEnquiryPlan'] = {
+                'id': instance.memberEnquiryPlan.id,
+                'planName': instance.memberEnquiryPlan.planName
+            }
+        else:
+            representation['memberEnquiryPlan'] = None
         return representation

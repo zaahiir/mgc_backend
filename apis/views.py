@@ -1400,35 +1400,108 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
-        if pk == "0":
-            serializer = MemberEnquiryModelSerializers(MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id'),
-                                                       many=True)
-        else:
-            serializer = MemberEnquiryModelSerializers(
-                MemberEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id'),
-                many=True)
-        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
-        return Response(response)
+        try:
+            if pk == "0":
+                queryset = MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id')
+            else:
+                queryset = MemberEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id')
+            
+            serializer = MemberEnquiryModelSerializers(queryset, many=True)
+            response = {
+                'code': 1, 
+                'data': serializer.data, 
+                'message': "All Retrieved Successfully"
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error in listing member enquiries: {str(e)}")
+            response = {
+                'code': 0, 
+                'message': "Unable to retrieve data",
+                'error': str(e)
+            }
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
-        if pk == "0":
-            serializer = MemberEnquiryModelSerializers(data=request.data)
-        else:
-            serializer = MemberEnquiryModelSerializers(instance=MemberEnquiryModel.objects.get(id=pk),
-                                                       data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            response = {'code': 1, 'message': "Done Successfully"}
-        else:
-            response = {'code': 0, 'message': "Unable to Process Request"}
-        return Response(response)
+        try:
+            if pk == "0":
+                # Create new enquiry
+                serializer = MemberEnquiryModelSerializers(data=request.data)
+            else:
+                # Update existing enquiry
+                try:
+                    instance = MemberEnquiryModel.objects.get(id=pk, hideStatus=0)
+                    serializer = MemberEnquiryModelSerializers(instance=instance, data=request.data, partial=True)
+                except MemberEnquiryModel.DoesNotExist:
+                    response = {
+                        'code': 0, 
+                        'message': "Enquiry not found"
+                    }
+                    return Response(response, status=status.HTTP_404_NOT_FOUND)
+            
+            if serializer.is_valid():
+                enquiry = serializer.save()
+                response = {
+                    'code': 1, 
+                    'message': "Enquiry processed successfully",
+                    'data': {
+                        'id': enquiry.id,
+                        'memberEnquiryFirstName': enquiry.memberEnquiryFirstName,
+                        'memberEnquiryLastName': enquiry.memberEnquiryLastName,
+                        'memberEnquiryEmail': enquiry.memberEnquiryEmail
+                    }
+                }
+                return Response(response, status=status.HTTP_201_CREATED if pk == "0" else status.HTTP_200_OK)
+            else:
+                response = {
+                    'code': 0, 
+                    'message': "Invalid data provided",
+                    'errors': serializer.errors
+                }
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            logger.error(f"Error in processing member enquiry: {str(e)}")
+            response = {
+                'code': 0, 
+                'message': "Unable to process request",
+                'error': str(e)
+            }
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['GET'])
     def deletion(self, request, pk=None):
-        MemberEnquiryModel.objects.filter(id=pk).update(hideStatus=1)
-        response = {'code': 1, 'message': "Done Successfully"}
-        return Response(response)
+        try:
+            if pk and pk != "0":
+                updated_count = MemberEnquiryModel.objects.filter(id=pk, hideStatus=0).update(hideStatus=1)
+                if updated_count > 0:
+                    response = {
+                        'code': 1, 
+                        'message': "Enquiry deleted successfully"
+                    }
+                    return Response(response, status=status.HTTP_200_OK)
+                else:
+                    response = {
+                        'code': 0, 
+                        'message': "Enquiry not found"
+                    }
+                    return Response(response, status=status.HTTP_404_NOT_FOUND)
+            else:
+                response = {
+                    'code': 0, 
+                    'message': "Invalid enquiry ID"
+                }
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            logger.error(f"Error in deleting member enquiry: {str(e)}")
+            response = {
+                'code': 0, 
+                'message': "Unable to delete enquiry",
+                'error': str(e)
+            }
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def index_view(request):
