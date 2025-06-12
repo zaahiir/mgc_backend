@@ -27,6 +27,7 @@ from django.db.models import Prefetch
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import os
+from django.shortcuts import get_object_or_404
 
 logger = logging.getLogger(__name__)
 
@@ -1398,111 +1399,74 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
     queryset = MemberEnquiryModel.objects.filter(hideStatus=0)
     serializer_class = MemberEnquiryModelSerializers
 
-    @action(detail=True, methods=['GET'])
-    def listing(self, request, pk=None):
-        try:
-            if pk == "0":
-                queryset = MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id')
-            else:
-                queryset = MemberEnquiryModel.objects.filter(hideStatus=0, id=pk).order_by('-id')
-            
+    @action(detail=False, methods=['GET'], url_path='(?P<enquiry_id>[^/.]+)/listing')
+    def listing(self, request, enquiry_id=None):
+        """
+        List member enquiries
+        URL: /apis/memberEnquiry/0/listing/ or /apis/memberEnquiry/{id}/listing/
+        """
+        if enquiry_id == "0":
+            queryset = MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id')
             serializer = MemberEnquiryModelSerializers(queryset, many=True)
-            response = {
-                'code': 1, 
-                'data': serializer.data, 
-                'message': "All Retrieved Successfully"
-            }
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error in listing member enquiries: {str(e)}")
-            response = {
-                'code': 0, 
-                'message': "Unable to retrieve data",
-                'error': str(e)
-            }
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            queryset = MemberEnquiryModel.objects.filter(hideStatus=0, id=enquiry_id).order_by('-id')
+            serializer = MemberEnquiryModelSerializers(queryset, many=True)
+        
+        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
+        return Response(response)
 
-    @action(detail=True, methods=['POST'])
-    def processing(self, request, pk=None):
+    @action(detail=False, methods=['POST'], url_path='(?P<enquiry_id>[^/.]+)/processing')
+    def processing(self, request, enquiry_id=None):
+        """
+        Process member enquiry (create or update)
+        URL: /apis/memberEnquiry/0/processing/ (create) or /apis/memberEnquiry/{id}/processing/ (update)
+        """
         try:
-            if pk == "0":
-                # Create new enquiry
+            if enquiry_id == "0":
+                # Creating new enquiry
                 serializer = MemberEnquiryModelSerializers(data=request.data)
             else:
-                # Update existing enquiry
-                try:
-                    instance = MemberEnquiryModel.objects.get(id=pk, hideStatus=0)
-                    serializer = MemberEnquiryModelSerializers(instance=instance, data=request.data, partial=True)
-                except MemberEnquiryModel.DoesNotExist:
-                    response = {
-                        'code': 0, 
-                        'message': "Enquiry not found"
-                    }
-                    return Response(response, status=status.HTTP_404_NOT_FOUND)
+                # Updating existing enquiry
+                instance = get_object_or_404(MemberEnquiryModel, id=enquiry_id, hideStatus=0)
+                serializer = MemberEnquiryModelSerializers(instance=instance, data=request.data, partial=True)
             
             if serializer.is_valid():
-                enquiry = serializer.save()
-                response = {
-                    'code': 1, 
-                    'message': "Enquiry processed successfully",
-                    'data': {
-                        'id': enquiry.id,
-                        'memberEnquiryFirstName': enquiry.memberEnquiryFirstName,
-                        'memberEnquiryLastName': enquiry.memberEnquiryLastName,
-                        'memberEnquiryEmail': enquiry.memberEnquiryEmail
-                    }
-                }
-                return Response(response, status=status.HTTP_201_CREATED if pk == "0" else status.HTTP_200_OK)
+                serializer.save()
+                response = {'code': 1, 'message': "Done Successfully", 'data': serializer.data}
+                return Response(response, status=status.HTTP_200_OK)
             else:
                 response = {
                     'code': 0, 
-                    'message': "Invalid data provided",
+                    'message': "Unable to Process Request",
                     'errors': serializer.errors
                 }
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
                 
+        except MemberEnquiryModel.DoesNotExist:
+            response = {'code': 0, 'message': "Enquiry not found"}
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logger.error(f"Error in processing member enquiry: {str(e)}")
-            response = {
-                'code': 0, 
-                'message': "Unable to process request",
-                'error': str(e)
-            }
+            response = {'code': 0, 'message': f"Error: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['GET'])
-    def deletion(self, request, pk=None):
+    @action(detail=False, methods=['GET'], url_path='(?P<enquiry_id>[^/.]+)/deletion')
+    def deletion(self, request, enquiry_id=None):
+        """
+        Soft delete member enquiry
+        URL: /apis/memberEnquiry/{id}/deletion/
+        """
         try:
-            if pk and pk != "0":
-                updated_count = MemberEnquiryModel.objects.filter(id=pk, hideStatus=0).update(hideStatus=1)
-                if updated_count > 0:
-                    response = {
-                        'code': 1, 
-                        'message': "Enquiry deleted successfully"
-                    }
-                    return Response(response, status=status.HTTP_200_OK)
-                else:
-                    response = {
-                        'code': 0, 
-                        'message': "Enquiry not found"
-                    }
-                    return Response(response, status=status.HTTP_404_NOT_FOUND)
+            affected_rows = MemberEnquiryModel.objects.filter(id=enquiry_id, hideStatus=0).update(hideStatus=1)
+            if affected_rows > 0:
+                response = {'code': 1, 'message': "Done Successfully"}
+                return Response(response, status=status.HTTP_200_OK)
             else:
-                response = {
-                    'code': 0, 
-                    'message': "Invalid enquiry ID"
-                }
-                return Response(response, status=status.HTTP_400_BAD_REQUEST)
-                
+                response = {'code': 0, 'message': "Enquiry not found"}
+                return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logger.error(f"Error in deleting member enquiry: {str(e)}")
-            response = {
-                'code': 0, 
-                'message': "Unable to delete enquiry",
-                'error': str(e)
-            }
+            response = {'code': 0, 'message': f"Error: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        
 
 def index_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')

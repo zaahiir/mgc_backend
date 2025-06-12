@@ -363,58 +363,44 @@ class ContactEnquiryModelSerializers(serializers.ModelSerializer):
 
 class MemberEnquiryModelSerializers(serializers.ModelSerializer):
     selected_plan_id = serializers.IntegerField(write_only=True, required=False)
-    memberEnquiryPlan = serializers.PrimaryKeyRelatedField(
-        queryset=PlanModel.objects.all(), 
-        required=False, 
-        allow_null=True
-    )
-
+    selected_plan_name = serializers.CharField(write_only=True, required=False)
+    
     class Meta:
         model = MemberEnquiryModel
-        fields = [
-            'id',
-            'memberEnquiryDate',
-            'memberEnquiryPlan',
-            'memberEnquiryFirstName',
-            'memberEnquiryLastName',
-            'memberEnquiryEmail',
-            'memberEnquiryPhoneNumber',
-            'memberEnquiryMessage',
-            'selected_plan_id',
-            'createdAt',
-            'updatedAt'
-        ]
-        read_only_fields = ['id', 'memberEnquiryDate', 'createdAt', 'updatedAt']
+        fields = '__all__'
+        extra_kwargs = {
+            'memberEnquiryPlan': {'required': False}
+        }
 
     def create(self, validated_data):
-        selected_plan_id = validated_data.pop('selected_plan_id', None)
-        if selected_plan_id:
+        # Handle plan assignment from selected_plan_id
+        plan_id = validated_data.pop('selected_plan_id', None)
+        validated_data.pop('selected_plan_name', None)  # Remove plan name as it's not needed for creation
+        
+        if plan_id:
             try:
-                plan = PlanModel.objects.get(id=selected_plan_id)
+                plan = PlanModel.objects.get(id=plan_id)
                 validated_data['memberEnquiryPlan'] = plan
             except PlanModel.DoesNotExist:
-                pass  # Handle plan not found gracefully
+                pass  # Plan will remain None if not found
         
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        selected_plan_id = validated_data.pop('selected_plan_id', None)
-        if selected_plan_id:
+        # Handle plan assignment from selected_plan_id for updates
+        plan_id = validated_data.pop('selected_plan_id', None)
+        validated_data.pop('selected_plan_name', None)  # Remove plan name as it's not needed for update
+        
+        if plan_id:
             try:
-                plan = PlanModel.objects.get(id=selected_plan_id)
+                plan = PlanModel.objects.get(id=plan_id)
                 validated_data['memberEnquiryPlan'] = plan
             except PlanModel.DoesNotExist:
-                pass  # Handle plan not found gracefully
+                pass  # Keep existing plan if new one not found
         
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        if instance.memberEnquiryPlan:
-            representation['memberEnquiryPlan'] = {
-                'id': instance.memberEnquiryPlan.id,
-                'planName': instance.memberEnquiryPlan.planName
-            }
-        else:
-            representation['memberEnquiryPlan'] = None
+        representation['memberEnquiryPlan'] = instance.memberEnquiryPlan.planName if instance.memberEnquiryPlan else None
         return representation

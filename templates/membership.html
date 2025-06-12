@@ -192,7 +192,7 @@
                       <div class="nav-menu nav-content">
                           <div class="nav-menu-inner p-relative">
                               <ul>
-                                  <li><a href="https://mastergolf.lajix.com/" class="menu-link" data-section="about">MGC</a></li>
+                                  <li><a href="https://mastergolfclub.com/" class="menu-link" data-section="about">MGC</a></li>
                               </ul>
                           </div>
                       </div>
@@ -207,7 +207,7 @@
                   <div class="menu-icon d-flex align-items-baseline">
                       <div class="text-menu tee-time p-relative font-heading text-transform-upper btea-time">
                           <div class="image-zoom w-auto d-inline-block" data-dsn="parallax">
-                              <a href="https://mastergolf.lajix.com/member/login" target="_blank" class="dsn-button ">
+                              <a href="https://member.mastergolfclub.com/" target="_blank" class="dsn-button ">
                                    <span class="dsn-border border-color-default"></span>
                                    <span class="text-button">Member Login</span>
                               </a>
@@ -235,7 +235,7 @@
                       <ul class="extend-container p-relative d-flex flex-column justify-content-center h-100">
   
                           <li>
-                              <a href="https://mastergolf.lajix.com/" class="user-no-selection">
+                              <a href="https://member.mastergolfclub.com/" class="user-no-selection">
                                   <span class="dsn-title-menu">MGC</span>
                               </a>
                           </li>
@@ -534,17 +534,6 @@
                                   </div>
   
                               </div>
-                              
-                              
-                              
-                              
-                              
-                              
-                              
-                              
-                              
-                              
-                              
                           </div>
                       </section>
                       
@@ -552,178 +541,273 @@
               </div>     
               
               <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
+            <script>
 $(document).ready(function() {
     var memberEnquiryModal;
 
-    // Initialize modal with 80% width
-    memberEnquiryModal = new jBox('Modal', {
-        attach: '.interest-btn',
-        content: $('#grabMe'),
-        closeOnClick: false,
-        closeOnEsc: true,
-        width: '80%',
-        maxWidth: '800px',
-        height: 'auto'
-    });
+    try {
+        // Initialize modal with 80% width
+        memberEnquiryModal = new jBox('Modal', {
+            content: $('#grabMe'),
+            closeOnClick: false,
+            closeOnEsc: true,
+            width: '80%',
+            maxWidth: '800px',
+            height: 'auto',
+            overlay: true,
+            animation: 'zoomIn',
+            preventDefault: true
+        });
 
-    // Capture selected plan details when "Interested" button is clicked
-    $('.interest-btn').on('click', function() {
-        var planId = $(this).data('plan-id');
-        var planName = $(this).data('plan-name');
-        
-        $('#selected-plan-id').val(planId);
-        $('#selected-plan-name').val(planName);
-        
-        // Clear any previous form data
-        $('#memberEnquiryForm')[0].reset();
-        $('#selected-plan-id').val(planId);
-        $('#selected-plan-name').val(planName);
-    });
+        // Capture selected plan details when "Interested" button is clicked
+        $('.interest-btn').on('click', function(e) {
+            e.preventDefault();
+            
+            var planId = $(this).data('plan-id');
+            var planName = $(this).data('plan-name');
+            
+            console.log('Selected Plan ID:', planId, 'Plan Name:', planName);
+            
+            // Set the selected plan details
+            $('#selected-plan-id').val(planId);
+            $('#selected-plan-name').val(planName);
+            
+            // Clear any previous form data but keep plan info
+            $('#memberEnquiryForm')[0].reset();
+            $('#selected-plan-id').val(planId);
+            $('#selected-plan-name').val(planName);
+            
+            // Hide loading state and show form
+            $('.loader-sd').hide();
+            $('.mheader, .mcontent').show();
+            
+            // Open the modal
+            memberEnquiryModal.open();
+        });
 
-    // Form submission via AJAX
-    $('#memberEnquiryForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Show loading state
-        $('.loader-sd').show();
-        $('.mheader, .mcontent').hide();
-        
-        var formData = new FormData(this);
-        
-        $.ajax({
-            url: '/apis/memberEnquiry/0/processing/',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                // Hide loading state
-                $('.loader-sd').hide();
-                $('.mheader, .mcontent').show();
-                
-                if (response.code === 1) {
-                    // Show success message
-                    alert('Thank you! Your membership enquiry has been submitted successfully. We will contact you soon.');
+        // Form submission via AJAX
+        $('#memberEnquiryForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            console.log('Form submitted');
+            
+            // Show loading state
+            $('.loader-sd').show();
+            $('.mheader, .mcontent').hide();
+            
+            var formData = new FormData(this);
+            
+            // Debug: Log form data
+            for (var pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+            
+            // Get CSRF token
+            var csrfToken = $('[name=csrfmiddlewaretoken]').val();
+            if (!csrfToken) {
+                csrfToken = $('meta[name=csrf-token]').attr('content');
+            }
+            
+            // Use the correct API URL - note the trailing slash
+            var apiUrl = '/apis/memberEnquiry/processing/0/';
+            
+            $.ajax({
+                url: apiUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                success: function(response) {
+                    console.log('Success response:', response);
                     
-                    // Close the modal
-                    if (memberEnquiryModal) {
-                        memberEnquiryModal.close();
+                    // Hide loading state
+                    $('.loader-sd').hide();
+                    $('.mheader, .mcontent').show();
+                    
+                    if (response && (response.code === 1 || response.code == 1)) {
+                        // Show success message
+                        alert('Thank you! Your membership enquiry has been submitted successfully. We will contact you soon.');
+                        
+                        // Close the modal
+                        if (memberEnquiryModal) {
+                            memberEnquiryModal.close();
+                        }
+                        
+                        // Reset the form
+                        $('#memberEnquiryForm')[0].reset();
+                    } else {
+                        // Handle validation errors
+                        var errorMessage = 'Unable to submit enquiry. Please check the following:\n';
+                        if (response.errors) {
+                            for (var field in response.errors) {
+                                if (response.errors[field]) {
+                                    errorMessage += '- ' + field + ': ' + response.errors[field].join(', ') + '\n';
+                                }
+                            }
+                        } else if (response.message) {
+                            errorMessage = response.message;
+                        }
+                        alert(errorMessage);
+                        console.log('Response errors:', response.errors || response.message);
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', error);
+                    console.error('Status:', status);
+                    console.error('Response Text:', xhr.responseText);
+                    console.error('XHR Status:', xhr.status);
                     
-                    // Reset the form
-                    $('#memberEnquiryForm')[0].reset();
-                } else {
-                    alert('Unable to submit enquiry. Please try again.');
+                    // Hide loading state
+                    $('.loader-sd').hide();
+                    $('.mheader, .mcontent').show();
+                    
+                    // Handle different error scenarios
+                    if (xhr.status === 404) {
+                        alert('API endpoint not found. Please check the URL configuration.');
+                        console.error('API URL used:', apiUrl);
+                    } else if (xhr.status === 403) {
+                        alert('Access forbidden. Please check CSRF token configuration.');
+                    } else if (xhr.status === 500) {
+                        alert('Server error occurred. Please try again later.');
+                    } else {
+                        // Try to parse error response
+                        try {
+                            var errorResponse = JSON.parse(xhr.responseText);
+                            console.error('Parsed error response:', errorResponse);
+                            
+                            if (errorResponse.errors) {
+                                var errorMessages = [];
+                                for (var field in errorResponse.errors) {
+                                    errorMessages.push(field + ': ' + errorResponse.errors[field].join(', '));
+                                }
+                                alert('Please correct the following errors:\n' + errorMessages.join('\n'));
+                            } else {
+                                alert('Error: ' + (errorResponse.message || 'Unknown error occurred'));
+                            }
+                        } catch (parseError) {
+                            console.error('Could not parse error response:', parseError);
+                            alert('An error occurred while submitting your enquiry. Please try again.');
+                        }
+                    }
                 }
-            },
-            error: function(xhr, status, error) {
-                // Hide loading state
-                $('.loader-sd').hide();
-                $('.mheader, .mcontent').show();
-                
-                console.error('Error:', error);
-                alert('An error occurred while submitting your enquiry. Please try again.');
+            });
+        });
+
+        // Close modal when clicking the overlay
+        $(document).on('click', '.jBox-overlay', function() {
+            if (memberEnquiryModal) {
+                memberEnquiryModal.close();
             }
         });
-    });
 
-    // Close modal when clicking outside (optional)
-    $(document).on('click', '.jBox-overlay', function() {
-        if (memberEnquiryModal) {
-            memberEnquiryModal.close();
-        }
-    });
+    } catch (error) {
+        console.error('Error initializing modal:', error);
+        
+        // Fallback: Simple click handler without modal
+        $('.interest-btn').on('click', function(e) {
+            e.preventDefault();
+            var planName = $(this).data('plan-name');
+            alert('Interest in: ' + planName + '\nModal initialization failed. Please check jBox library.');
+        });
+    }
 });
 </script>
                                           
     <div style="display: none" id="grabMe">
-        <div class="loader-sd">
-            <img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
-            <p>Loading! Please wait!!</p>
-        </div>
-                                            
-        <div class="mheader">
-            <div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
-                <p class="sub-heading line-shap line-shap-before mb-15">
-                    <span class="line-bg-right">Membership Enquiry</span>
-                </p>
-            </div>
-        </div>
-        
-        <div id="grabMe" class="mcontent modal-80-width">
-            <form id="memberEnquiryForm" name="regform" class="form" method="post" enctype="multipart/form-data">
-                <input type="hidden" name="csrfmiddlewaretoken" value="">
-                <input type="hidden" id="selected-plan-id" name="selected_plan_id">
-                <input type="hidden" id="selected-plan-name" name="selected_plan_name">
-
-                <div class="messages"></div>
-                <div class="input__wrap controls">
-                    <!-- First Row -->
-                    <div class="form-wrap">
-                        <div class="form-group">
-                            <div class="entry-box">
-                                <input type="text" name="memberEnquiryFirstName" id="first_name"
-                                    placeholder="First name" required="required"
-                                    data-error="First name is required.">
-                            </div>
-                            <label class="error"></label>
-                        </div>
-                    
-                        <div class="form-group">
-                            <div class="entry-box">
-                                <input type="text" name="memberEnquiryLastName" id="last_name"
-                                    placeholder="Last name" required="required"
-                                    data-error="Last name is required.">
-                            </div>
-                            <label class="error"></label>
-                        </div>
-
-                        <div class="form-group">
-                            <div class="entry-box">
-                                <input type="email" name="memberEnquiryEmail" id="email"
-                                    placeholder="Email ID" required="required"
-                                    data-error="Valid email is required.">
-                            </div>
-                            <label class="error"></label>
-                        </div>
-                    </div>
-
-                    <!-- Second Row -->
-                    <div class="form-wrap">
-                        <div class="form-group">
-                            <div class="entry-box">
-                                <input type="tel" name="memberEnquiryPhoneNumber" id="amobile"
-                                    placeholder="Phone Number" required="required"
-                                    data-error="Phone number is required.">
-                            </div>
-                            <label class="error"></label>
-                        </div>
-
-                        <!-- Empty columns for consistent layout -->
-                        <div class="form-group"></div>
-                        <div class="form-group"></div>
-                    </div>
-
-                    <!-- Message Row -->
-                    <div class="form-wrap">
-                        <div class="entry-box" style="width: 100%;">
-                            <textarea name="memberEnquiryMessage" 
-                                placeholder="Additional Message (Optional)" rows="4"></textarea>
-                        </div>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <div class="text-center mt-20 mb-30" style="width: 100%;">
-                        <button type="submit" class="dsn-button" style="cursor:pointer;">
-                            <span class="dsn-border border-color-default"></span>
-                            <span class="text-button">Submit Enquiry</span>
-                        </button>
-                    </div>
-                </div>
-            </form>
+    <div class="loader-sd" style="text-align: center; padding: 20px;">
+        <img src="{% static 'img/loader.gif' %}" alt="loader" style="max-width: 80px;">
+        <p>Loading! Please wait!!</p>
+    </div>
+                                        
+    <div class="mheader">
+        <div class="mb-10 mt-20 d-flex text-center flex-column align-items-center">
+            <p class="sub-heading line-shap line-shap-before mb-15">
+                <span class="line-bg-right">Membership Enquiry</span>
+            </p>
         </div>
     </div>
+    
+    <div class="mcontent modal-80-width">
+        <form id="memberEnquiryForm" name="regform" class="form" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="selected-plan-id" name="selected_plan_id">
+            <input type="hidden" id="selected-plan-name" name="selected_plan_name">
+
+            <div class="messages"></div>
+            <div class="input__wrap controls">
+                <!-- First Row -->
+                <div class="form-wrap">
+                    <div class="form-group">
+                        <div class="entry-box">
+                            <input type="text" name="memberEnquiryFirstName" id="first_name"
+                                placeholder="First name" required="required"
+                                data-error="First name is required."
+                                maxlength="150">
+                        </div>
+                        <label class="error"></label>
+                    </div>
+                
+                    <div class="form-group">
+                        <div class="entry-box">
+                            <input type="text" name="memberEnquiryLastName" id="last_name"
+                                placeholder="Last name" required="required"
+                                data-error="Last name is required."
+                                maxlength="150">
+                        </div>
+                        <label class="error"></label>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="entry-box">
+                            <input type="email" name="memberEnquiryEmail" id="email"
+                                placeholder="Email ID" required="required"
+                                data-error="Valid email is required.">
+                        </div>
+                        <label class="error"></label>
+                    </div>
+                </div>
+
+                <!-- Second Row -->
+                <div class="form-wrap">
+                    <div class="form-group">
+                        <div class="entry-box">
+                            <input type="tel" name="memberEnquiryPhoneNumber" id="amobile"
+                                placeholder="Phone Number" required="required"
+                                data-error="Phone number is required."
+                                maxlength="20">
+                        </div>
+                        <label class="error"></label>
+                    </div>
+
+                    <!-- Empty columns for consistent layout -->
+                    <div class="form-group"></div>
+                    <div class="form-group"></div>
+                </div>
+
+                <!-- Message Row -->
+                <div class="form-wrap">
+                    <div class="entry-box" style="width: 100%;">
+                        <textarea name="memberEnquiryMessage" 
+                            placeholder="Additional Message (Optional)" 
+                            rows="4"
+                            maxlength="1000"></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="text-center mt-20 mb-30" style="width: 100%;">
+                    <button type="submit" class="dsn-button" style="cursor:pointer;" id="submit-btn">
+                        <span class="dsn-border border-color-default"></span>
+                        <span class="text-button">Submit Enquiry</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
 
         <footer class="footer p-relative">
@@ -876,7 +960,3 @@ $(document).ready(function() {
   
   </html> 
   
-  
-  
-  
-                                          

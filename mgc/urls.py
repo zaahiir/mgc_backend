@@ -11,12 +11,14 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = [
     path('', index_view, name='home'),
-    path('membership', membership_view, name='membership'),
-    path('news/<int:blog_id>', blog_detail_view, name='blog_detail'),
+    path('membership/', membership_view, name='membership'),  # Added trailing slash
+    path('news/<int:blog_id>/', blog_detail_view, name='blog_detail'),  # Added trailing slash
     path('member/verify/<str:qr_token>/', TemplateView.as_view(template_name='member_verify.html'), name='member_verify'),
     path('tinymce/', include('tinymce.urls')),
     path('admin/', admin.site.urls),
-    path('apis/', include('apis.urls')),
+    path('apis/', include('apis.urls')),  # This includes all the router URLs
+    
+    # Separate auth endpoints
     path('apis/login/', UserViewSet.as_view({'post': 'login'}), name='login'),
     path('apis/logout/', UserViewSet.as_view({'post': 'logout'}), name='logout'),
     path('apis/member_login/', UserViewSet.as_view({'post': 'member_login'}), name='member_login'),
