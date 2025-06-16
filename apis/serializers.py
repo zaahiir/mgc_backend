@@ -92,7 +92,7 @@ class MemberModelSerializers(serializers.ModelSerializer):
         representation['paymentMethod'] = instance.paymentMethod.methodName if instance.paymentMethod else None
         return representation
 
-# Serializer for QR code response
+
 class MemberQRDetailSerializer(serializers.ModelSerializer):
     gender = serializers.SerializerMethodField()
     nationality = serializers.SerializerMethodField()

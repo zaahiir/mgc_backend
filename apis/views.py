@@ -1399,11 +1399,11 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
     queryset = MemberEnquiryModel.objects.filter(hideStatus=0)
     serializer_class = MemberEnquiryModelSerializers
 
-    @action(detail=False, methods=['GET'], url_path='(?P<enquiry_id>[^/.]+)/listing')
+    @action(detail=False, methods=['GET'], url_path='listing/(?P<enquiry_id>[^/.]+)')
     def listing(self, request, enquiry_id=None):
         """
         List member enquiries
-        URL: /apis/memberEnquiry/0/listing/ or /apis/memberEnquiry/{id}/listing/
+        URL: /apis/memberEnquiry/listing/0/ or /apis/memberEnquiry/listing/{id}/
         """
         if enquiry_id == "0":
             queryset = MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id')
@@ -1415,11 +1415,11 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
         response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
         return Response(response)
 
-    @action(detail=False, methods=['POST'], url_path='(?P<enquiry_id>[^/.]+)/processing')
+    @action(detail=False, methods=['POST'], url_path='processing/(?P<enquiry_id>[^/.]+)')
     def processing(self, request, enquiry_id=None):
         """
         Process member enquiry (create or update)
-        URL: /apis/memberEnquiry/0/processing/ (create) or /apis/memberEnquiry/{id}/processing/ (update)
+        URL: /apis/memberEnquiry/processing/0/ (create) or /apis/memberEnquiry/processing/{id}/ (update)
         """
         try:
             if enquiry_id == "0":
@@ -1449,11 +1449,11 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': f"Error: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=['GET'], url_path='(?P<enquiry_id>[^/.]+)/deletion')
+    @action(detail=False, methods=['GET'], url_path='deletion/(?P<enquiry_id>[^/.]+)')
     def deletion(self, request, enquiry_id=None):
         """
         Soft delete member enquiry
-        URL: /apis/memberEnquiry/{id}/deletion/
+        URL: /apis/memberEnquiry/deletion/{id}/
         """
         try:
             affected_rows = MemberEnquiryModel.objects.filter(id=enquiry_id, hideStatus=0).update(hideStatus=1)
