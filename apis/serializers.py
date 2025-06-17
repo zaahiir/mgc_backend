@@ -365,6 +365,11 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
     selected_plan_id = serializers.IntegerField(write_only=True, required=False)
     selected_plan_name = serializers.CharField(write_only=True, required=False)
     
+    # Add fields for conversion tracking - mapping to the correct model field names
+    isConverted = serializers.BooleanField(source='is_converted', required=False, default=False)
+    convertedMemberId = serializers.CharField(source='converted_member_id', max_length=50, required=False, allow_blank=True)
+    convertedDate = serializers.DateTimeField(source='converted_date', required=False, allow_null=True)
+    
     class Meta:
         model = MemberEnquiryModel
         fields = '__all__'
@@ -398,9 +403,27 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
             except PlanModel.DoesNotExist:
                 pass  # Keep existing plan if new one not found
         
+        # Handle conversion date automatically if is_converted is being set to True
+        if validated_data.get('is_converted', False) and not instance.is_converted:
+            validated_data['converted_date'] = timezone.now()
+        
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['memberEnquiryPlan'] = instance.memberEnquiryPlan.planName if instance.memberEnquiryPlan else None
+        
+        # Handle plan representation - return the plan object for frontend compatibility
+        if instance.memberEnquiryPlan:
+            representation['memberEnquiryPlan'] = {
+                'id': instance.memberEnquiryPlan.id,
+                'planName': instance.memberEnquiryPlan.planName
+            }
+        else:
+            representation['memberEnquiryPlan'] = None
+        
+        # Include conversion status fields in response with correct field names
+        representation['isConverted'] = instance.is_converted
+        representation['convertedMemberId'] = instance.converted_member_id
+        representation['convertedDate'] = instance.converted_date.isoformat() if instance.converted_date else None
+        
         return representation

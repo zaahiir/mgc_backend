@@ -301,6 +301,9 @@ class MemberEnquiryModel(models.Model):
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+    is_converted = models.BooleanField(default=False, help_text="Whether this enquiry has been converted to a member")
+    converted_member_id = models.CharField(max_length=50, blank=True, null=True, help_text="Golf Club ID of the converted member")
+    converted_date = models.DateTimeField(blank=True, null=True, help_text="Date when enquiry was converted to member")
 
     def __str__(self):
         return f"{self.memberEnquiryFirstName} {self.memberEnquiryLastName} - {self.memberEnquiryPlan}"

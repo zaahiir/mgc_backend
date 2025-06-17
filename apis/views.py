@@ -14,20 +14,13 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.conf import settings
 import json
-import textwrap
 import logging
 import qrcode
 import io
-import base64
 from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
-from django.urls import reverse
-from django.http import JsonResponse
-from django.db.models import Prefetch
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 import os
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -1405,15 +1398,21 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
         List member enquiries
         URL: /apis/memberEnquiry/listing/0/ or /apis/memberEnquiry/listing/{id}/
         """
-        if enquiry_id == "0":
-            queryset = MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id')
-            serializer = MemberEnquiryModelSerializers(queryset, many=True)
-        else:
-            queryset = MemberEnquiryModel.objects.filter(hideStatus=0, id=enquiry_id).order_by('-id')
-            serializer = MemberEnquiryModelSerializers(queryset, many=True)
+        try:
+            if enquiry_id == "0":
+                queryset = MemberEnquiryModel.objects.filter(hideStatus=0).order_by('-id')
+                serializer = MemberEnquiryModelSerializers(queryset, many=True)
+            else:
+                queryset = MemberEnquiryModel.objects.filter(hideStatus=0, id=enquiry_id).order_by('-id')
+                serializer = MemberEnquiryModelSerializers(queryset, many=True)
+            
+            response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
+            return Response(response, status=status.HTTP_200_OK)
         
-        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
-        return Response(response)
+        except Exception as e:
+            logger.error(f"Error in listing enquiries: {str(e)}")
+            response = {'code': 0, 'message': f"Error retrieving enquiries: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['POST'], url_path='processing/(?P<enquiry_id>[^/.]+)')
     def processing(self, request, enquiry_id=None):
@@ -1422,19 +1421,31 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
         URL: /apis/memberEnquiry/processing/0/ (create) or /apis/memberEnquiry/processing/{id}/ (update)
         """
         try:
+            data = request.data.copy()
+            
             if enquiry_id == "0":
                 # Creating new enquiry
-                serializer = MemberEnquiryModelSerializers(data=request.data)
+                serializer = MemberEnquiryModelSerializers(data=data)
             else:
                 # Updating existing enquiry
                 instance = get_object_or_404(MemberEnquiryModel, id=enquiry_id, hideStatus=0)
-                serializer = MemberEnquiryModelSerializers(instance=instance, data=request.data, partial=True)
+                serializer = MemberEnquiryModelSerializers(instance=instance, data=data, partial=True)
             
             if serializer.is_valid():
-                serializer.save()
-                response = {'code': 1, 'message': "Done Successfully", 'data': serializer.data}
+                enquiry = serializer.save()
+                
+                # Log the conversion update if this is a conversion
+                if data.get('isConverted', False):
+                    logger.info(f"Enquiry {enquiry.id} marked as converted to member {data.get('convertedMemberId', 'Unknown')}")
+                
+                response = {
+                    'code': 1, 
+                    'message': "Done Successfully", 
+                    'data': serializer.data
+                }
                 return Response(response, status=status.HTTP_200_OK)
             else:
+                logger.error(f"Serializer validation failed: {serializer.errors}")
                 response = {
                     'code': 0, 
                     'message': "Unable to Process Request",
@@ -1446,6 +1457,7 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Enquiry not found"}
             return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            logger.error(f"Error in processing enquiry: {str(e)}")
             response = {'code': 0, 'message': f"Error: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -1456,14 +1468,97 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
         URL: /apis/memberEnquiry/deletion/{id}/
         """
         try:
+            # Check if enquiry exists and is not converted
+            enquiry = get_object_or_404(MemberEnquiryModel, id=enquiry_id, hideStatus=0)
+            
+            # Prevent deletion of converted enquiries
+            if enquiry.is_converted:
+                response = {
+                    'code': 0, 
+                    'message': "Cannot delete converted enquiry. This enquiry has been converted to a member."
+                }
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Soft delete the enquiry
             affected_rows = MemberEnquiryModel.objects.filter(id=enquiry_id, hideStatus=0).update(hideStatus=1)
+            
             if affected_rows > 0:
+                logger.info(f"Enquiry {enquiry_id} soft deleted successfully")
                 response = {'code': 1, 'message': "Done Successfully"}
                 return Response(response, status=status.HTTP_200_OK)
             else:
-                response = {'code': 0, 'message': "Enquiry not found"}
+                response = {'code': 0, 'message': "Enquiry not found or already deleted"}
                 return Response(response, status=status.HTTP_404_NOT_FOUND)
+                
+        except MemberEnquiryModel.DoesNotExist:
+            response = {'code': 0, 'message': "Enquiry not found"}
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            logger.error(f"Error in deleting enquiry: {str(e)}")
+            response = {'code': 0, 'message': f"Error: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['POST'], url_path='mark-converted/(?P<enquiry_id>[^/.]+)')
+    def mark_converted(self, request, enquiry_id=None):
+        """
+        Mark an enquiry as converted to member
+        URL: /apis/memberEnquiry/mark-converted/{id}/
+        Expected data: {'convertedMemberId': 'MEMBER_ID'}
+        """
+        try:
+            logger.info(f"Received request to mark enquiry {enquiry_id} as converted")
+            logger.info(f"Request data: {request.data}")
+            
+            enquiry = get_object_or_404(MemberEnquiryModel, id=enquiry_id, hideStatus=0)
+            logger.info(f"Found enquiry: {enquiry.id}, current status: converted={enquiry.is_converted}")
+            
+            # Check if already converted
+            if enquiry.is_converted:
+                response = {
+                    'code': 0, 
+                    'message': f"Enquiry already converted to member {enquiry.converted_member_id}"
+                }
+                logger.warning(f"Enquiry {enquiry_id} is already converted")
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+            
+            converted_member_id = request.data.get('convertedMemberId')
+            if not converted_member_id:
+                response = {'code': 0, 'message': "convertedMemberId is required"}
+                logger.error("convertedMemberId not provided in request")
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update enquiry as converted
+            enquiry.is_converted = True
+            enquiry.converted_member_id = converted_member_id
+            enquiry.converted_date = timezone.now()
+            
+            # FIXED: Use update_fields to ensure the save operation only updates these specific fields
+            enquiry.save(update_fields=['is_converted', 'converted_member_id', 'converted_date'])
+            
+            # FIXED: Verify the update was successful by reloading from database
+            enquiry.refresh_from_db()
+            
+            logger.info(f"Enquiry {enquiry_id} successfully marked as converted to member {converted_member_id}")
+            logger.info(f"Verification - enquiry.is_converted: {enquiry.is_converted}, enquiry.converted_member_id: {enquiry.converted_member_id}")
+            
+            response = {
+                'code': 1, 
+                'message': f"Enquiry successfully marked as converted to member {converted_member_id}",
+                'data': {
+                    'enquiryId': enquiry.id,
+                    'convertedMemberId': enquiry.converted_member_id,
+                    'convertedDate': enquiry.converted_date.isoformat() if enquiry.converted_date else None,
+                    'isConverted': enquiry.is_converted
+                }
+            }
+            return Response(response, status=status.HTTP_200_OK)
+            
+        except MemberEnquiryModel.DoesNotExist:
+            logger.error(f"Enquiry {enquiry_id} not found")
+            response = {'code': 0, 'message': "Enquiry not found"}
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error marking enquiry as converted: {str(e)}", exc_info=True)
             response = {'code': 0, 'message': f"Error: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
