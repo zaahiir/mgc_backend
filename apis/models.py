@@ -282,9 +282,9 @@ class ContactEnquiryModel(models.Model):
     contactEnquiryFirstName = models.CharField(max_length=255)
     contactEnquiryLastName = models.CharField(max_length=255)
     contactEnquiryPhoneNumber = models.CharField(max_length=20, null=True, blank=True)
-    contactEnquiryEmail = models.EmailField(unique=True, null=True, blank=True)
+    contactEnquiryEmail = models.EmailField(null=True, blank=True)
     contactEnquiryMessage = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')  # New field
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)

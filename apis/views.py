@@ -1387,19 +1387,22 @@ class ContactEnquiryViewSet(viewsets.ModelViewSet):
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
     
-    # New action to update status
+    # Updated action to toggle status
     @action(detail=True, methods=['POST'])
-    def update_status(self, request, pk=None):
+    def toggle_status(self, request, pk=None):
         try:
             enquiry = ContactEnquiryModel.objects.get(id=pk, hideStatus=0)
-            new_status = request.data.get('status')
             
-            if new_status in ['pending', 'completed']:
-                enquiry.status = new_status
-                enquiry.save()
-                response = {'code': 1, 'message': f"Status updated to {new_status} successfully"}
-            else:
-                response = {'code': 0, 'message': "Invalid status. Use 'pending' or 'completed'"}
+            # Toggle the status
+            new_status = 'completed' if enquiry.status == 'pending' else 'pending'
+            enquiry.status = new_status
+            enquiry.save()
+            
+            response = {
+                'code': 1, 
+                'message': f"Status updated to {new_status} successfully",
+                'new_status': new_status
+            }
         except ContactEnquiryModel.DoesNotExist:
             response = {'code': 0, 'message': "Enquiry not found"}
         
