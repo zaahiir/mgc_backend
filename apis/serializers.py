@@ -69,18 +69,68 @@ class PlanModelSerializers(serializers.ModelSerializer):
 
 
 class MemberModelSerializers(serializers.ModelSerializer):
-    gender = serializers.PrimaryKeyRelatedField(queryset=GenderModel.objects.all())
-    nationality = serializers.PrimaryKeyRelatedField(queryset=CountryModel.objects.all())
-    plan = serializers.PrimaryKeyRelatedField(queryset=PlanModel.objects.all())
-    paymentStatus = serializers.PrimaryKeyRelatedField(queryset=PaymentStatusModel.objects.all())
-    paymentMethod = serializers.PrimaryKeyRelatedField(queryset=PaymentMethodModel.objects.all())
+    # Make these fields optional in serializer by allowing empty values
+    gender = serializers.PrimaryKeyRelatedField(
+        queryset=GenderModel.objects.all(), 
+        required=False, 
+        allow_null=True,
+        allow_empty=True
+    )
+    nationality = serializers.PrimaryKeyRelatedField(
+        queryset=CountryModel.objects.all(), 
+        required=False, 
+        allow_null=True,
+        allow_empty=True
+    )
+    plan = serializers.PrimaryKeyRelatedField(
+        queryset=PlanModel.objects.all(),
+        required=True  # This remains required
+    )
+    paymentStatus = serializers.PrimaryKeyRelatedField(
+        queryset=PaymentStatusModel.objects.all(), 
+        required=False, 
+        allow_null=True,
+        allow_empty=True
+    )
+    paymentMethod = serializers.PrimaryKeyRelatedField(
+        queryset=PaymentMethodModel.objects.all(), 
+        required=False, 
+        allow_null=True,
+        allow_empty=True
+    )
 
     class Meta:
         model = MemberModel
         fields = '__all__'
         extra_kwargs = {
             'encrypted_password': {'write_only': True},
-            'hashed_password': {'write_only': True}
+            'hashed_password': {'write_only': True},
+            # Make sure only required fields are enforced
+            'firstName': {'required': True},
+            'lastName': {'required': True},
+            'email': {'required': True},
+            'phoneNumber': {'required': True},
+            'plan': {'required': True},
+            # Optional fields
+            'gender': {'required': False},
+            'nationality': {'required': False},
+            'paymentStatus': {'required': False},
+            'paymentMethod': {'required': False},
+            'alternatePhoneNumber': {'required': False},
+            'dateOfBirth': {'required': False},
+            'address': {'required': False},
+            'membershipStartDate': {'required': False},
+            'membershipEndDate': {'required': False},
+            'emergencyContactName': {'required': False},
+            'emergencyContactPhone': {'required': False},
+            'emergencyContactRelation': {'required': False},
+            'referredBy': {'required': False},
+            'profilePhoto': {'required': False},
+            'idProof': {'required': False},
+            'handicap': {'required': False},
+            'golfClubId': {'required': False},
+            'enquiryId': {'required': False},
+            'enquiryMessage': {'required': False},
         }
 
     def to_representation(self, instance):
@@ -91,6 +141,17 @@ class MemberModelSerializers(serializers.ModelSerializer):
         representation['paymentStatus'] = instance.paymentStatus.statusName if instance.paymentStatus else None
         representation['paymentMethod'] = instance.paymentMethod.methodName if instance.paymentMethod else None
         return representation
+
+    def validate(self, data):
+        """
+        Custom validation to handle empty string values for foreign key fields
+        """
+        # Convert empty strings to None for foreign key fields
+        for field in ['gender', 'nationality', 'paymentStatus', 'paymentMethod']:
+            if field in data and (data[field] == '' or data[field] == 'null'):
+                data[field] = None
+        
+        return data
 
 
 class MemberQRDetailSerializer(serializers.ModelSerializer):

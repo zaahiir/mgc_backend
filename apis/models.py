@@ -92,13 +92,13 @@ class PlanModel(models.Model):
 
 class MemberModel(models.Model): 
     id = models.AutoField(primary_key=True)
-    firstName = models.CharField(max_length=150, null=True, blank=True)
-    lastName = models.CharField(max_length=150, null=True, blank=True)
-    email = models.EmailField(unique=True, null=True, blank=True)
+    firstName = models.CharField(max_length=150)  # Required
+    lastName = models.CharField(max_length=150)   # Required
+    email = models.EmailField(unique=True)        # Required
     password = models.CharField(max_length=100, null=True, blank=True)
     encrypted_password = models.TextField(null=True, blank=True)
     hashed_password = models.TextField(null=True, blank=True)
-    phoneNumber = models.CharField(max_length=20, null=True, blank=True)
+    phoneNumber = models.CharField(max_length=20) # Required
     alternatePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
     dateOfBirth = models.DateField(null=True, blank=True)
     gender = models.ForeignKey('GenderModel', on_delete=models.CASCADE, null=True, blank=True,
@@ -106,7 +106,7 @@ class MemberModel(models.Model):
     nationality = models.ForeignKey('CountryModel', on_delete=models.CASCADE, null=True, blank=True,
                                     related_name="memberNationality")
     address = models.TextField(null=True, blank=True)
-    plan = models.ForeignKey('PlanModel', on_delete=models.CASCADE, null=True, blank=True, related_name="memberPlan")
+    plan = models.ForeignKey('PlanModel', on_delete=models.CASCADE, related_name="memberPlan")  # Required
     membershipStartDate = models.DateField(null=True, blank=True)
     membershipEndDate = models.DateField(null=True, blank=True)
     emergencyContactName = models.CharField(max_length=200, null=True, blank=True)
@@ -121,7 +121,7 @@ class MemberModel(models.Model):
     idProof = models.FileField(upload_to="member_id_proofs/", null=True, blank=True)
     handicap = models.BooleanField(default=False)
     golfClubId = models.CharField(max_length=100, null=True, blank=True)
-    qr_token = models.CharField(max_length=255, null=True, blank=True, unique=True)  # New field for QR security
+    qr_token = models.CharField(max_length=255, null=True, blank=True, unique=True)
     
     # Enquiry related fields
     enquiryId = models.CharField(max_length=50, null=True, blank=True, help_text="ID of the original enquiry if member was created from enquiry")
@@ -273,15 +273,24 @@ class ConceptItem(models.Model):
 
 
 class ContactEnquiryModel(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+    ]
+    
     contactEnquiryDate = models.DateField(auto_now_add=True)
     contactEnquiryFirstName = models.CharField(max_length=255)
     contactEnquiryLastName = models.CharField(max_length=255)
     contactEnquiryPhoneNumber = models.CharField(max_length=20, null=True, blank=True)
     contactEnquiryEmail = models.EmailField(unique=True, null=True, blank=True)
     contactEnquiryMessage = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')  # New field
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.contactEnquiryFirstName} {self.contactEnquiryLastName} - {self.status}"
 
 
 class MemberEnquiryModel(models.Model):

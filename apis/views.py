@@ -1386,6 +1386,24 @@ class ContactEnquiryViewSet(viewsets.ModelViewSet):
         ContactEnquiryModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
+    
+    # New action to update status
+    @action(detail=True, methods=['POST'])
+    def update_status(self, request, pk=None):
+        try:
+            enquiry = ContactEnquiryModel.objects.get(id=pk, hideStatus=0)
+            new_status = request.data.get('status')
+            
+            if new_status in ['pending', 'completed']:
+                enquiry.status = new_status
+                enquiry.save()
+                response = {'code': 1, 'message': f"Status updated to {new_status} successfully"}
+            else:
+                response = {'code': 0, 'message': "Invalid status. Use 'pending' or 'completed'"}
+        except ContactEnquiryModel.DoesNotExist:
+            response = {'code': 0, 'message': "Enquiry not found"}
+        
+        return Response(response)
 
 
 class MemberEnquiryViewSet(viewsets.ModelViewSet):
