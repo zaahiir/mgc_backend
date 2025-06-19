@@ -23,7 +23,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
-
+ 
 
 class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
