@@ -126,6 +126,8 @@ class MemberModel(models.Model):
     # Enquiry related fields
     enquiryId = models.CharField(max_length=50, null=True, blank=True, help_text="ID of the original enquiry if member was created from enquiry")
     enquiryMessage = models.TextField(null=True, blank=True, help_text="Original enquiry message")
+    reset_token = models.CharField(max_length=255, null=True, blank=True)
+    reset_token_expiry = models.DateTimeField(null=True, blank=True)
     
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)

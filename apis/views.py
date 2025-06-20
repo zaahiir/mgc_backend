@@ -223,7 +223,7 @@ class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['POST'])
     def password_reset(self, request):
         """
-        Password reset request endpoint
+        Password reset request endpoint - sends verification code to email
         """
         try:
             email = request.data.get('email')
@@ -240,62 +240,188 @@ class UserViewSet(viewsets.ViewSet):
             except MemberModel.DoesNotExist:
                 return Response({
                     'code': 0,
-                    'message': 'Email not found'
+                    'message': 'Email not found in our records'
                 }, status=status.HTTP_404_NOT_FOUND)
             
-            # Generate a reset token and save it to the member record
-            import uuid
+            # Generate a 6-digit verification code
+            import random
             import datetime
             from django.conf import settings
             from django.core.mail import send_mail
             
-            reset_token = str(uuid.uuid4())
-            reset_token_expiry = datetime.datetime.now() + datetime.timedelta(hours=24)
+            verification_code = str(random.randint(100000, 999999))
+            reset_token_expiry = datetime.datetime.now() + datetime.timedelta(hours=1)  # 1 hour expiry
             
-            # Store reset token and expiry in member record
-            # Note: You would need to add these fields to the MemberModel
-            member.reset_token = reset_token
+            # Store verification code and expiry in member record
+            member.reset_token = verification_code  # Using reset_token field to store verification code
             member.reset_token_expiry = reset_token_expiry
             member.save()
             
-            # Generate reset URL
-            reset_url = f"{settings.FRONTEND_URL}/reset-password/{reset_token}"
-            
-            # Send email with reset link
-            subject = 'Reset Your Golf Club Password'
+            # Send email with verification code
+            subject = 'Password Reset - Verification Code'
             message = f'''
-            Dear {member.firstName or 'Member'},
+    Dear {member.firstName or 'Member'},
 
-            You recently requested to reset your password for your golf club account.
-            Click the link below to reset it:
+    You have requested to reset your password for your Golf Club account.
 
-            {reset_url}
+    Your verification code is: {verification_code}
 
-            This link will expire in 24 hours.
+    This code will expire in 1 hour.
 
-            If you did not request a password reset, please ignore this email.
+    If you did not request a password reset, please ignore this email.
 
-            Best regards,
-            Golf Club Management
+    Best regards,
+    Master Golf Club Management
             '''
             
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False
-            )
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False
+                )
+                
+                # For development/testing purposes, you can return the code
+                # Remove this in production
+                development_response = {
+                    'code': 1,
+                    'message': 'Verification code sent to your email address'
+                }
+                
+                # Only include verification_code in development
+                if settings.DEBUG:
+                    development_response['verification_code'] = verification_code
+                    
+                return Response(development_response, status=status.HTTP_200_OK)
+                
+            except Exception as email_error:
+                return Response({
+                    'code': 0,
+                    'message': 'Failed to send verification email. Please try again.'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Password reset request failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['POST'])
+    def verify_reset_code(self, request):
+        """
+        Verify reset code without setting password
+        """
+        try:
+            verification_code = request.data.get('verification_code')
+            
+            if not verification_code:
+                return Response({
+                    'code': 0,
+                    'message': 'Verification code is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Find member by verification code
+            import datetime
+            try:
+                member = MemberModel.objects.get(
+                    reset_token=verification_code,
+                    reset_token_expiry__gt=datetime.datetime.now(),
+                    hideStatus=0
+                )
+                return Response({
+                    'code': 1,
+                    'message': 'Verification code is valid'
+                }, status=status.HTTP_200_OK)
+                
+            except MemberModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Invalid or expired verification code'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Verification failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['POST'])
+    def set_new_password(self, request):
+        """
+        Set new password using verification code
+        """
+        try:
+            verification_code = request.data.get('verification_code')
+            new_password = request.data.get('new_password')
+            confirm_password = request.data.get('confirm_password')
+            
+            if not all([verification_code, new_password, confirm_password]):
+                return Response({
+                    'code': 0,
+                    'message': 'Verification code, new password, and confirmation are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if new_password != confirm_password:
+                return Response({
+                    'code': 0,
+                    'message': 'Passwords do not match'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if len(new_password) < 8:
+                return Response({
+                    'code': 0,
+                    'message': 'Password must be at least 8 characters long'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Find member by verification code
+            import datetime
+            try:
+                member = MemberModel.objects.get(
+                    reset_token=verification_code,
+                    reset_token_expiry__gt=datetime.datetime.now(),
+                    hideStatus=0
+                )
+            except MemberModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Invalid or expired verification code'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update password
+            from django.contrib.auth.hashers import make_password
+            password_manager = PasswordManager()
+            
+            # Hash the new password
+            member.hashed_password = make_password(new_password)
+            # Also encrypt it for compatibility
+            member.encrypted_password = password_manager.encrypt_password(new_password)
+            # Clear the old plain text password
+            member.password = None
+            # Clear reset token
+            member.reset_token = None
+            member.reset_token_expiry = None
+            member.save()
+            
+            # Also update the corresponding Django User password if it exists
+            try:
+                from django.contrib.auth.models import User
+                django_user = User.objects.get(username=member.email)
+                django_user.set_password(new_password)
+                django_user.save()
+            except User.DoesNotExist:
+                pass  # Django user doesn't exist, which is fine
             
             return Response({
                 'code': 1,
-                'message': 'Password reset email sent'
+                'message': 'Password has been reset successfully'
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Password reset request failed: {str(e)}'
+                'message': f'Password reset failed: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -577,6 +703,7 @@ class PlanCycleViewSet(viewsets.ModelViewSet):
         PlanCycleModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
+
 
 class PlanViewSet(viewsets.ModelViewSet):
     queryset = PlanModel.objects.filter(hideStatus=0)
