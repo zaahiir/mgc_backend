@@ -954,47 +954,25 @@ Golf Club Management
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
-    @action(detail=False, methods=['GET'])
-    def profile(self, request):
+    @action(detail=True, methods=['GET'], url_path='profile')
+    def get_profile(self, request, pk=None):
         """
-        Get current member's profile based on authenticated user
+        Get member's profile by ID
+        URL: /apis/member/{id}/profile/
         """
         try:
-            # Get user ID from the authenticated user
-            user_id = request.user.id if hasattr(request.user, 'id') else None
+            # Use the pk from URL parameter
+            member_id = pk
             
-            # Alternative: Get user ID from JWT token or session
-            if not user_id:
-                # If using custom authentication, extract from headers or session
-                user_id = request.META.get('HTTP_USER_ID')
-                if user_id:
-                    user_id = int(user_id)
-            
-            # Alternative: Get from query parameter (if passed from frontend)
-            if not user_id:
-                user_id = request.query_params.get('user_id')
-                if user_id:
-                    user_id = int(user_id)
-            
-            if not user_id:
+            if not member_id or member_id == '0':
                 return Response({
                     'code': 0,
-                    'message': 'User authentication required',
+                    'message': 'Member ID is required',
                     'data': None
-                }, status=status.HTTP_401_UNAUTHORIZED)
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Find member by user ID (assuming you have a relationship)
-            # If your member table doesn't have user_id, use email instead
             try:
-                # Option 1: If you have user_id field in MemberModel
-                # member = MemberModel.objects.get(user_id=user_id, hideStatus=0)
-                
-                # Option 2: If you need to find by email from user table
-                # member = MemberModel.objects.get(email=request.user.email, hideStatus=0)
-                
-                # Option 3: For now, using the ID directly (adjust based on your auth system)
-                member = MemberModel.objects.get(id=user_id, hideStatus=0)
-                
+                member = MemberModel.objects.get(id=member_id, hideStatus=0)
             except MemberModel.DoesNotExist:
                 return Response({
                     'code': 0,
@@ -1034,10 +1012,10 @@ Golf Club Management
                 age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
                 profile_data['age'] = age
             
-            # Add member activity data (you can extend this based on your needs)
-            profile_data['lastVisit'] = None  # Add logic to get last visit from booking/activity table
+            # Add member activity data (extend based on your needs)
+            profile_data['lastVisit'] = None  # Add logic to get last visit
             profile_data['totalVisits'] = 0    # Add logic to count total visits
-            profile_data['membershipLevel'] = 'Gold'  # Add logic based on your business rules
+            profile_data['membershipLevel'] = 'Gold'  # Add logic based on business rules
             
             # Add preferences (you might need a separate preferences table)
             profile_data['preferences'] = {
@@ -1055,10 +1033,10 @@ Golf Club Management
             }, status=status.HTTP_200_OK)
 
         except ValueError as e:
-            logger.error(f"Invalid user ID format: {str(e)}")
+            logger.error(f"Invalid member ID format: {str(e)}")
             return Response({
                 'code': 0,
-                'message': 'Invalid user ID format',
+                'message': 'Invalid member ID format',
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -1070,33 +1048,24 @@ Golf Club Management
                 'data': None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=['PUT', 'PATCH'])
-    def update_profile(self, request):
+    # FIXED: Changed from detail=False to detail=True and use pk parameter
+    @action(detail=True, methods=['PUT', 'PATCH'], url_path='update-profile')
+    def update_profile(self, request, pk=None):
         """
-        Update current member's profile
+        Update member's profile by ID
+        URL: /apis/member/{id}/update-profile/
         """
         try:
-            # Get user ID from the authenticated user (same logic as profile method)
-            user_id = request.user.id if hasattr(request.user, 'id') else None
+            member_id = pk
             
-            if not user_id:
-                user_id = request.META.get('HTTP_USER_ID')
-                if user_id:
-                    user_id = int(user_id)
-            
-            if not user_id:
-                user_id = request.data.get('user_id')
-                if user_id:
-                    user_id = int(user_id)
-            
-            if not user_id:
+            if not member_id or member_id == '0':
                 return Response({
                     'code': 0,
-                    'message': 'User authentication required'
-                }, status=status.HTTP_401_UNAUTHORIZED)
+                    'message': 'Member ID is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
             try:
-                member = MemberModel.objects.get(id=user_id, hideStatus=0)
+                member = MemberModel.objects.get(id=member_id, hideStatus=0)
             except MemberModel.DoesNotExist:
                 return Response({
                     'code': 0,
@@ -1134,6 +1103,97 @@ Golf Club Management
                 'message': f'Error updating profile: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # ADD: New method for current user profile (if you have authentication)
+    @action(detail=False, methods=['GET'], url_path='current-profile')
+    def get_current_profile(self, request):
+        """
+        Get current authenticated user's profile
+        URL: /apis/member/current-profile/
+        """
+        try:
+            # Get user ID from the authenticated user
+            user_id = request.user.id if hasattr(request.user, 'id') else None
+            
+            # Alternative: Get user ID from JWT token or session
+            if not user_id:
+                user_id = request.META.get('HTTP_USER_ID')
+                if user_id:
+                    user_id = int(user_id)
+            
+            # Alternative: Get from query parameter
+            if not user_id:
+                user_id = request.query_params.get('user_id')
+                if user_id:
+                    user_id = int(user_id)
+            
+            if not user_id:
+                return Response({
+                    'code': 0,
+                    'message': 'User authentication required',
+                    'data': None
+                }, status=status.HTTP_401_UNAUTHORIZED)
+
+            try:
+                member = MemberModel.objects.get(id=user_id, hideStatus=0)
+            except MemberModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Member profile not found',
+                    'data': None
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Use the same logic as get_profile
+            serializer = MemberModelSerializers(member)
+            profile_data = serializer.data
+            
+            # Add calculated fields (same as above)
+            if member.membershipEndDate:
+                from datetime import datetime, date
+                end_date = member.membershipEndDate
+                if isinstance(end_date, str):
+                    end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                
+                today = date.today()
+                days_until_expiry = (end_date - today).days
+                profile_data['daysUntilExpiry'] = max(0, days_until_expiry)
+                profile_data['membershipStatus'] = 'Active' if days_until_expiry > 0 else 'Expired'
+            else:
+                profile_data['daysUntilExpiry'] = 0
+                profile_data['membershipStatus'] = 'Active'
+            
+            if member.dateOfBirth:
+                from datetime import date
+                today = date.today()
+                birth_date = member.dateOfBirth
+                if isinstance(birth_date, str):
+                    birth_date = datetime.strptime(birth_date, '%Y-%m-%d').date()
+                
+                age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                profile_data['age'] = age
+            
+            profile_data['lastVisit'] = None
+            profile_data['totalVisits'] = 0
+            profile_data['membershipLevel'] = 'Gold'
+            profile_data['preferences'] = {
+                'newsletter': True,
+                'language': 'English',
+                'notifications': True
+            }
+
+            return Response({
+                'code': 1,
+                'message': 'Profile retrieved successfully',
+                'data': profile_data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error retrieving current profile: {str(e)}")
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving profile: {str(e)}',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     # FIXED: Changed the URL pattern to match what's used in the HTML template
     @action(detail=False, methods=['GET'], url_path='verify-qr/(?P<qr_token>[^/.]+)')
     def verify_qr_code(self, request, qr_token=None):
