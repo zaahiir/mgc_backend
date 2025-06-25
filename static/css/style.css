@@ -234,7 +234,6 @@ body, .main-root {
   top: 0;
   width: 100%;
   height: 0px;
-  background-image: url(../img/circle-dotted.png);
   background-size: contain;
   opacity: 0.4;
   background-repeat: no-repeat;
