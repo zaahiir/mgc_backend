@@ -747,7 +747,7 @@ class MemberViewSet(viewsets.ModelViewSet):
         Generate QR code for member verification
         """
         try:
-            # FIXED: Use mastergolfclub.com instead of member.mastergolfclub.com for QR code URLs
+            # FIXED: Use mastergolfclub.com instead of mastergolfclub.com for QR code URLs
             qr_url = f"https://mastergolfclub.com/member/verify/{qr_token}/"
             
             logger.info(f"Generating QR code for URL: {qr_url}")
@@ -833,7 +833,7 @@ Master Golf Club Management
     
     <p><strong>Important:</strong> Please change your password upon first login.</p>
     
-    <p>Best regards,<br>Golf Club Management</p>
+    <p>Best regards,<br>Master Golf Club Management</p>
 </body>
 </html>
             '''
