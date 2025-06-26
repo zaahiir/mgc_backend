@@ -747,8 +747,8 @@ class MemberViewSet(viewsets.ModelViewSet):
         Generate QR code for member verification
         """
         try:
-            # Create QR code URL - adjust the domain as needed
-            qr_url = f"{getattr(settings, 'FRONTEND_URL', 'https://mastergolfclub.com')}/member/verify/{qr_token}"
+            # FIXED: Use mastergolfclub.com instead of member.mastergolfclub.com for QR code URLs
+            qr_url = f"https://mastergolfclub.com/member/verify/{qr_token}/"
             
             logger.info(f"Generating QR code for URL: {qr_url}")
             
@@ -811,7 +811,7 @@ Please find your membership QR code attached. This QR code can be used for quick
 Please change your password upon first login.
 
 Best regards,
-Golf Club Management
+Master Golf Club Management
             '''
 
             # HTML message
