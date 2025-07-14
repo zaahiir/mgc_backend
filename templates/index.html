@@ -324,6 +324,68 @@
         			margin: 0;
         			line-height: 1.5;
         		}
+        .next-page {
+            position: relative;
+            padding: 80px 0;
+            border-bottom: 1px solid #b6b6b6;
+        }
+        
+        .club-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            margin: 0 auto 20px;
+        }
+        
+        .club-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .club-address {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .club-phone {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .club-email {
+            font-size: 1.1rem;
+        }
+        
+        .club-phone a, .club-email a {
+            color: inherit;
+            text-decoration: none;
+        }
+        
+        .club-phone a:hover, .club-email a:hover {
+            text-decoration: underline;
+        }
+
+        /* .logo-img {
+        width: 100px;
+        height: 100px;
+        } */
+        
+        @media (max-width: 768px) {
+            .club-title {
+                font-size: 2rem;
+            }
+            .next-page {
+                padding: 60px 0;
+            }
+        }
     </style>
 
 
@@ -809,72 +871,36 @@
 
                 <footer class="footer p-relative">
 
-                    <section class="next-page p-relative section-padding border-bottom">
-                        <div class="bg-circle-dotted"></div>
-                        <div class="bg-circle-dotted bg-circle-dotted-right"></div>
+                     <section class="next-page">        
                         <div class="container">
-
-                            <div class="c-wapp d-flex">
-
-                                <div class="d-flex flex-column">
-
-                                    <div class="box-info-contact">
-
-                                        <ul>
-                                            <li>
-                                                <h5 class="title-block mb-15">Address</h5>
-                                                <p class="text-p"><strong>Master Golf Club</strong>,
-                                                    <br>Lorem Hills Road, Lorem Post,
-                                                    <br>Lorem Epsom, Taluk,
-                                                    <br>Lorem, London, 124586.
-                                                </p>
-                                            </li>
-                                        </ul>
+                            <div class="row justify-content-center">
+                                <div class="col-lg-6 col-md-8 col-sm-10">
+                                    <div class="text-center">
+                                        <!-- Logo -->
+                                        <div class="club-logo">
+                                                <img src="{% static 'img/mgc_logo-03.png' %}" alt="MGC" class="logo-img">
+                                        </div>
+                                        
+                                        <!-- Club Name -->
+                                        <h1 class="club-title">Master Golf Club</h1>
+                                        
+                                        <!-- Address -->
+                                        <div class="club-address">
+                                            New Hyde Park, NY 11040
+                                        </div>
+                                        
+                                        <!-- Phone -->
+                                        <div class="club-phone">
+                                            <a href="tel:3336660000">333 666 0000</a>
+                                        </div>
+                                        
+                                        <!-- Email -->
+                                        <div class="club-email">
+                                            <a href="mailto:example@info.com">example@info.com</a>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="d-flex flex-column"></div>
-                                <div class="d-flex flex-column"></div>
-                                <div class="d-flex flex-column"></div>
-                                <div class="d-flex flex-column">
-
-                                    <div class="box-info-contact">
-
-                                        <ul>
-
-                                            <li>
-                                                <h5 class="title-block mb-15">Reservations</h5>
-                                                <p class="text-p ">Golf : <a href="tel:+91 72598 06632">+91 12345
-														12345</a></p>
-                                            </li>
-
-                                        </ul>
-                                    </div>
-                                </div>
-                                <div class="d-flex flex-column"></div>
-                                <div class="d-flex flex-column"></div>
-                                <div class="d-flex flex-column"></div>
-
-                                <div class="d-flex flex-column">
-
-                                    <div class="box-info-contact">
-
-                                        <ul>
-
-                                            <li>
-                                                <h5 class="title-block mb-15">Membership</h5>
-                                                <p class="text-p ">Golf : <a href="tel:+91 76250 31836">+91 12345
-														12345</a></p>
-                                            </li>
-
-                                        </ul>
-                                    </div>
-                                </div>
-
-
-
                             </div>
-
-
                         </div>
                     </section>
 
@@ -1340,6 +1366,11 @@
                 });
             });
         });
+    </script>
+
+    <script>
+        // Update current year
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
     </script>
 
     <div style="display: none" id="grabMe">
