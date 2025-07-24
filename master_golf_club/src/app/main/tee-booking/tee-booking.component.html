@@ -1,4 +1,3 @@
-
 <!-- Hero Section -->
 <section class="page-title d-flex justify-content-center align-items-center">
   <div class="bg-layer" [style.background-image]="'url(' + course.imageUrl + ')'"></div>
@@ -124,14 +123,70 @@
                           [class.selected]="selectedTime === slot.time"
                           [class.unavailable]="!slot.available"
                           [disabled]="!slot.available"
-                          (click)="selectTime(slot.time)">
+                          (click)="selectTime(slot.time)"
+                          [title]="slot.available ? 'Available' : 'Booked'">
                     <div class="time-slot-content">
-                      <span class="time">{{formatTime(slot.time)}}</span>
-                      <span class="availability" *ngIf="slot.available">Available</span>
-                      <span class="availability booked" *ngIf="!slot.available">Booked</span>
+                      <span class="time">{{slot.time}}</span>
+                      <div class="golf-ball" [class.available]="slot.available">
+                        <div class="dimples">
+                          <div class="dimple"></div>
+                          <div class="dimple"></div>
+                          <div class="dimple"></div>
+                        </div>
+                      </div>
                     </div>
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <!-- Contact & Directions Combined Widget -->
+            <div class="contact-directions-widget">
+              <div class="widget-header">
+                <h3>Contact & Directions</h3>
+              </div>
+              
+              <div class="contact-info">
+                <div class="info-item">
+                  <span class="icon-wrapper">
+                    <fa-icon [icon]="locationIcon"></fa-icon>
+                  </span>
+                  <div class="info-content">
+                    <span class="label">Location</span>
+                    <span class="value">{{course.lane}}, {{course.address}}, {{course.code}}</span>
+                  </div>
+                </div>
+
+                <div class="info-item">
+                  <span class="icon-wrapper">
+                    <fa-icon [icon]="phoneIcon"></fa-icon>
+                  </span>
+                  <div class="info-content">
+                    <span class="label">Phone</span>
+                    <a [href]="'tel:' + course.phone" class="value">{{course.phone}}</a>
+                  </div>
+                </div>
+
+                <div class="info-item">
+                  <span class="icon-wrapper">
+                    <fa-icon [icon]="clockIcon"></fa-icon>
+                  </span>
+                  <div class="info-content">
+                    <span class="label">Hours</span>
+                    <span class="value">{{course.timing}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="direction-actions">
+                <button class="action-btn get-directions" (click)="getDirections()">
+                  <fa-icon [icon]="directionsIcon"></fa-icon>
+                  Get Directions
+                </button>
+                <button class="action-btn share-location" (click)="shareLocation()">
+                  <fa-icon [icon]="shareIcon"></fa-icon>
+                  Share Location
+                </button>
               </div>
             </div>
 
@@ -147,46 +202,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Contact Info Widget -->
-        <div class="sidebar-widget">
-          <div class="widget-title">
-            <h3>Contact Info</h3>
-          </div>
-          <ul class="info-list">
-            <li>
-              <span><fa-icon [icon]="locationIcon"></fa-icon></span>
-              <span>{{course.lane}}, {{course.address}}, {{course.code}}</span>
-            </li>
-            <li>
-              <span><fa-icon [icon]="phoneIcon"></fa-icon></span>
-              <a [href]="'tel:' + course.phone">{{course.phone}}</a>
-            </li>
-            <li>
-              <span><fa-icon [icon]="clockIcon"></fa-icon></span>
-              <span>{{course.timing}}</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Directions Widget -->
-        <div class="sidebar-widget">
-          <div class="widget-title">
-            <h3>Directions</h3>
-          </div>
-          <div class="direction-actions">
-            <button class="theme-btn w-100 mb-3" (click)="getDirections()">
-              <fa-icon [icon]="directionsIcon"></fa-icon>
-              Get Directions
-            </button>
-            <button class="theme-btn-secondary w-100" (click)="shareLocation()">
-              <fa-icon [icon]="shareIcon"></fa-icon>
-              Share Location
-            </button>
-          </div>
-        </div>
-
-
       </div>
 
       <!-- Main Content -->

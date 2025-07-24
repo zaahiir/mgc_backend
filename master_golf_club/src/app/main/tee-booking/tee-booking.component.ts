@@ -166,12 +166,14 @@ export class TeeBookingComponent implements OnInit {
 
   private generateTimeSlotsForDate(date: Date): TimeSlot[] {
     const slots: TimeSlot[] = [];
-    const isToday = this.isToday(date);  // Use the public isToday method
+    const isToday = this.isToday(date);
     const currentHour = new Date().getHours();
     const currentMinute = new Date().getMinutes();
 
+    // Start from 7 AM to 7 PM (07:00 - 19:00)
     for (let hour = 7; hour < 19; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
+      // Generate slots every 8 minutes
+      for (let minute = 0; minute < 60; minute += 8) {
         if (isToday && (hour < currentHour || (hour === currentHour && minute <= currentMinute))) {
           continue;
         }
@@ -179,7 +181,7 @@ export class TeeBookingComponent implements OnInit {
         const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         slots.push({
           time: timeString,
-          available: Math.random() > 0.3
+          available: Math.random() > 0.3 // 70% chance of being available
         });
       }
     }
@@ -237,14 +239,6 @@ export class TeeBookingComponent implements OnInit {
            !!this.selectedTee &&
            this.participantCount > 0 &&
            this.participantCount <= this.maxParticipants;
-  }
-
-  formatTime(time: string): string {
-    const [hour, minute] = time.split(':');
-    const hourNum = parseInt(hour);
-    const ampm = hourNum >= 12 ? 'PM' : 'AM';
-    const hour12 = hourNum % 12 || 12;
-    return `${hour12}:${minute} ${ampm}`;
   }
 
   calculatePrice(): number {
