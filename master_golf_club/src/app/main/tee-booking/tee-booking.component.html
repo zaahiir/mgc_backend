@@ -140,6 +140,20 @@
               </div>
             </div>
 
+            <button class="theme-btn w-100"
+                    [disabled]="!canBook()"
+                    [class.loading]="isLoading"
+                    (click)="bookTeeTime()">
+              {{isLoading ? 'Booking...' : 'Book Now'}}
+            </button>
+
+            <div class="error-message" *ngIf="errorMessage">
+              {{errorMessage}}
+            </div>
+          </div>
+        </div>
+        
+
             <!-- Contact & Directions Combined Widget -->
             <div class="contact-directions-widget">
               <div class="widget-header">
@@ -189,19 +203,6 @@
                 </button>
               </div>
             </div>
-
-            <button class="theme-btn w-100"
-                    [disabled]="!canBook()"
-                    [class.loading]="isLoading"
-                    (click)="bookTeeTime()">
-              {{isLoading ? 'Booking...' : 'Book Now'}}
-            </button>
-
-            <div class="error-message" *ngIf="errorMessage">
-              {{errorMessage}}
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Main Content -->
