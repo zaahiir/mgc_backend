@@ -1,0 +1,136 @@
+<!-- Master Event Component Template -->
+<section class="event-details pt_150 pb_150">
+  <div class="auto-container">
+    <!-- Main Event Image -->
+    <figure class="big-image mb_70">
+      <img [src]="eventData.mainImage" [alt]="eventData.title">
+    </figure>
+
+    <!-- Main Content Row -->
+    <div class="row">
+      <!-- Left Column - Event Details Content -->
+      <div class="col-lg-8 col-md-12 col-sm-12">
+        <div class="event-details-content mr_20">
+          <div class="content-one">
+            <!-- Event Info -->
+            <ul class="post-info">
+              <li><i class="icon-17"></i>{{ eventData.date }}</li>
+              <li><i class="icon-3"></i>{{ eventData.location }}</li>
+            </ul>
+
+            <!-- Event Title -->
+            <h2>{{ eventData.title }}</h2>
+
+            <!-- Event Description -->
+            <div class="text-box mb_60">
+              <p>{{ eventData.description }}</p>
+              <p>{{ eventData.additionalInfo }}</p>
+            </div>
+
+            <!-- Event Images -->
+            <div class="image-box">
+              <div class="row">
+                <div class="col-lg-6 col-md-6 col-sm-12" *ngFor="let image of eventData.images">
+                  <figure class="image mb_60">
+                    <img [src]="image" [alt]="eventData.title">
+                  </figure>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activities Section -->
+          <div class="content-two">
+            <div class="text-box mb_60">
+              <h3>Activities and Features:</h3>
+              <p>{{ eventData.activitiesDescription }}</p>
+              <p>{{ eventData.additionalActivities }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column - Sidebar -->
+      <div class="col-lg-4 col-md-12 col-sm-12">
+        <div class="event-sidebar">
+          <!-- Event Details Widget -->
+          <div class="event-info sidebar-widget">
+            <div class="widget-title">
+              <h3>Event Details</h3>
+            </div>
+            <ul class="info-list">
+              <li><span>Organizer :</span>{{ eventDetails.organizer }}</li>
+              <li><span>Start Date :</span>{{ eventDetails.startDate }}</li>
+              <li><span>End Date :</span>{{ eventDetails.endDate }}</li>
+              <li><span>Time :</span>{{ eventDetails.time }}</li>
+              <li><span>Cost :</span>{{ eventDetails.cost }}</li>
+            </ul>
+          </div>
+
+          <!-- Event Venue Widget -->
+          <div class="event-venue sidebar-widget">
+            <div class="widget-title">
+              <h3>Event Venue</h3>
+            </div>
+            <ul class="info-list">
+              <li><span>Venue :</span>{{ venueInfo.venue }}</li>
+              <li><span>Address :</span>{{ venueInfo.address }}</li>
+              <li><span>E-mail :</span><a [href]="'mailto:' + venueInfo.email">{{ venueInfo.email }}</a></li>
+              <li><span>Phone :</span><a [href]="'tel:' + venueInfo.phone">{{ venueInfo.phone }}</a></li>
+              <li><span>Website :</span><a [href]="venueInfo.website" target="_blank">{{ venueInfo.website }}</a></li>
+            </ul>
+          </div>
+
+          <!-- Contact Form Widget -->
+          <div class="form-inner">
+            <div class="widget-title">
+              <h3>Contact</h3>
+            </div>
+            <form (ngSubmit)="onSubmit()" #contactFormRef="ngForm">
+              <div class="form-group">
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Name"
+                  [(ngModel)]="contactForm.name"
+                  required
+                  #nameField="ngModel">
+              </div>
+              <div class="form-group">
+                <input
+                  type="text"
+                  name="phone"
+                  placeholder="Phone"
+                  [(ngModel)]="contactForm.phone"
+                  required
+                  #phoneField="ngModel">
+              </div>
+              <div class="form-group">
+                <select
+                  name="event"
+                  [(ngModel)]="contactForm.event"
+                  required
+                  #eventField="ngModel">
+                  <option value="">Select Event</option>
+                  <option
+                    *ngFor="let option of eventOptions"
+                    [value]="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-group pt_20">
+                <button
+                  type="submit"
+                  class="theme-btn btn-one"
+                  [disabled]="!contactFormRef.valid">
+                  Send now
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,96 @@
+<section class="account-details pt_150 pb_150">
+  <div class="auto-container">
+    <div class="row">
+      <!-- Left Column: Profile Information & Update Password -->
+      <div class="col-lg-6 col-md-12 col-sm-12">
+        <div class="account-sidebar">
+          <!-- Profile Information -->
+          <div class="profile-info sidebar-widget">
+            <div class="widget-title">
+              <h3>Profile Information</h3>
+            </div>
+            <ul class="info-list">
+              <li><span>Name :</span>{{userProfile.name}}</li>
+              <li><span>Email :</span>{{userProfile.email}}</li>
+              <li><span>Phone :</span>{{userProfile.phone}}</li>
+              <li><span>Status :</span>{{userProfile.status}}</li>
+              <li><span>Member Since :</span>{{userProfile.memberSince}}</li>
+            </ul>
+            <div class="form-group pt_20">
+              <button type="button" class="theme-btn btn-one" (click)="onEditProfile()">Edit Profile</button>
+            </div>
+          </div>
+
+          <!-- Password Update Form -->
+          <div class="form-inner">
+            <div class="widget-title">
+              <h3>Update Password</h3>
+            </div>
+            <form (ngSubmit)="onSubmit($event)" #passwordFormRef="ngForm">
+              <div class="form-group">
+                <input type="password"
+                       name="current_password"
+                       placeholder="Current Password"
+                       [(ngModel)]="passwordForm.currentPassword"
+                       required>
+              </div>
+              <div class="form-group">
+                <input type="password"
+                       name="new_password"
+                       placeholder="New Password"
+                       [(ngModel)]="passwordForm.newPassword"
+                       required>
+              </div>
+              <div class="form-group">
+                <input type="password"
+                       name="confirm_password"
+                       placeholder="Confirm New Password"
+                       [(ngModel)]="passwordForm.confirmPassword"
+                       required>
+              </div>
+              <div class="form-group pt_20">
+                <button type="submit" class="theme-btn btn-one">Change Password</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Addresses -->
+      <div class="col-lg-6 col-md-12 col-sm-12">
+        <div class="account-sidebar">
+          <!-- Address Information -->
+          <div class="address-info sidebar-widget">
+            <div class="widget-title">
+              <h3>Addresses</h3>
+            </div>
+            <div class="address-section mb_30">
+              <h4 class="address-type">Billing Address</h4>
+              <ul class="info-list">
+                <li><span>Street :</span>{{addresses.billing.street}}</li>
+                <li><span>City :</span>{{addresses.billing.city}}</li>
+                <li><span>Postal Code :</span>{{addresses.billing.postalCode}}</li>
+                <li><span>Country :</span>{{addresses.billing.country}}</li>
+              </ul>
+              <div class="form-group pt_20">
+                <button type="button" class="theme-btn btn-one" (click)="onEditBilling()">Edit Billing</button>
+              </div>
+            </div>
+            <div class="address-section">
+              <h4 class="address-type">Shipping Address</h4>
+              <ul class="info-list">
+                <li><span>Street :</span>{{addresses.shipping.street}}</li>
+                <li><span>City :</span>{{addresses.shipping.city}}</li>
+                <li><span>Postal Code :</span>{{addresses.shipping.postalCode}}</li>
+                <li><span>Country :</span>{{addresses.shipping.country}}</li>
+              </ul>
+              <div class="form-group pt_20">
+                <button type="button" class="theme-btn btn-one" (click)="onEditShipping()">Edit Shipping</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

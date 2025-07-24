@@ -1,0 +1,77 @@
+<c-row ngPreserveWhitespaces>
+    <c-col xs="12">
+      <c-card class="mb-4">
+        <c-card-header>
+          <strong>Update New Tournament</strong>
+        </c-card-header>
+        <c-card-body>
+          <form [formGroup]="tournamentForm" (ngSubmit)="onSubmit()" cForm class="row g-3 needs-validation">
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="tournamentName" formControlName="tournamentName" required type="text" placeholder="Tournament Name" />
+              <label cLabel for="tournamentName" class="ms-2">Tournament Name</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('tournamentName')">
+                {{ getErrorMessage('tournamentName') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="tournamentDate" formControlName="tournamentDate" required type="date" placeholder="Tournament Date" />
+              <label cLabel for="tournamentDate" class="ms-2">Tournament Date</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('tournamentDate')">
+                {{ getErrorMessage('tournamentDate') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="tournamentTime" formControlName="tournamentTime" required type="time" placeholder="Tournament Time" />
+              <label cLabel for="tournamentTime" class="ms-2">Tournament Time</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('tournamentTime')">
+                {{ getErrorMessage('tournamentTime') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="tournamentLocation" formControlName="tournamentLocation" required type="text" placeholder="Tournament Location" />
+              <label cLabel for="tournamentLocation" class="ms-2">Tournament Location</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('tournamentLocation')">
+                {{ getErrorMessage('tournamentLocation') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="12">
+              <textarea cFormControl id="tournamentDescription" formControlName="tournamentDescription" required rows="3" placeholder="Tournament Description"></textarea>
+              <label cLabel for="tournamentDescription" class="ms-2">Tournament Description</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('tournamentDescription')">
+                {{ getErrorMessage('tournamentDescription') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="entryFee" formControlName="entryFee" required type="number" step="0.01" placeholder="Entry Fee" />
+              <label cLabel for="entryFee" class="ms-2">Entry Fee</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('entryFee')">
+                {{ getErrorMessage('entryFee') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="maxParticipants" formControlName="maxParticipants" required type="number" placeholder="Max Participants" />
+              <label cLabel for="maxParticipants" class="ms-2">Max Participants</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('maxParticipants')">
+                {{ getErrorMessage('maxParticipants') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col xs="12">
+              <button cButton class="me-1" color="primary" type="submit" [disabled]="loading">
+                {{ loading ? 'Saving...' : 'Save Tournament' }}
+              </button>
+              <button (click)="onReset()" cButton color="secondary" type="button" [disabled]="loading">
+                Reset Form
+              </button>
+            </c-col>
+          </form>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>

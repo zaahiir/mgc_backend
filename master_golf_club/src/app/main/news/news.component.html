@@ -1,0 +1,101 @@
+<div class="home container-fluid p-0">
+  <!-- Background Image Banner -->
+  <section class="page-title d-flex justify-content-center align-items-center">
+    <div class="bg-layer" style="background-image: url('assets/images/banner/banner-4.jpg');"></div>
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+          <h1>Golf News & Updates</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-center bg-transparent m-0">
+              <li class="breadcrumb-item"><a href="/">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">News</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- News Content Section -->
+  <section class="news-section pt-150 pb-150">
+    <div class="container">
+      <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-4 col-md-12 col-sm-12">
+          <div class="blog-sidebar me-4">
+            <!-- Search Widget -->
+            <div class="search-widget mb-40">
+              <div class="widget-title mb-20">
+                <h3>Search</h3>
+              </div>
+              <div class="search-form">
+                <form (ngSubmit)="onSearchSubmit($event)">
+                  <div class="form-group">
+                    <input
+                      type="search"
+                      name="search-field"
+                      placeholder="Search..."
+                      [(ngModel)]="searchTerm"
+                      (input)="onSearch($event)"
+                      required>
+                    <button type="submit">🔍</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Latest News Widget -->
+            <div class="post-widget mb-40">
+              <div class="widget-title mb-20">
+                <h3>Latest News</h3>
+              </div>
+              <div class="post-widget-content">
+                <div class="post" *ngFor="let post of latestNews">
+                  <figure class="image-box">
+                    <a [href]="post.link">
+                      <img [src]="post.image" [alt]="post.title">
+                    </a>
+                  </figure>
+                  <h4><a [href]="post.link">{{ post.title }}</a></h4>
+                  <span class="post-date">{{ post.date }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-8 col-md-12 col-sm-12">
+          <div class="blog-details-content">
+            <div class="news-block-one">
+              <div class="inner-box">
+                <div class="image-box">
+                  <figure class="image">
+                    <img [src]="mainArticle.image" [alt]="mainArticle.title">
+                  </figure>
+                  <span class="post-date">{{ mainArticle.date }}</span>
+                </div>
+                <div class="lower-content">
+                  <span class="category">{{ mainArticle.category }}</span>
+                  <h2>{{ mainArticle.title }}</h2>
+                  <div class="text-box">
+                    <p class="mb-30">{{ mainArticle.content.intro }}</p>
+                    <p class="mb-60">{{ mainArticle.content.body }}</p>
+                    <blockquote>
+                      <div class="icon-box">
+                        <img src="assets/images/icons/icon-6.png" alt="Quote icon">
+                      </div>
+                      <h4>"{{ mainArticle.content.quote.text }}"</h4>
+                      <h3>{{ mainArticle.content.quote.author }}</h3>
+                    </blockquote>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

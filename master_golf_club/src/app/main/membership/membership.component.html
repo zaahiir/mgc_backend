@@ -1,0 +1,158 @@
+<div class="membership-container">
+  <!-- Page Title Section -->
+  <div class="page-title" style="background-image: url('assets/images/golf-course-bg.jpg');">
+    <div class="bg-layer"></div>
+    <div class="auto-container">
+      <h1>Golf Membership Plans</h1>
+      <nav class="breadcrumb">
+        <span class="breadcrumb-item"><a href="/">Home</a></span>
+        <span class="breadcrumb-item">Membership</span>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Pricing Section -->
+  <section class="pricing-section">
+    <div class="auto-container">
+      <div class="sec-title">
+        <span class="sub-title">Membership Plans</span>
+        <h2>Choose Your Perfect Plan</h2>
+      </div>
+
+      <div class="tabs-box">
+        <div class="tab-btn-box">
+          <ul class="tab-btns">
+            <li class="tab-btn"
+                [class.active-btn]="activeTab === 'monthly'"
+                (click)="switchTab('monthly')">
+              Monthly
+            </li>
+            <li class="tab-btn"
+                [class.active-btn]="activeTab === 'yearly'"
+                (click)="switchTab('yearly')">
+              Yearly
+            </li>
+          </ul>
+        </div>
+
+        <div class="tabs-content">
+          <div class="tab active-tab">
+            <div class="row">
+              <div class="col-lg-4 col-md-6 col-sm-12" *ngFor="let plan of getCurrentPlans()">
+                <div class="pricing-block-one">
+                  <div class="pricing-table">
+                    <div class="table-header">
+                      <span class="title">{{ plan.title }}</span>
+                      <h2>${{ plan.price }}</h2>
+                      <span class="text">{{ plan.period }}</span>
+                    </div>
+                    <div class="table-content">
+                      <p>{{ plan.description }}</p>
+                      <ul class="feature-list">
+                        <li *ngFor="let feature of plan.features"
+                            [class.cancel]="!feature.included">
+                          <i [class]="feature.included ? 'icon-check' : 'icon-cross'"></i>
+                          {{ feature.name }}
+                        </li>
+                      </ul>
+                    </div>
+                    <div class="table-footer">
+                      <a href="javascript:void(0)"
+                         class="theme-btn btn-two"
+                         (click)="choosePlan(plan)">
+                        Choose This Plan
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Current Membership Status -->
+  <section class="membership-status-section">
+    <div class="auto-container">
+      <div class="sec-title">
+        <span class="sub-title">Account Status</span>
+        <h2>Your Current Memberships</h2>
+      </div>
+
+      <div class="membership-details">
+        <div class="table-responsive">
+          <table class="membership-table">
+            <thead>
+              <tr>
+                <th>Membership Type</th>
+                <th>Start Date</th>
+                <th>Expiration Date</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let membership of currentMemberships">
+                <td>{{ membership.type }}</td>
+                <td>{{ membership.startDate | date:'mediumDate' }}</td>
+                <td>{{ membership.expirationDate | date:'mediumDate' }}</td>
+                <td>
+                  <span class="status-badge"
+                        [class.active]="membership.isActive"
+                        [class.expired]="!membership.isActive">
+                    {{ membership.status }}
+                  </span>
+                </td>
+                <td>
+                  <button class="btn-renew"
+                          [disabled]="!membership.isActive"
+                          (click)="renewMembership(membership)">
+                    {{ membership.isActive ? 'Renew Now' : 'Renew' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benefits Section -->
+  <section class="benefits-section">
+    <div class="auto-container">
+      <div class="sec-title">
+        <span class="sub-title">Member Benefits</span>
+        <h2>Why Choose Our Membership</h2>
+      </div>
+
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="icon access-icon">🏌️</div>
+          <h3>Exclusive Course Access</h3>
+          <p>Enjoy priority tee times and access to member-only course sections. Book up to 14 days in advance and get exclusive access to championship courses.</p>
+        </div>
+
+        <div class="benefit-card">
+          <div class="icon events-icon">🏆</div>
+          <h3>Members-Only Events</h3>
+          <p>Join exclusive tournaments, social gatherings, and networking events. Connect with fellow golf enthusiasts and build lasting relationships.</p>
+        </div>
+
+        <div class="benefit-card">
+          <div class="icon training-icon">⚡</div>
+          <h3>Professional Training</h3>
+          <p>Enhance your game with personalized coaching sessions from PGA professionals. Access video analysis and custom training programs.</p>
+        </div>
+
+        <div class="benefit-card">
+          <div class="icon discount-icon">💰</div>
+          <h3>Member Discounts</h3>
+          <p>Save on pro shop purchases, equipment rentals, and dining. Enjoy special rates on golf cart rentals and practice facilities.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

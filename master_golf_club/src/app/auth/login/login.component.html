@@ -1,0 +1,192 @@
+<section class="login-section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+
+        <!-- Login Card -->
+        <div class="card" [ngClass]="{'active': isForgotPasswordActive || isSetNewPasswordActive}">
+
+          <!-- Logo Container -->
+          <div class="logo-container">
+            <img src="assets/mgc_logo-03.png" alt="GolFer Logo" class="logo">
+          </div>
+
+          <!-- Login Form -->
+          <div *ngIf="!isForgotPasswordActive && !isSetNewPasswordActive">
+            <div class="card-header">
+              <h2>Member Login</h2>
+            </div>
+            <div class="card-body p-4">
+              <form [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()">
+                <div class="mb-3">
+                  <label for="username" class="form-label">Username <span>*</span></label>
+                  <input type="text" class="form-control" id="username" formControlName="username" required>
+                  <div *ngIf="loginForm.get('username')?.invalid && (loginForm.get('username')?.dirty || loginForm.get('username')?.touched)" class="text-danger">
+                    <small *ngIf="loginForm.get('username')?.errors?.['required']">Username is required</small>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <label for="password" class="form-label">Password <span>*</span></label>
+                    <button type="button" class="btn-show-password" (click)="toggleLoginPasswordVisibility()">
+                      {{ showLoginPassword ? 'Hide' : 'Show' }}
+                    </button>
+                  </div>
+                  <input [type]="showLoginPassword ? 'text' : 'password'" class="form-control" id="password" formControlName="password" required>
+                  <div *ngIf="loginForm.get('password')?.invalid && (loginForm.get('password')?.dirty || loginForm.get('password')?.touched)" class="text-danger">
+                    <small *ngIf="loginForm.get('password')?.errors?.['required']">Password is required</small>
+                  </div>
+                </div>
+
+                <!-- Error message display -->
+                <div *ngIf="errorMessage" class="alert alert-danger mb-3">
+                  {{ errorMessage }}
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <a href="javascript:void(0)" class="forgot-password" (click)="toggleForgotPassword(true)">Forgot password?</a>
+                </div>
+                <div class="d-grid gap-2">
+                  <button type="submit" class="btn btn-primary">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Log In
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Forgot Password Form -->
+          <div *ngIf="isForgotPasswordActive && !isSetNewPasswordActive">
+            <div class="card-header">
+              <h2>Reset Password</h2>
+            </div>
+            <div class="card-body p-4">
+              <form [formGroup]="forgotPasswordForm" (ngSubmit)="onForgotPasswordSubmit()">
+                <div class="mb-3">
+                  <label for="reset-email" class="form-label">Email <span>*</span></label>
+                  <input type="email" class="form-control" id="reset-email" formControlName="email" required>
+                  <div *ngIf="forgotPasswordForm.get('email')?.invalid && (forgotPasswordForm.get('email')?.dirty || forgotPasswordForm.get('email')?.touched)" class="text-danger">
+                    <small *ngIf="forgotPasswordForm.get('email')?.errors?.['required']">Email is required</small>
+                    <small *ngIf="forgotPasswordForm.get('email')?.errors?.['email']">Please enter a valid email</small>
+                  </div>
+                </div>
+
+                <!-- Error message display -->
+                <div *ngIf="errorMessage" class="alert alert-danger mb-3">
+                  {{ errorMessage }}
+                </div>
+
+                <!-- Success message display -->
+                <div *ngIf="successMessage" class="alert alert-success mb-3">
+                  {{ successMessage }}
+                </div>
+
+                <p class="text-center mb-3">We'll send you a verification code to reset your password</p>
+                <div class="d-grid gap-2">
+                  <button type="submit" class="btn btn-primary">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Send Verification Code
+                  </button>
+                </div>
+                <div class="text-center mt-3">
+                  <a href="javascript:void(0)" class="back-to-login" (click)="backToLogin()">Back to Login</a>
+                </div>
+                <div class="text-center mt-2">
+                  <a href="javascript:void(0)" class="set-new-password-link" (click)="showSetNewPasswordForm()">Already have a verification code?</a>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Set New Password Form -->
+          <div *ngIf="isSetNewPasswordActive">
+            <div class="card-header">
+              <h2>Set New Password</h2>
+            </div>
+            <div class="card-body p-4">
+              <form [formGroup]="setNewPasswordForm" (ngSubmit)="onSetNewPasswordSubmit()">
+
+                <!-- 6-Digit Verification Code Input -->
+                <div class="mb-3">
+                  <label class="form-label">Verification Code <span>*</span></label>
+                  <div class="verification-code-container">
+                    <input
+                      *ngFor="let control of getVerificationCodeControls(); let i = index"
+                      #codeInput
+                      type="text"
+                      class="verification-code-input"
+                      [class.is-invalid]="control.invalid && (control.dirty || control.touched)"
+                      [value]="control.value"
+                      (input)="onCodeInput($event, i)"
+                      (keydown)="onCodeKeydown($event, i)"
+                      (paste)="onCodePaste($event, i)"
+                      maxlength="1"
+                      autocomplete="off"
+                      inputmode="numeric"
+                      pattern="[0-9]*">
+                  </div>
+                  <div *ngIf="verificationCodeArray.invalid && (verificationCodeArray.dirty || verificationCodeArray.touched)" class="text-danger">
+                    <small>Please enter the complete 6-digit verification code</small>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <label for="new-password" class="form-label">New Password <span>*</span></label>
+                    <button type="button" class="btn-show-password" (click)="toggleNewPasswordVisibility()">
+                      {{ showNewPassword ? 'Hide' : 'Show' }}
+                    </button>
+                  </div>
+                  <input [type]="showNewPassword ? 'text' : 'password'" class="form-control" id="new-password" formControlName="new_password" required>
+                  <div *ngIf="setNewPasswordForm.get('new_password')?.invalid && (setNewPasswordForm.get('new_password')?.dirty || setNewPasswordForm.get('new_password')?.touched)" class="text-danger">
+                    <small *ngIf="setNewPasswordForm.get('new_password')?.errors?.['required']">New password is required</small>
+                    <small *ngIf="setNewPasswordForm.get('new_password')?.errors?.['minlength']">Password must be at least 8 characters long</small>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <label for="confirm-password" class="form-label">Confirm Password <span>*</span></label>
+                    <button type="button" class="btn-show-password" (click)="toggleConfirmPasswordVisibility()">
+                      {{ showConfirmPassword ? 'Hide' : 'Show' }}
+                    </button>
+                  </div>
+                  <input [type]="showConfirmPassword ? 'text' : 'password'" class="form-control" id="confirm-password" formControlName="confirm_password" required>
+                  <div *ngIf="setNewPasswordForm.get('confirm_password')?.invalid && (setNewPasswordForm.get('confirm_password')?.dirty || setNewPasswordForm.get('confirm_password')?.touched)" class="text-danger">
+                    <small *ngIf="setNewPasswordForm.get('confirm_password')?.errors?.['required']">Please confirm your password</small>
+                    <small *ngIf="setNewPasswordForm.get('confirm_password')?.errors?.['passwordMismatch']">Passwords do not match</small>
+                  </div>
+                </div>
+
+                <!-- Error message display -->
+                <div *ngIf="errorMessage" class="alert alert-danger mb-3">
+                  {{ errorMessage }}
+                </div>
+
+                <!-- Success message display -->
+                <div *ngIf="successMessage" class="alert alert-success mb-3">
+                  {{ successMessage }}
+                </div>
+
+                <p class="text-center mb-3">Enter the verification code sent to your email and set your new password</p>
+                <div class="d-grid gap-2">
+                  <button type="submit" class="btn btn-primary">
+                    <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Set New Password
+                  </button>
+                </div>
+                <div class="text-center mt-3">
+                  <a href="javascript:void(0)" class="back-to-login" (click)="backToLogin()">Back to Login</a>
+                </div>
+                <div class="text-center mt-2">
+                  <a href="javascript:void(0)" class="forgot-password" (click)="toggleForgotPassword(true)">Resend verification code</a>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

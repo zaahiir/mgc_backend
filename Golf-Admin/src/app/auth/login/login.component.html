@@ -1,0 +1,80 @@
+<section class="login-section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+
+        <!-- Admin Login Card -->
+        <div class="card">
+
+          <!-- Logo Container -->
+          <div class="logo-container">
+            <img src="assets/mgc_logo-03.png" alt="GolFer Logo" class="logo">
+          </div>
+
+          <!-- Admin Login Form -->
+          <div class="card-header">
+            <h2>Admin Login</h2>
+          </div>
+          <div class="card-body p-4">
+            <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" cForm>
+              <div class="mb-3">
+                <label for="username" class="form-label">Username <span>*</span></label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="username"
+                  formControlName="username"
+                  placeholder="Enter your username"
+                  autoComplete="username"
+                  required>
+                <div *ngIf="loginForm.get('username')?.invalid && (loginForm.get('username')?.dirty || loginForm.get('username')?.touched)" class="text-danger">
+                  <small *ngIf="loginForm.get('username')?.errors?.['required']">Username is required</small>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <div class="password-label-container">
+                  <label for="password" class="form-label">Password <span>*</span></label>
+                  <button
+                    type="button"
+                    class="password-toggle-btn"
+                    (click)="togglePasswordVisibility()"
+                    [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
+                    {{ showPassword ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+                <input
+                  [type]="showPassword ? 'text' : 'password'"
+                  class="form-control"
+                  id="password"
+                  formControlName="password"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  required>
+                <div *ngIf="loginForm.get('password')?.invalid && (loginForm.get('password')?.dirty || loginForm.get('password')?.touched)" class="text-danger">
+                  <small *ngIf="loginForm.get('password')?.errors?.['required']">Password is required</small>
+                </div>
+              </div>
+
+              <!-- Error message display -->
+              <div *ngIf="errorMessage" class="alert alert-danger mb-3">
+                {{ errorMessage }}
+              </div>
+
+              <div class="d-grid gap-2 mt-4">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  [disabled]="isLoading">
+                  <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Sign In
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

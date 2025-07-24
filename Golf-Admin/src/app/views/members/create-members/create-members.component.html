@@ -1,0 +1,189 @@
+<c-row ngPreserveWhitespaces>
+  <c-col xs="12">
+    <c-card class="mb-4">
+      <c-card-header>
+        <strong>{{ pageTitle }}</strong>
+        <span *ngIf="isFromEnquiry" class="badge bg-info ms-2">From Enquiry</span>
+      </c-card-header>
+      <c-card-body>
+        <form [formGroup]="memberForm" (ngSubmit)="onSubmit()" enctype="multipart/form-data" cForm class="row g-3 needs-validation">
+
+          <!-- Show enquiry message if converting from enquiry -->
+          <c-col xs="12" *ngIf="isFromEnquiry && memberForm.get('enquiryMessage')?.value">
+            <div class="alert alert-info">
+              <strong>Enquiry Message:</strong><br>
+              {{ memberForm.get('enquiryMessage')?.value }}
+            </div>
+          </c-col>
+
+          <!-- Basic Information -->
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="firstName" formControlName="firstName" type="text" placeholder="First Name" />
+            <label cLabel for="firstName">First Name <span class="text-danger">*</span></label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('firstName')">
+              {{ getErrorMessage('firstName') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="lastName" formControlName="lastName" type="text" placeholder="Last Name" />
+            <label cLabel for="lastName">Last Name <span class="text-danger">*</span></label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('lastName')">
+              {{ getErrorMessage('lastName') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="email" formControlName="email" type="email" placeholder="Email" />
+            <label cLabel for="email">Email <span class="text-danger">*</span></label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('email')">
+              {{ getErrorMessage('email') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="phoneNumber" formControlName="phoneNumber" type="tel" placeholder="Phone Number" />
+            <label cLabel for="phoneNumber">Phone Number <span class="text-danger">*</span></label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('phoneNumber')">
+              {{ getErrorMessage('phoneNumber') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="alternatePhoneNumber" formControlName="alternatePhoneNumber" type="tel" placeholder="Alternate Phone" />
+            <label cLabel for="alternatePhoneNumber">Alternate Phone</label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="dateOfBirth" formControlName="dateOfBirth" type="date" placeholder="Date of Birth" />
+            <label cLabel for="dateOfBirth">Date of Birth</label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <select cSelect id="gender" formControlName="gender">
+              <option value="">Select Gender</option>
+              <option *ngFor="let gender of genders" [value]="gender.id">{{ gender.genderName }}</option>
+            </select>
+            <label cLabel for="gender">Gender </label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <select cSelect id="nationality" formControlName="nationality">
+              <option value="">Select Nationality</option>
+              <option *ngFor="let country of countries" [value]="country.id">{{ country.countryName }}</option>
+            </select>
+            <label cLabel for="nationality">Nationality </label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="address" formControlName="address" placeholder="Address" rows="3"></textarea>
+            <label cLabel for="address">Address </label>
+          </c-col>
+
+          <!-- Membership Information -->
+          <c-col [cFormFloating]="true" md="6">
+            <select cSelect id="plan" formControlName="plan">
+              <option value="">Select Plan</option>
+              <option *ngFor="let plan of plans" [value]="plan.id">{{ plan.planName }}</option>
+            </select>
+            <label cLabel for="plan">Membership Plan <span class="text-danger">*</span></label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('plan')">
+              {{ getErrorMessage('plan') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="membershipStartDate" formControlName="membershipStartDate" type="date" />
+            <label cLabel for="membershipStartDate">Membership Start Date </label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="membershipEndDate" formControlName="membershipEndDate" type="date" />
+            <label cLabel for="membershipEndDate">Membership End Date </label>
+          </c-col>
+
+          <!-- Emergency Contact -->
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="emergencyContactName" formControlName="emergencyContactName" type="text" />
+            <label cLabel for="emergencyContactName">Emergency Contact Name </label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="emergencyContactPhone" formControlName="emergencyContactPhone" type="tel" />
+            <label cLabel for="emergencyContactPhone">Emergency Contact Phone </label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="emergencyContactRelation" formControlName="emergencyContactRelation" type="text" />
+            <label cLabel for="emergencyContactRelation">Emergency Contact Relation </label>
+          </c-col>
+
+          <!-- Payment Information -->
+          <c-col [cFormFloating]="true" md="6">
+            <select cSelect id="paymentStatus" formControlName="paymentStatus">
+              <option value="">Select Payment Status</option>
+              <option *ngFor="let status of paymentStatuses" [value]="status.id">{{ status.statusName }}</option>
+            </select>
+            <label cLabel for="paymentStatus">Payment Status </label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <select cSelect id="paymentMethod" formControlName="paymentMethod">
+              <option value="">Select Payment Method</option>
+              <option *ngFor="let method of paymentMethods" [value]="method.id">{{ method.methodName }}</option>
+            </select>
+            <label cLabel for="paymentMethod">Payment Method </label>
+          </c-col>
+
+          <!-- File Uploads -->
+          <c-col md="6">
+            <div class="mb-3">
+              <label cLabel for="profilePhoto" class="form-label">Profile Photo </label>
+              <input cFormControl class="form-control" type="file" id="profilePhoto"
+                     accept="image/*" (change)="onFileSelected($event, 'profile')" />
+            </div>
+            <div *ngIf="previewUrl" class="mb-3">
+              <img [src]="previewUrl" alt="Profile Preview" style="max-width: 200px; max-height: 200px;"
+                   class="img-thumbnail" />
+              <button cButton color="danger" size="sm" class="ms-2" type="button"
+                      (click)="removePhoto('profile')">
+                Remove Photo
+              </button>
+            </div>
+          </c-col>
+
+          <c-col md="6">
+            <div class="mb-3">
+              <label cLabel for="idProof" class="form-label">ID Proof </label>
+              <input cFormControl class="form-control" type="file" id="idProof"
+                     (change)="onFileSelected($event, 'idProof')" />
+            </div>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="referredBy" formControlName="referredBy" type="text" />
+            <label cLabel for="referredBy">Referred By </label>
+          </c-col>
+
+          <!-- Additional Options -->
+          <c-col md="6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="handicap"
+                     formControlName="handicap" />
+              <label class="form-check-label" for="handicap">
+                Handicap
+              </label>
+            </div>
+          </c-col>
+
+          <!-- Form Actions -->
+          <c-col xs="12" class="mt-4">
+            <button cButton class="me-2" color="primary" type="submit" [disabled]="loading">
+              {{ loading ? 'Submitting...' : (isFromEnquiry ? 'Convert to Member' : 'Submit') }}
+            </button>
+          </c-col>
+        </form>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>

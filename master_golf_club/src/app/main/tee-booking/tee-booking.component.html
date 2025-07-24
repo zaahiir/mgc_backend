@@ -1,0 +1,171 @@
+
+<!-- Hero Section -->
+<section class="page-title d-flex justify-content-center align-items-center">
+  <div class="bg-layer" [style.background-image]="'url(' + course.imageUrl + ')'"></div>
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <h1>{{course.name}}</h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <fa-icon [icon]="locationIcon"></fa-icon>
+              {{course.lane}}, {{course.address}}
+            </li>
+            <li class="breadcrumb-item">
+              <fa-icon [icon]="clockIcon"></fa-icon>
+              {{course.timing}}
+            </li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Main Content Section -->
+<section class="course-section">
+  <div class="container">
+    <div class="row">
+      <!-- Sidebar -->
+      <div class="col-lg-4 col-md-12 order-lg-1 order-2">
+        <!-- Booking Form Widget -->
+        <div class="sidebar-widget">
+          <div class="widget-title">
+            <h3>Book Your Tee Time</h3>
+          </div>
+
+          <div class="booking-form">
+            <div class="form-section">
+              <label>Guests</label>
+              <div class="player-selector">
+                <button class="circle-btn" (click)="decrementGuests()" [disabled]="guestCount === 1">-</button>
+                <span class="player-count">{{guestCount}}</span>
+                <button class="circle-btn" (click)="incrementGuests()" [disabled]="guestCount === maxGuests">+</button>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <label>Select Date</label>
+              <div class="date-scroll">
+                <button *ngFor="let date of availableDates"
+                        class="date-btn"
+                        [class.selected]="isDateSelected(date)"
+                        (click)="selectDate(date)">
+                  <span class="day">{{date | date:'EEE'}}</span>
+                  <span class="date">{{date | date:'d'}}</span>
+                  <span class="month">{{date | date:'MMM'}}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <label>Available Times</label>
+              <div class="time-grid">
+                <button *ngFor="let slot of currentTimeSlots"
+                        class="time-btn"
+                        [class.selected]="selectedTime === slot.time"
+                        [disabled]="!slot.available"
+                        (click)="selectTime(slot.time)">
+                  {{formatTime(slot.time)}}
+                </button>
+              </div>
+            </div>
+
+            <button class="theme-btn w-100"
+                    [disabled]="!canBook()"
+                    [class.loading]="isLoading"
+                    (click)="bookTeeTime()">
+              {{isLoading ? 'Booking...' : 'Book Now'}}
+            </button>
+
+            <div class="error-message" *ngIf="errorMessage">
+              {{errorMessage}}
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact Info Widget -->
+        <div class="sidebar-widget">
+          <div class="widget-title">
+            <h3>Contact Info</h3>
+          </div>
+          <ul class="info-list">
+            <li>
+              <i class="icon-location">📍</i>
+              <span>{{course.lane}}, {{course.address}}, {{course.code}}</span>
+            </li>
+            <li>
+              <i class="icon-phone">📞</i>
+              <a [href]="'tel:' + course.phone">{{course.phone}}</a>
+            </li>
+            <li>
+              <i class="icon-clock">🕐</i>
+              <span>{{course.timing}}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Directions Widget -->
+        <div class="sidebar-widget">
+          <div class="widget-title">
+            <h3>Directions</h3>
+          </div>
+          <div class="direction-actions">
+            <button class="theme-btn w-100 mb-3" (click)="getDirections()">
+              <fa-icon [icon]="directionsIcon"></fa-icon>
+              Get Directions
+            </button>
+            <button class="theme-btn-secondary w-100" (click)="shareLocation()">
+              <fa-icon [icon]="shareIcon"></fa-icon>
+              Share Location
+            </button>
+          </div>
+        </div>
+
+
+      </div>
+
+      <!-- Main Content -->
+      <div class="col-lg-8 col-md-12 order-lg-2 order-1">
+        <div class="main-content">
+          <!-- Course Image -->
+          <img [src]="course.imageUrl"
+               alt="{{course.name}}"
+               class="hero-image">
+
+          <!-- Course Information -->
+          <div class="content-section">
+            <h2>About {{course.name}}</h2>
+            <p>Aldenham Golf Club is renowned for the quality of the course, particularly our immaculate greens and exceptional condition of the fairways and surrounding areas. The Church Course opened in 1975 and has matured well over the years with many different tree species and lovely views over the neighboring countryside.</p>
+
+            <h3>Course Features</h3>
+            <p>The 13th is their signature hole and was, for many years, the longest hole in Europe at 621 yards. Our team of expert groundsmen led by Course Manager Marc Winnan has some of the best equipment available to maintain this course to its reputation.</p>
+
+            <h3>Year-Round Excellence</h3>
+            <p>Members will get the benefits of the course throughout the whole year even in the depths of winter. The club prides itself on maintaining the greens all year round so there is no need for temporary greens.</p>
+
+            <h3>Our facilities include</h3>
+            <ul class="facilities-list">
+              <li><span><fa-icon [icon]="wifiIcon"></fa-icon> Free WiFi:</span> Stay connected throughout your visit with complimentary high-speed internet access.</li>
+              <li><span><fa-icon [icon]="parkingIcon"></fa-icon> Free Parking:</span> Convenient and secure parking facilities available for all guests.</li>
+              <li><span><fa-icon [icon]="restaurantIcon"></fa-icon> Restaurant:</span> Enjoy delicious meals and refreshments at our on-site restaurant.</li>
+              <li><span><fa-icon [icon]="shopIcon"></fa-icon> Pro Shop:</span> Browse our fully-stocked pro shop for all your golfing needs.</li>
+            </ul>
+
+            <!-- Benefit Section -->
+            <div class="benefit-section">
+              <img src="https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80"
+                   alt="Golf Experience" class="benefit-image">
+              <div class="benefit-content">
+                <h3>Why Choose Our Course?</h3>
+                <p>Experience exceptional golfing conditions with our meticulously maintained fairways, challenging layout, and stunning natural surroundings. Perfect for golfers of all skill levels.</p>
+                <p><strong>Price:</strong> £{{basePrice}} per person</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

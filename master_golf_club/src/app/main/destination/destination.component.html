@@ -1,0 +1,71 @@
+<div class="home container-fluid p-0 d-flex flex-column align-items-center">
+  <!-- Page Title Section -->
+  <section class="page-title d-flex justify-content-center align-items-center">
+    <div class="bg-layer"></div>
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+          <h1>Explore Destinations</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-center bg-transparent m-0">
+              <li class="breadcrumb-item"><a href="/">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Destinations</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Main Content Section -->
+  <div class="container page-content py-5">
+    <h2 class="section-title text-center mb-4">Discover Amazing Places</h2>
+    <p class="text-center mx-auto description mb-5">
+      Explore the world's most breathtaking destinations and create memories that will last a lifetime.
+    </p>
+
+    <!-- Destination Cards -->
+    <div class="destination-cards">
+      <!-- Canada Destination Card -->
+      <div class="background-card mb-5">
+        <div class="card-container">
+          <div class="card">
+            <h3 class="card-title">Canada</h3>
+            <p class="card-text">
+              Experience the stunning landscapes and vibrant cities of Canada. From the Rocky Mountains to cosmopolitan Toronto, Canada offers incredible natural beauty and cultural diversity.
+              <span class="read-more">Read More</span>
+            </p>
+            <button class="card-button" (click)="openModal('Canada')">Explore</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Switzerland Destination Card -->
+      <div class="background-card mb-5">
+        <div class="card-container">
+          <div class="card">
+            <h3 class="card-title">Switzerland</h3>
+            <p class="card-text">
+              Discover the alpine paradise of Switzerland with its pristine lakes, picturesque villages, and majestic mountain peaks. Perfect for outdoor adventures and scenic getaways.
+              <span class="read-more">Read More</span>
+            </p>
+            <button class="card-button" (click)="openModal('Switzerland')">Explore</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Structure -->
+  <div *ngIf="isModalOpen" class="modal-overlay" (click)="closeModal()">
+    <div class="modal-content lg-modal" (click)="$event.stopPropagation()">
+      <div class="close-icon" (click)="closeModal()">✕</div>
+      <h3 class="modal-title mb-3">{{currentDestination}}</h3>
+      <div class="modal-image"></div>
+      <p class="modal-paragraph">
+        Discover the beauty and charm of {{currentDestination}}. From breathtaking landscapes to rich cultural experiences, this destination offers something for every traveler. Whether you're seeking adventure, relaxation, or cultural immersion, {{currentDestination}} promises an unforgettable journey filled with remarkable sights and authentic experiences.
+      </p>
+      <button class="go-to-website" (click)="goToWebsite()">Visit Official Website</button>
+    </div>
+  </div>  
+</div>

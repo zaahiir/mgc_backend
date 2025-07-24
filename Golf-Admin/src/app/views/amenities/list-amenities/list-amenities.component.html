@@ -1,0 +1,185 @@
+<!-- list-amenities.component.html - Updated Template -->
+<!-- Header Section with Create Button -->
+<c-col xs="12">
+  <c-card class="mb-4">
+    <c-card-body>
+      <form cForm class="row g-3">
+        <div class="col-auto">
+          <a cButton [routerLink]="['/amenities/add']" color="primary" role="button">Create New Amenity</a>
+        </div>
+      </form>
+    </c-card-body>
+  </c-card>
+</c-col>
+
+<!-- Main Content Section -->
+<c-row ngPreserveWhitespaces>
+  <c-col xs="12">
+    <c-card class="mb-4">
+      <c-card-body>
+        <!-- Search Section -->
+        <c-col md="3" class="mb-4 flex justify-content-md-end">
+          <input cFormControl
+                 id="searchInput"
+                 (input)="search()"
+                 [(ngModel)]="searchTerm"
+                 type="search"
+                 placeholder="Search amenities..." />
+        </c-col>
+
+        <!-- Loading indicator -->
+        <div *ngIf="isLoading" class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+
+        <!-- Results summary -->
+        <div *ngIf="!isLoading && searchTerm" class="mb-3">
+          <small class="text-muted">
+            Showing {{ filteredAmenityCount }} result(s) for "{{ searchTerm }}"
+            <button type="button" class="btn btn-link btn-sm p-0 ms-2" (click)="clearSearch()">Clear</button>
+          </small>
+        </div>
+
+        <!-- Amenities Table -->
+        <table [hover]="true" [striped]="true" [bordered]="true" cTable *ngIf="!isLoading">
+          <thead>
+            <tr>
+              <th scope="col">S.No</th>
+              <th scope="col">Icon</th>
+              <th scope="col">Amenity Name</th>
+              <th scope="col">Tooltip</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let amenity of paginatedAmenityList; let i = index">
+              <td>{{ (currentPage - 1) * itemsPerPage + i + 1 }}</td>
+              <td>
+                <!-- Improved SVG Icon Display -->
+                <div class="amenity-icon-container">
+                  <!-- Option 1: Full SVG content (sanitized) -->
+                  <ng-container *ngIf="getSafeIconSvg(amenity) as safeIcon; else tryPathSvg">
+                    <div [innerHTML]="safeIcon"
+                         [title]="amenity.tooltip || amenity.amenityTooltip || amenity.title || amenity.amenityName">
+                    </div>
+                  </ng-container>
+
+                  <!-- Option 2: Custom SVG with path data -->
+                  <ng-template #tryPathSvg>
+                    <ng-container *ngIf="getIconPath(amenity); else tryImageIcon">
+                      <svg width="24"
+                           height="24"
+                           [attr.viewBox]="getViewBox(amenity)"
+                           class="amenity-icon-svg"
+                           [title]="amenity.tooltip || amenity.amenityTooltip || amenity.title || amenity.amenityName">
+                        <path [attr.d]="getIconPath(amenity)" fill="currentColor"></path>
+                      </svg>
+                    </ng-container>
+                  </ng-template>
+
+                  <!-- Option 3: Image Icon -->
+                  <ng-template #tryImageIcon>
+                    <ng-container *ngIf="amenity.icon || amenity.amenity_icon_url; else tryFallbackIcon">
+                      <img [src]="amenity.icon || amenity.amenity_icon_url"
+                           [alt]="amenity.title || amenity.amenityName"
+                           [title]="amenity.tooltip || amenity.amenityTooltip || amenity.title || amenity.amenityName"
+                           class="amenity-icon-img"
+                           (error)="onImageError($event, amenity)" />
+                    </ng-container>
+                  </ng-template>
+
+                  <!-- Option 4: FontAwesome/CSS Icon Fallback -->
+                  <ng-template #tryFallbackIcon>
+                    <ng-container *ngIf="amenity.amenityIcon || amenity.icon_file; else noIcon">
+                      <i [class]="'fas ' + (amenity.amenityIcon || amenity.icon_file)"
+                         [title]="amenity.tooltip || amenity.amenityTooltip || amenity.title || amenity.amenityName"
+                         class="amenity-icon-font"></i>
+                    </ng-container>
+                  </ng-template>
+
+                  <!-- Option 5: No Icon Available -->
+                  <ng-template #noIcon>
+                    <div class="amenity-icon-placeholder"
+                         [title]="amenity.tooltip || amenity.amenityTooltip || amenity.title || amenity.amenityName">
+                      <i class="fas fa-cube"></i>
+                    </div>
+                  </ng-template>
+                </div>
+              </td>
+              <td>{{ amenity.title || amenity.amenityName }}</td>
+              <td>{{ amenity.tooltip || amenity.amenityTooltip || amenity.title || amenity.amenityName }}</td>
+              <td>
+                <a cButton
+                   [routerLink]="['/amenities/update', amenity.id]"
+                   color="btn-transparent"
+                   role="button"
+                   class="btn-sm text-primary border-0 py-0"
+                   [cTooltip]="tooltipEditText"
+                   cTooltipPlacement="top">
+                  <svg [cIcon]="icons.cilPen" size="xl" title="Edit"></svg>
+                </a>
+                <a cButton
+                   (click)="deleteAmenity(amenity.id)"
+                   color="btn-transparent"
+                   role="button"
+                   class="btn-sm text-danger border-0 py-0"
+                   [cTooltip]="tooltipDeleteText"
+                   cTooltipPlacement="top">
+                  <svg [cIcon]="icons.cilTrash" width="25" title="Delete"></svg>
+                </a>
+              </td>
+            </tr>
+            <!-- Empty State -->
+            <tr *ngIf="paginatedAmenityList.length === 0 && !isLoading">
+              <td colspan="5" class="text-center">
+                <span *ngIf="searchTerm; else noData">No amenities found matching "{{ searchTerm }}"</span>
+                <ng-template #noData>No amenities available</ng-template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination Section -->
+        <div class="d-flex justify-content-between align-items-center mt-3" *ngIf="!isLoading && totalPages > 1">
+          <!-- Items per page selector -->
+          <div class="d-flex align-items-center">
+            <label for="itemsPerPage" class="form-label me-2">Items per page:</label>
+            <select
+              id="itemsPerPage"
+              class="form-select form-select-sm"
+              style="width: auto;"
+              [(ngModel)]="itemsPerPage"
+              (change)="onItemsPerPageChange()">
+              <option [value]="5">5</option>
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+            </select>
+          </div>
+
+          <!-- Pagination controls -->
+          <c-pagination aria-label="Page navigation">
+            <c-page-item [disabled]="currentPage === 1">
+              <a cPageLink (click)="previousPage()" [attr.aria-disabled]="currentPage === 1">Previous</a>
+            </c-page-item>
+            <c-page-item *ngFor="let page of pageRange" [active]="currentPage === page">
+              <a cPageLink (click)="changePage(page)">{{ page }}</a>
+            </c-page-item>
+            <c-page-item [disabled]="currentPage === totalPages">
+              <a cPageLink (click)="nextPage()" [attr.aria-disabled]="currentPage === totalPages">Next</a>
+            </c-page-item>
+          </c-pagination>
+
+          <!-- Results summary -->
+          <div class="text-muted small">
+            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
+            {{ Math.min(currentPage * itemsPerPage, filteredAmenityCount) }} of
+            {{ filteredAmenityCount }} entries
+          </div>
+        </div>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>

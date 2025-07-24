@@ -1,0 +1,80 @@
+<c-row ngPreserveWhitespaces>
+  <c-col xs="12">
+    <c-card class="mb-4">
+      <c-card-header>
+        <strong>Create New Tee</strong>
+      </c-card-header>
+      <c-card-body>
+        <form [formGroup]="teeForm" (ngSubmit)="onSubmit()" cForm class="row g-3 needs-validation">
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="teeName" formControlName="teeName" required type="text" placeholder="Tee Name" />
+            <label cLabel for="teeName" class="ms-2">Tee Name</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('teeName')">
+              {{ getErrorMessage('teeName') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="teeColor" formControlName="teeColor" required type="text" placeholder="Tee Color" />
+            <label cLabel for="teeColor" class="ms-2">Tee Color</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('teeColor')">
+              {{ getErrorMessage('teeColor') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="teeLength" formControlName="teeLength" required type="number" step="0.1" placeholder="Tee Length (yards)" />
+            <label cLabel for="teeLength" class="ms-2">Tee Length (yards)</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('teeLength')">
+              {{ getErrorMessage('teeLength') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="teeSlope" formControlName="teeSlope" required type="number" step="0.1" placeholder="Tee Slope" />
+            <label cLabel for="teeSlope" class="ms-2">Tee Slope</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('teeSlope')">
+              {{ getErrorMessage('teeSlope') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="teeRating" formControlName="teeRating" required type="number" step="0.1" placeholder="Tee Rating" />
+            <label cLabel for="teeRating" class="ms-2">Tee Rating</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('teeRating')">
+              {{ getErrorMessage('teeRating') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col md="12">
+            <label cLabel>Amenities</label>
+            <div class="amenities-container">
+              <button
+                *ngFor="let amenity of amenities"
+                cButton
+                [color]="isAmenitySelected(amenity) ? 'primary' : 'secondary'"
+                (click)="toggleAmenity(amenity)"
+                class="me-2 mb-2"
+                variant="outline"
+              >
+                {{ amenity }}
+              </button>
+            </div>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('selectedAmenities')">
+              {{ getErrorMessage('selectedAmenities') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col xs="12">
+            <button cButton class="me-1" color="primary" type="submit" [disabled]="loading">
+              {{ loading ? 'Saving...' : 'Save Tee' }}
+            </button>
+            <button (click)="onReset()" cButton color="secondary" type="button" [disabled]="loading">
+              Reset Form
+            </button>
+          </c-col>
+        </form>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>

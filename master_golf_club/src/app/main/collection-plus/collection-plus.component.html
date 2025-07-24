@@ -1,0 +1,45 @@
+<div class="home container-fluid p-0 d-flex flex-column align-items-center">
+  <!-- Background Image -->
+  <section class="page-title d-flex justify-content-center align-items-center">
+    <div class="bg-layer"></div>
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+          <h1>Premium Destinations</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-center bg-transparent m-0">
+              <li class="breadcrumb-item"><a href="/">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Our Collections</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <div class="container page-content">
+    <div class="row">
+      <div class="col-12">
+        <h2 class="section-title text-center mt-5 mb-4">Explore Our Premium Collections</h2>
+        <div class="separator"></div>
+        <p class="text-center mx-auto description">Discover our handpicked selection of premium destinations across the globe. Each location offers unique experiences, breathtaking landscapes, and unforgettable adventures tailored to your preferences.</p>
+      </div>
+    </div>
+    
+    <div class="row custom-gap">
+      <div *ngFor="let card of cards" class="col-lg-4 col-md-6 col-sm-12 mb-4">
+        <div
+          class="destination-card"
+          [ngStyle]="{ 'background-image': card.backgroundImage }"
+          (click)="navigateToDestination(card.country)"
+        >
+          <div class="card-overlay"></div>
+          <div class="content">
+            <h3 class="country">{{ card.country }}</h3>
+            <div class="explore-btn">Explore</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

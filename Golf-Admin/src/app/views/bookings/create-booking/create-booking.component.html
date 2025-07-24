@@ -1,0 +1,178 @@
+<c-row>
+    <c-col xs="12">
+      <c-card class="mb-4">
+        <c-card-header>
+          <strong>Book Tee Time</strong>
+        </c-card-header>
+        <c-card-body>
+          <form [formGroup]="bookingForm" (ngSubmit)="onSubmit()" cForm class="row g-3 needs-validation">
+            <!-- Member ID -->
+            <c-col [cFormFloating]="true" md="6">
+              <input 
+                cFormControl 
+                id="memberId" 
+                formControlName="memberId" 
+                required 
+                type="text" 
+                placeholder="Member ID"
+              />
+              <label cLabel for="memberId" class="ms-2">Member ID</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('memberId')">
+                {{ getErrorMessage('memberId') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <!-- Course Selection -->
+            <c-col [cFormFloating]="true" md="6">
+              <select 
+                cSelect 
+                id="courseId" 
+                formControlName="courseId" 
+                required
+              >
+                <option value="" disabled>Select Course</option>
+                <option *ngFor="let course of courses" [value]="course.id">
+                  {{ course.name }} ({{ course.holes }} holes, {{ course.difficulty }} difficulty)
+                </option>
+              </select>
+              <label cLabel for="courseId" class="ms-2">Golf Course</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('courseId')">
+                {{ getErrorMessage('courseId') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <!-- Booking Date -->
+            <c-col [cFormFloating]="true" md="6">
+              <input 
+                cFormControl 
+                id="bookingDate" 
+                formControlName="bookingDate" 
+                required 
+                type="date" 
+                placeholder="Booking Date"
+              />
+              <label cLabel for="bookingDate" class="ms-2">Booking Date</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('bookingDate')">
+                {{ getErrorMessage('bookingDate') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <!-- Time Slot -->
+            <c-col [cFormFloating]="true" md="6">
+              <select 
+                cSelect 
+                id="timeSlot" 
+                formControlName="timeSlot" 
+                required
+              >
+                <option value="" disabled>Select Tee Time</option>
+                <option 
+                  *ngFor="let slot of getAvailableTimeSlots()" 
+                  [value]="slot.time"
+                >
+                  {{ slot.time }}
+                </option>
+              </select>
+              <label cLabel for="timeSlot" class="ms-2">Tee Time</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('timeSlot')">
+                {{ getErrorMessage('timeSlot') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <!-- Number of Players -->
+            <c-col [cFormFloating]="true" md="6">
+              <input 
+                cFormControl 
+                id="numberOfPlayers" 
+                formControlName="numberOfPlayers" 
+                required 
+                type="number" 
+                min="1" 
+                max="4" 
+                placeholder="Number of Players"
+              />
+              <label cLabel for="numberOfPlayers" class="ms-2">Number of Players</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('numberOfPlayers')">
+                {{ getErrorMessage('numberOfPlayers') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <!-- Additional Guests -->
+            <c-col [cFormFloating]="true" md="6">
+              <input 
+                cFormControl 
+                id="additionalGuests" 
+                formControlName="additionalGuests" 
+                type="number" 
+                min="0" 
+                max="3" 
+                placeholder="Additional Guests"
+              />
+              <label cLabel for="additionalGuests" class="ms-2">Additional Guests (Optional)</label>
+            </c-col>
+  
+            <!-- Cart Requirement -->
+            <c-col md="6">
+              <div class="form-check">
+                <input 
+                  cFormControl 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  id="cartRequired" 
+                  formControlName="cartRequired"
+                />
+                <label class="form-check-label" for="cartRequired">
+                  Golf Cart Required
+                </label>
+              </div>
+            </c-col>
+  
+            <!-- Special Requirements -->
+            <c-col md="12">
+              <div [cFormFloating]="true">
+                <textarea 
+                  cFormControl 
+                  id="specialRequirements" 
+                  formControlName="specialRequirements" 
+                  placeholder="Any special requirements or notes"
+                  rows="3"
+                ></textarea>
+                <label cLabel for="specialRequirements" class="ms-2">Special Requirements (Optional)</label>
+              </div>
+            </c-col>
+  
+            <!-- Booking Summary -->
+            <c-col md="12" *ngIf="getSelectedCourse()">
+              <div class="alert alert-info">
+                <strong>Booking Summary:</strong>
+                <p>Course: {{ getSelectedCourse()?.name }} ({{ getSelectedCourse()?.holes }} holes)</p>
+                <p>Difficulty: {{ getSelectedCourse()?.difficulty }}</p>
+              </div>
+            </c-col>
+  
+            <!-- Form Actions -->
+            <c-col xs="12">
+              <button 
+                cButton 
+                class="me-1" 
+                color="primary" 
+                type="submit" 
+                [disabled]="loading"
+              >
+                {{ loading ? 'Booking...' : 'Book Tee Time' }}
+              </button>
+              <button 
+                (click)="onReset()" 
+                cButton 
+                color="secondary" 
+                type="button" 
+                [disabled]="loading"
+              >
+                Reset Form
+              </button>
+            </c-col>
+          </form>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>

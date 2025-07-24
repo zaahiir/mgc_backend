@@ -1,0 +1,77 @@
+<c-row ngPreserveWhitespaces>
+    <c-col xs="12">
+      <c-card class="mb-4">
+        <c-card-header>
+          <strong>Update New Blog Post</strong>
+        </c-card-header>
+        <c-card-body>
+          <form [formGroup]="blogForm" (ngSubmit)="onSubmit()" cForm class="row g-3 needs-validation">
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="blogTitle" formControlName="blogTitle" required type="text" placeholder="Blog Title" />
+              <label cLabel for="blogTitle" class="ms-2">Blog Title</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogTitle')">
+                {{ getErrorMessage('blogTitle') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="blogAuthor" formControlName="blogAuthor" required type="text" placeholder="Blog Author" />
+              <label cLabel for="blogAuthor" class="ms-2">Blog Author</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogAuthor')">
+                {{ getErrorMessage('blogAuthor') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="blogDate" formControlName="blogDate" required type="date" placeholder="Blog Date" />
+              <label cLabel for="blogDate" class="ms-2">Blog Date</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogDate')">
+                {{ getErrorMessage('blogDate') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="blogCategory" formControlName="blogCategory" required type="text" placeholder="Blog Category" />
+              <label cLabel for="blogCategory" class="ms-2">Blog Category</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogCategory')">
+                {{ getErrorMessage('blogCategory') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="12">
+              <textarea cFormControl id="blogContent" formControlName="blogContent" required rows="6" placeholder="Blog Content"></textarea>
+              <label cLabel for="blogContent" class="ms-2">Blog Content</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogContent')">
+                {{ getErrorMessage('blogContent') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="blogTags" formControlName="blogTags" required type="text" placeholder="Blog Tags (comma-separated)" />
+              <label cLabel for="blogTags" class="ms-2">Blog Tags</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogTags')">
+                {{ getErrorMessage('blogTags') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col [cFormFloating]="true" md="6">
+              <input cFormControl id="blogImage" formControlName="blogImage" type="text" placeholder="Blog Image URL" />
+              <label cLabel for="blogImage" class="ms-2">Blog Image URL</label>
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogImage')">
+                {{ getErrorMessage('blogImage') }}
+              </c-form-feedback>
+            </c-col>
+  
+            <c-col xs="12">
+              <button cButton class="me-1" color="primary" type="submit" [disabled]="loading">
+                {{ loading ? 'Saving...' : 'Publish Blog' }}
+              </button>
+              <button (click)="onReset()" cButton color="secondary" type="button" [disabled]="loading">
+                Reset Form
+              </button>
+            </c-col>
+          </form>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>

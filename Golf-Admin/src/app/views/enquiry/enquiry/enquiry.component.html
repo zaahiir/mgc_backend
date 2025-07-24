@@ -1,0 +1,105 @@
+<!-- Option 1: Modern Pill Button Design -->
+<c-col xs="12">
+  <c-card class="mb-4">
+    <c-card-body>
+      <c-col md="3" class="mb-4 flex justify-content-md-end">
+        <input
+          cFormControl
+          id="searchInput"
+          (input)="search()"
+          [(ngModel)]="searchTerm"
+          type="search"
+          placeholder="Search Enquiries"
+        />
+      </c-col>
+
+      <table [hover]="true" [striped]="true" [bordered]="true" cTable>
+        <thead>
+          <tr>
+            <th scope="col">S.No</th>
+            <th scope="col">Name</th>
+            <th scope="col">Phone Number</th>
+            <th scope="col">Email</th>
+            <th scope="col">Message</th>
+            <th scope="col">Date</th>
+            <th scope="col">Status</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let enquiry of paginatedEnquiryList; let i = index">
+            <td>{{ (currentPage - 1) * itemsPerPage + i + 1 }}</td>
+            <td>{{ enquiry.contactEnquiryFirstName + ' ' + enquiry.contactEnquiryLastName }}</td>
+            <td>{{ enquiry.contactEnquiryPhoneNumber }}</td>
+            <td>{{ enquiry.contactEnquiryEmail }}</td>
+            <td>{{ enquiry.contactEnquiryMessage }}</td>
+            <td>{{ enquiry.contactEnquiryDate | date:'mediumDate' }}</td>
+            <td>
+              <span
+                class="status-badge"
+                [ngClass]="enquiry.status === 'completed' ? 'status-completed' : 'status-pending'">
+                {{ enquiry.status | titlecase }}
+              </span>
+            </td>
+            <td>
+              <div class="toggle-switch-container">
+                <input
+                  type="checkbox"
+                  class="toggle-switch-input"
+                  [id]="'toggle-' + enquiry.id"
+                  [checked]="enquiry.status === 'completed'"
+                  (change)="toggleStatus(enquiry.id)"
+                >
+                <label
+                  [for]="'toggle-' + enquiry.id"
+                  class="toggle-switch-label"
+                  [cTooltip]="'Toggle status: ' + (enquiry.status === 'complete' ? 'Mark as Complete' : 'Reopen Enquiry')"
+                  cTooltipPlacement="top"
+                >
+                  <span class="toggle-switch-slider"></span>
+                  <span class="toggle-switch-text"></span>
+                </label>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <c-pagination
+        *ngIf="enquiryList.length > itemsPerPage"
+        aria-label="Enquiry navigation"
+      >
+        <c-page-item>
+          <a
+            cPageLink
+            (click)="previousPage()"
+            [ngClass]="{'disabled': currentPage === 1}"
+          >
+            Previous
+          </a>
+        </c-page-item>
+        <c-page-item *ngFor="let page of pageRange">
+          <a
+            cPageLink
+            (click)="changePage(page)"
+            [ngClass]="{'active': currentPage === page}"
+          >
+            {{ page }}
+          </a>
+        </c-page-item>
+        <c-page-item>
+          <a
+            cPageLink
+            (click)="nextPage()"
+            [ngClass]="{'disabled': currentPage === totalPages}"
+          >
+            Next
+          </a>
+        </c-page-item>
+      </c-pagination>
+    </c-card-body>
+  </c-card>
+</c-col>
+
+<!-- Alternative Option 2: Toggle Switch Design -->
+

@@ -1,0 +1,143 @@
+/* Page-specific styles */
+.page-title .bg-layer {
+  background-image: url('../../../assets/images/banner/banner-4.jpg');
+}
+
+.page-content {
+  padding: 2rem 0;
+  max-width: 1200px;
+}
+
+.section-title {
+  color: var(--title-color);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 2.5rem;
+}
+
+.separator {
+  width: 80px;
+  height: 3px;
+  background-color: var(--theme-color);
+  margin: 0 auto 2rem;
+}
+
+.description {
+  font-family: var(--font-poppins);
+  color: var(--text-color);
+  max-width: 800px;
+  line-height: 1.8;
+  margin-bottom: 3rem;
+  font-size: 1.1rem;
+}
+
+.custom-gap {
+  margin: 0 -1rem;
+}
+
+.custom-gap [class*="col-"] {
+  padding: 1rem;
+}
+
+.destination-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  height: 300px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.4s var(--e);
+}
+
+.destination-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+.card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(28, 64, 61, 0.3), rgba(28, 64, 61, 0.7));
+  transition: all 0.4s var(--e);
+}
+
+.destination-card:hover .card-overlay {
+  background: linear-gradient(to bottom, rgba(119, 169, 106, 0.4), rgba(28, 64, 61, 0.8));
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 1rem;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.country {
+  font-family: var(--font-sans);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.explore-btn {
+  display: inline-block;
+  padding: 0.5rem 1.5rem;
+  background-color: var(--theme-color);
+  color: #fff;
+  font-family: var(--font-poppins);
+  font-weight: 500;
+  border-radius: 30px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s var(--e);
+}
+
+.destination-card:hover .explore-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 991px) {
+  .destination-card {
+    height: 250px;
+  }
+  
+  .country {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .section-title {
+    font-size: 2rem;
+  }
+  
+  .description {
+    font-size: 1rem;
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .page-content {
+    padding: 1.5rem 1rem;
+  }
+  
+  .section-title {
+    font-size: 1.8rem;
+  }
+}

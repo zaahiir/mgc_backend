@@ -1,0 +1,436 @@
+/* Page Title Section Styles */
+.page-title .bg-layer {
+  background-image: url('../../../assets/images/golfground.webp');
+}
+
+/* Section Title */
+.sec-title {
+  position: relative;
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.sec-title .sub-title {
+  color: var(--theme-color);
+  font-size: 18px;
+  font-weight: 500;
+  text-transform: uppercase;
+  margin-bottom: 15px;
+  position: relative;
+  display: inline-block;
+  padding: 0 20px;
+}
+
+.sec-title .sub-title::before,
+.sec-title .sub-title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: var(--theme-color);
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.sec-title .sub-title::before {
+  left: 0;
+}
+
+.sec-title .sub-title::after {
+  right: 0;
+}
+
+.sec-title h2 {
+  font-size: 50px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  font-weight: 400;
+  font-family: var(--font-sans);
+}
+
+/* Contact Info Section */
+.contact-info-section {
+  padding: 80px 0;
+  background: #f8f9fa;
+}
+
+.info-block {
+  margin-bottom: 40px;
+}
+
+.info-box {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 20px;
+  padding: 80px 30px 40px;
+  text-align: center;
+  position: relative;
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.info-box:hover {
+  border-color: var(--theme-color);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.info-box .icon-box {
+  position: absolute;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 90px;
+  background: var(--theme-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 45px;
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.info-box h3 {
+  font-size: 28px;
+  margin-bottom: 15px;
+  font-weight: 400;
+  font-family: var(--font-sans);
+}
+
+.info-box p {
+  font-size: 16px;
+  color: var(--text-color);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.info-box a {
+  color: var(--text-color);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.info-box a:hover {
+  color: var(--theme-color);
+}
+
+/* Contact Form Section */
+.contact-form-section {
+  padding: 80px 0;
+  background: #fff;
+}
+
+.form-container {
+  background: #fff;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-wrapper {
+  flex: 1;
+}
+
+.form-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.form-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.form-wrapper::-webkit-scrollbar-thumb {
+  background: var(--theme-color);
+  border-radius: 10px;
+}
+
+.form-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-color);
+}
+
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-control {
+  height: 55px;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 0 20px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: var(--theme-color);
+  box-shadow: 0 0 0 0.2rem rgba(119, 169, 106, 0.25);
+}
+
+textarea.form-control {
+  height: 120px;
+  padding: 15px 20px;
+  resize: none;
+}
+
+.theme-btn {
+  background: var(--theme-color);
+  color: #fff;
+  border: none;
+  padding: 15px 40px;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-btn:hover {
+  background: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
+.theme-btn:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: all 0.5s ease;
+}
+
+.theme-btn:hover:before {
+  left: 100%;
+}
+
+/* Map Container */
+.map-container {
+  border-radius: 20px;
+  overflow: hidden;
+  height: 600px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.map-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* FAQ Section Styles */
+.faq-section {
+  position: relative;
+  padding: 140px 0 150px 0;
+  background: #f8f9fa;
+}
+
+.auto-container {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.content_block_three .content-box {
+  position: relative;
+  display: block;
+  max-width: 630px;
+  margin: 0 auto;
+}
+
+.accordion-box {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.accordion-box .accordion {
+  position: relative;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0px 10px 50px 0px rgba(0, 0, 0, 0.10);
+  overflow: hidden;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.accordion-box .accordion:last-child {
+  margin-bottom: 0;
+}
+
+.accordion-box .accordion .acc-btn {
+  position: relative;
+  padding: 15px 60px 15px 30px;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.3s ease;
+  border: none;
+  width: 100%;
+  text-align: left;
+  display: block;
+}
+
+.accordion-box .accordion .acc-btn:hover {
+  background: var(--theme-color);
+}
+
+.accordion-box .accordion .acc-btn:hover h3 {
+  color: #fff;
+}
+
+.accordion-box .accordion .acc-btn:hover .icon-box {
+  color: #fff;
+}
+
+.accordion-box .accordion .acc-btn.active {
+  background: var(--theme-color);
+}
+
+.accordion-box .accordion .acc-btn.active h3 {
+  color: #fff;
+}
+
+.accordion-box .accordion .acc-btn.active .icon-box {
+  color: #fff;
+  transform: rotate(180deg);
+}
+
+.accordion-box .accordion .acc-btn h3 {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 500;
+  color: var(--title-color);
+  margin: 0;
+  font-family: var(--font-poppins);
+}
+
+.accordion-box .accordion .acc-btn .icon-box {
+  position: absolute;
+  top: 24px;
+  right: 30px;
+  font-size: 12px;
+  color: var(--theme-color);
+  transition: all 0.3s ease;
+}
+
+.accordion-box .accordion .acc-content {
+  padding: 26px 70px 35px 30px;
+  display: none;
+  transition: all 0.3s ease;
+}
+
+.accordion-box .accordion .acc-content.current {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+.accordion-box .accordion .acc-content .text p {
+  font-size: 16px;
+  line-height: 28px;
+  color: var(--text-color);
+  margin: 0;
+}
+
+/* Animation for smooth accordion */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .sec-title h2 {
+    font-size: 36px;
+  }
+
+  .contact-info-section {
+    padding: 60px 0;
+  }
+
+  .contact-form-section {
+    padding: 60px 0;
+  }
+
+  .faq-section {
+    padding: 80px 0 90px 0;
+  }
+
+  .info-box {
+    padding: 60px 20px 30px;
+  }
+
+  .form-container {
+    padding: 30px 20px;
+  }
+}
+
+@media (max-width: 576px) {
+  .sec-title h2 {
+    font-size: 28px;
+  }
+
+  .info-box h3 {
+    font-size: 24px;
+  }
+
+  .info-box .icon-box {
+    width: 70px;
+    height: 70px;
+    font-size: 35px;
+    top: -35px;
+  }
+
+  .info-box {
+    padding: 50px 15px 25px;
+  }
+
+  .faq-section {
+    padding: 65px 0 70px 0;
+  }
+
+  .accordion-box .accordion .acc-btn {
+    padding: 15px 50px 15px 20px;
+  }
+
+  .accordion-box .accordion .acc-content {
+    padding: 20px 20px 25px 20px;
+  }
+
+  .accordion-box .accordion .acc-btn .icon-box {
+    right: 20px;
+  }
+}
+
+@media (max-width: 991px) {
+  .content_block_three .content-box {
+    margin-bottom: 30px;
+  }
+}
+
+@media (max-width: 767px) {
+  .accordion-box .accordion .acc-content {
+    padding-right: 30px;
+  }
+}

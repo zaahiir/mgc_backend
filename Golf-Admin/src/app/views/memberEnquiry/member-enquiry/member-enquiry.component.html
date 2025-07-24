@@ -1,0 +1,118 @@
+<!-- Updated member-enquiry.component.html -->
+<c-row ngPreserveWhitespaces>
+  <c-col xs="12">
+    <c-card class="mb-4">
+      <c-card-body>
+        <!-- Search Input -->
+        <c-col md="3" class="mb-4">
+          <div class="position-relative">
+            <input
+              cFormControl
+              id="searchInput"
+              [(ngModel)]="searchTerm"
+              (input)="search()"
+              type="search"
+              placeholder="Search Enquiries"
+              autocomplete="off"
+            />
+          </div>
+        </c-col>
+
+        <!-- Member Enquiry Table -->
+        <table [hover]="true" [striped]="true" [bordered]="true" cTable class="align-middle">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 70px">S.No</th>
+              <th scope="col">Date</th>
+              <th scope="col">Plan</th>
+              <th scope="col">Name</th>
+              <th scope="col">Phone Number</th>
+              <th scope="col">Email</th>
+              <th scope="col">Status</th>
+              <th scope="col" style="width: 120px">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let enquiry of paginatedMemberEnquiryList; let i = index"
+                [ngClass]="{'table-secondary': isEnquiryConverted(enquiry)}">
+              <td>{{ (currentPage - 1) * itemsPerPage + i + 1 }}</td>
+              <td>{{ enquiry.memberEnquiryDate | date:'mediumDate' }}</td>
+              <td>{{ getPlanName(enquiry.memberEnquiryPlan) }}</td>
+              <td>{{ enquiry.memberEnquiryFirstName }} {{ enquiry.memberEnquiryLastName }}</td>
+              <td>{{ enquiry.memberEnquiryPhoneNumber }}</td>
+              <td>{{ enquiry.memberEnquiryEmail }}</td>
+              <td>
+                <span
+                  class="badge"
+                  [ngClass]="{
+                    'bg-success': isEnquiryConverted(enquiry),
+                    'bg-warning': !isEnquiryConverted(enquiry)
+                  }">
+                  {{ getStatusText(enquiry) }}
+                </span>
+              </td>
+              <td>
+                <!-- Convert Button -->
+                <a
+                  cButton
+                  (click)="convertToMember(enquiry.id)"
+                  color="btn-transparent"
+                  class="btn-sm border-0 py-0"
+                  [ngClass]="{
+                    'text-primary': !isEnquiryConverted(enquiry),
+                    'text-muted': isEnquiryConverted(enquiry)
+                  }"
+                  [disabled]="isEnquiryConverted(enquiry)"
+                  [cTooltip]="isEnquiryConverted(enquiry) ? tooltipConvertedText : tooltipEditText"
+                  cTooltipPlacement="top"
+                  [style.cursor]="isEnquiryConverted(enquiry) ? 'not-allowed' : 'pointer'"
+                >
+                  <svg [cIcon]="icons.cilPen" size="xl"></svg>
+                </a>
+              </td>
+            </tr>
+            <tr *ngIf="paginatedMemberEnquiryList.length === 0">
+              <td colspan="8" class="text-center py-4">
+                {{ isLoading ? 'Loading...' : 'No enquiries found' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <c-pagination
+          *ngIf="memberEnquiryList.length > itemsPerPage"
+          aria-label="Member enquiry navigation"
+        >
+          <c-page-item>
+            <a
+              cPageLink
+              (click)="previousPage()"
+              [ngClass]="{'disabled': currentPage === 1}"
+            >
+              Previous
+            </a>
+          </c-page-item>
+          <c-page-item *ngFor="let page of pageRange">
+            <a
+              cPageLink
+              (click)="changePage(page)"
+              [ngClass]="{'active': currentPage === page}"
+            >
+              {{ page }}
+            </a>
+          </c-page-item>
+          <c-page-item>
+            <a
+              cPageLink
+              (click)="nextPage()"
+              [ngClass]="{'disabled': currentPage === totalPages}"
+            >
+              Next
+            </a>
+          </c-page-item>
+        </c-pagination>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>
