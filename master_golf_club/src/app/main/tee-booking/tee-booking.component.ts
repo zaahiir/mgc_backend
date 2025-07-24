@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -15,7 +15,11 @@ import {
   faParking,
   faWifi,
   faUtensils,
-  faShoppingBag
+  faShoppingBag,
+  faCalendar,
+  faChevronLeft,
+  faChevronRight,
+  faGolfBall
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Course {
@@ -43,9 +47,15 @@ interface TimeSlot {
 interface Booking {
   date: Date;
   time: string;
-  guests: number;
+  participants: number;
   course: string;
   totalPrice: number;
+  holes: number;
+}
+
+interface CalendarDay {
+  date: Date;
+  otherMonth: boolean;
 }
 
 @Component({
@@ -68,6 +78,10 @@ export class TeeBookingComponent implements OnInit {
   wifiIcon = faWifi;
   restaurantIcon = faUtensils;
   shopIcon = faShoppingBag;
+  calendarIcon = faCalendar;
+  chevronLeftIcon = faChevronLeft;
+  chevronRightIcon = faChevronRight;
+  golfIcon = faGolfBall;
 
   // Course Details
   course: Course = {
@@ -91,8 +105,8 @@ export class TeeBookingComponent implements OnInit {
   mapUrl: SafeResourceUrl;
 
   // Booking State
-  guestCount: number = 1;
-  maxGuests: number = 4;
+  participantCount: number = 1;
+  maxParticipants: number = 4;
   selectedDate: Date;
   selectedTime: string | null = null;
   availableDates: Date[] = [];
@@ -101,25 +115,31 @@ export class TeeBookingComponent implements OnInit {
   isLoading: boolean = false;
   errorMessage: string = '';
   initialLoad: boolean = true;
-  basePrice: number = 50;
+  basePrice: number = 35; // Base price for 9 holes
+
+  // Tee Selection
+  selectedTee: '9' | '18' | null = null;
+
+  // Calendar State
+  showCalendar: boolean = false;
+  currentDate: Date = new Date();
+  weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  calendarDays: CalendarDay[] = [];
 
   constructor(
     private route: ActivatedRoute,
     private sanitizer: DomSanitizer
   ) {
-    // Initialize selectedDate to today
     this.selectedDate = new Date();
     this.selectedDate.setHours(0, 0, 0, 0);
-
-    // Initialize mapUrl with OpenStreetMap
     const osmUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.00030577182769775396%2C51.478569861898606&layer=mapnik';
-
     this.mapUrl = this.sanitizer.bypassSecurityTrustResourceUrl(osmUrl);
   }
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.generateAvailableDates();
     this.initializeTimeSlots();
+    this.generateCalendarDays();
   }
 
   private generateAvailableDates(): void {
@@ -134,28 +154,24 @@ export class TeeBookingComponent implements OnInit {
   }
 
   private initializeTimeSlots(): void {
-    // Generate time slots for each available date
     this.availableDates.forEach(date => {
       const dateKey = this.getDateKey(date);
       const timeSlots = this.generateTimeSlotsForDate(date);
       this.timeSlotsByDate.set(dateKey, timeSlots);
     });
 
-    // Set current time slots to today's slots
     this.updateCurrentTimeSlots(this.selectedDate);
     this.initialLoad = false;
   }
 
   private generateTimeSlotsForDate(date: Date): TimeSlot[] {
     const slots: TimeSlot[] = [];
-    const isToday = this.isToday(date);
+    const isToday = this.isToday(date);  // Use the public isToday method
     const currentHour = new Date().getHours();
     const currentMinute = new Date().getMinutes();
 
-    // Generate slots from 7 AM to 7 PM
     for (let hour = 7; hour < 19; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
-        // Skip past times if it's today
         if (isToday && (hour < currentHour || (hour === currentHour && minute <= currentMinute))) {
           continue;
         }
@@ -163,7 +179,7 @@ export class TeeBookingComponent implements OnInit {
         const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         slots.push({
           time: timeString,
-          available: Math.random() > 0.3 // Simulate availability
+          available: Math.random() > 0.3
         });
       }
     }
@@ -176,52 +192,51 @@ export class TeeBookingComponent implements OnInit {
     this.currentTimeSlots = this.timeSlotsByDate.get(dateKey) || [];
 
     if (!this.initialLoad) {
-      this.selectedTime = null; // Reset selected time when date changes, but not on initial load
+      this.selectedTime = null;
     }
   }
 
-  // Helper functions
   private getDateKey(date: Date): string {
     return date.toISOString().split('T')[0];
-  }
-
-  private isToday(date: Date): boolean {
-    const today = new Date();
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
   }
 
   isDateSelected(date: Date): boolean {
     return this.getDateKey(date) === this.getDateKey(this.selectedDate);
   }
 
-  // Event handlers
   selectDate(date: Date): void {
     this.selectedDate = date;
     this.updateCurrentTimeSlots(date);
+    this.showCalendar = false;
   }
 
   selectTime(time: string): void {
     this.selectedTime = time;
   }
 
-  incrementGuests(): void {
-    if (this.guestCount < this.maxGuests) {
-      this.guestCount++;
+  incrementParticipants(): void {
+    if (this.participantCount < this.maxParticipants) {
+      this.participantCount++;
     }
   }
 
-  decrementGuests(): void {
-    if (this.guestCount > 1) {
-      this.guestCount--;
+  decrementParticipants(): void {
+    if (this.participantCount > 1) {
+      this.participantCount--;
     }
+  }
+
+  selectTee(tee: '9' | '18'): void {
+    this.selectedTee = tee;
+    // Update total price calculation
+    this.calculatePrice();
   }
 
   canBook(): boolean {
     return !!this.selectedTime &&
-           this.guestCount > 0 &&
-           this.guestCount <= this.maxGuests;
+           !!this.selectedTee &&
+           this.participantCount > 0 &&
+           this.participantCount <= this.maxParticipants;
   }
 
   formatTime(time: string): string {
@@ -233,7 +248,63 @@ export class TeeBookingComponent implements OnInit {
   }
 
   calculatePrice(): number {
-    return this.guestCount * this.basePrice;
+    const baseAmount = this.participantCount * this.basePrice;
+    return this.selectedTee === '18' ? baseAmount * 1.8 : baseAmount;
+  }
+
+  // Calendar Methods
+  toggleCalendar(): void {
+    this.showCalendar = !this.showCalendar;
+    if (this.showCalendar) {
+      this.generateCalendarDays();
+    }
+  }
+
+  generateCalendarDays(): void {
+    const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+    const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+    
+    const firstDayToShow = new Date(firstDay);
+    firstDayToShow.setDate(firstDayToShow.getDate() - firstDay.getDay());
+    
+    const lastDayToShow = new Date(lastDay);
+    lastDayToShow.setDate(lastDayToShow.getDate() + (6 - lastDay.getDay()));
+    
+    this.calendarDays = [];
+    let currentDay = new Date(firstDayToShow);
+    
+    while (currentDay <= lastDayToShow) {
+      this.calendarDays.push({
+        date: new Date(currentDay),
+        otherMonth: currentDay.getMonth() !== this.currentDate.getMonth()
+      });
+      currentDay.setDate(currentDay.getDate() + 1);
+    }
+  }
+
+  previousMonth(): void {
+    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1);
+    this.generateCalendarDays();
+  }
+
+  nextMonth(): void {
+    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1);
+    this.generateCalendarDays();
+  }
+
+  isToday(date: Date): boolean {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  }
+
+  isDayAvailable(date: Date): boolean {
+    return this.availableDates.some(availableDate => 
+      availableDate.getDate() === date.getDate() &&
+      availableDate.getMonth() === date.getMonth() &&
+      availableDate.getFullYear() === date.getFullYear()
+    );
   }
 
   async bookTeeTime(): Promise<void> {
@@ -243,15 +314,15 @@ export class TeeBookingComponent implements OnInit {
     this.errorMessage = '';
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const booking: Booking = {
         date: this.selectedDate,
         time: this.selectedTime!,
-        guests: this.guestCount,
+        participants: this.participantCount,
         course: this.course.name,
-        totalPrice: this.calculatePrice()
+        totalPrice: this.calculatePrice(),
+        holes: this.selectedTee === '18' ? 18 : 9
       };
 
       console.log('Booking details:', booking);
@@ -267,10 +338,10 @@ export class TeeBookingComponent implements OnInit {
 
   private resetForm(): void {
     this.selectedTime = null;
-    this.guestCount = 1;
+    this.selectedTee = null;
+    this.participantCount = 1;
   }
 
-  // Map and sharing functionality
   getDirections(): void {
     const query = encodeURIComponent(`${this.course.name} ${this.course.address}`);
     const url = `https://www.google.com/maps/dir/?api=1&destination=${query}`;
@@ -309,7 +380,6 @@ export class TeeBookingComponent implements OnInit {
     document.body.removeChild(textarea);
   }
 
-  // Error handling
   handleMapError(event: ErrorEvent): void {
     console.error('Map loading error:', event);
     this.errorMessage = 'Failed to load map. Please try again later.';

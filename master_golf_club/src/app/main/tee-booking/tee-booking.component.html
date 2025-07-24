@@ -37,38 +37,101 @@
 
           <div class="booking-form">
             <div class="form-section">
-              <label>Guests</label>
+              <div class="label-with-icon">
+                <div class="label-group">
+                  <fa-icon [icon]="golfIcon" class="section-icon"></fa-icon>
+                  <label>Select Tee</label>
+                </div>
+              </div>
+              <div class="tee-options">
+                <button class="tee-option" 
+                        [class.selected]="selectedTee === '9'"
+                        (click)="selectTee('9')">
+                  <span class="tee-name">Tees with 9 Holes</span>
+                  <span class="tee-price">£{{basePrice}}</span>
+                </button>
+                <button class="tee-option"
+                        [class.selected]="selectedTee === '18'"
+                        (click)="selectTee('18')">
+                  <span class="tee-name">Tees with 18 Holes</span>
+                  <span class="tee-price">£{{basePrice * 1.8}}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="label-with-icon">
+                <div class="label-group">
+                  <fa-icon [icon]="usersIcon" class="section-icon"></fa-icon>
+                  <label>Participants</label>
+                </div>
+              </div>
               <div class="player-selector">
-                <button class="circle-btn" (click)="decrementGuests()" [disabled]="guestCount === 1">-</button>
-                <span class="player-count">{{guestCount}}</span>
-                <button class="circle-btn" (click)="incrementGuests()" [disabled]="guestCount === maxGuests">+</button>
+                <button class="circle-btn" (click)="decrementParticipants()" [disabled]="participantCount === 1">-</button>
+                <span class="player-count">{{participantCount}}</span>
+                <button class="circle-btn" (click)="incrementParticipants()" [disabled]="participantCount === maxParticipants">+</button>
               </div>
             </div>
 
             <div class="form-section">
-              <label>Select Date</label>
-              <div class="date-scroll">
-                <button *ngFor="let date of availableDates"
-                        class="date-btn"
-                        [class.selected]="isDateSelected(date)"
-                        (click)="selectDate(date)">
-                  <span class="day">{{date | date:'EEE'}}</span>
-                  <span class="date">{{date | date:'d'}}</span>
-                  <span class="month">{{date | date:'MMM'}}</span>
-                </button>
+              <div class="label-with-icon">
+                <div class="label-group">
+                  <fa-icon [icon]="calendarIcon" class="section-icon"></fa-icon>
+                  <label>Select Date</label>
+                </div>
+              </div>
+
+              <!-- Calendar View (Always Visible) -->
+              <div class="calendar-view">
+                <div class="calendar-header">
+                  <button class="month-nav" (click)="previousMonth()">
+                    <fa-icon [icon]="chevronLeftIcon"></fa-icon>
+                  </button>
+                  <span class="current-month">{{currentDate | date:'MMMM yyyy'}}</span>
+                  <button class="month-nav" (click)="nextMonth()">
+                    <fa-icon [icon]="chevronRightIcon"></fa-icon>
+                  </button>
+                </div>
+                <div class="calendar-weekdays">
+                  <span *ngFor="let day of weekDays">{{day}}</span>
+                </div>
+                <div class="calendar-days">
+                  <button *ngFor="let day of calendarDays"
+                          class="calendar-day"
+                          [class.other-month]="day.otherMonth"
+                          [class.selected]="isDateSelected(day.date)"
+                          [class.today]="isToday(day.date)"
+                          [class.available]="isDayAvailable(day.date)"
+                          [disabled]="!isDayAvailable(day.date) || day.otherMonth"
+                          (click)="selectDate(day.date)">
+                    {{day.date | date:'d'}}
+                  </button>
+                </div>
               </div>
             </div>
 
             <div class="form-section">
-              <label>Available Times</label>
-              <div class="time-grid">
-                <button *ngFor="let slot of currentTimeSlots"
-                        class="time-btn"
-                        [class.selected]="selectedTime === slot.time"
-                        [disabled]="!slot.available"
-                        (click)="selectTime(slot.time)">
-                  {{formatTime(slot.time)}}
-                </button>
+              <div class="label-with-icon">
+                <div class="label-group">
+                  <fa-icon [icon]="clockIcon" class="section-icon"></fa-icon>
+                  <label>Available Times</label>
+                </div>
+              </div>
+              <div class="time-slots-container">
+                <div class="time-slots-grid">
+                  <button *ngFor="let slot of currentTimeSlots"
+                          class="time-slot"
+                          [class.selected]="selectedTime === slot.time"
+                          [class.unavailable]="!slot.available"
+                          [disabled]="!slot.available"
+                          (click)="selectTime(slot.time)">
+                    <div class="time-slot-content">
+                      <span class="time">{{formatTime(slot.time)}}</span>
+                      <span class="availability" *ngIf="slot.available">Available</span>
+                      <span class="availability booked" *ngIf="!slot.available">Booked</span>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -92,15 +155,15 @@
           </div>
           <ul class="info-list">
             <li>
-              <i class="icon-location">📍</i>
+              <span><fa-icon [icon]="locationIcon"></fa-icon></span>
               <span>{{course.lane}}, {{course.address}}, {{course.code}}</span>
             </li>
             <li>
-              <i class="icon-phone">📞</i>
+              <span><fa-icon [icon]="phoneIcon"></fa-icon></span>
               <a [href]="'tel:' + course.phone">{{course.phone}}</a>
             </li>
             <li>
-              <i class="icon-clock">🕐</i>
+              <span><fa-icon [icon]="clockIcon"></fa-icon></span>
               <span>{{course.timing}}</span>
             </li>
           </ul>
