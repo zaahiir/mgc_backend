@@ -19,7 +19,12 @@ import {
   faCalendar,
   faChevronLeft,
   faChevronRight,
-  faGolfBall
+  faChevronUp,
+  faChevronDown,
+  faGolfBall,
+  faEnvelope,
+  faCopy,
+  faRoute
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Course {
@@ -81,7 +86,12 @@ export class TeeBookingComponent implements OnInit {
   calendarIcon = faCalendar;
   chevronLeftIcon = faChevronLeft;
   chevronRightIcon = faChevronRight;
+  chevronUpIcon = faChevronUp;
+  chevronDownIcon = faChevronDown;
   golfIcon = faGolfBall;
+  emailIcon = faEnvelope;
+  copyIcon = faCopy;
+  routeIcon = faRoute;
 
   // Course Details
   course: Course = {
@@ -104,10 +114,12 @@ export class TeeBookingComponent implements OnInit {
   // Map URL
   mapUrl: SafeResourceUrl;
 
-  // Booking State
+  // Booking State - Modified for sequential flow
   participantCount: number = 1;
   maxParticipants: number = 4;
+  participantsSelected: boolean = false;
   selectedDate: Date;
+  dateSelected: boolean = false;
   selectedTime: string | null = null;
   availableDates: Date[] = [];
   timeSlotsByDate: Map<string, TimeSlot[]> = new Map();
@@ -130,6 +142,7 @@ export class TeeBookingComponent implements OnInit {
     private route: ActivatedRoute,
     private sanitizer: DomSanitizer
   ) {
+    // Initialize with today's date
     this.selectedDate = new Date();
     this.selectedDate.setHours(0, 0, 0, 0);
     const osmUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.00030577182769775396%2C51.478569861898606&layer=mapnik';
@@ -146,7 +159,7 @@ export class TeeBookingComponent implements OnInit {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    this.availableDates = Array.from({ length: 8 }, (_, i) => {
+    this.availableDates = Array.from({ length: 30 }, (_, i) => {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       return date;
@@ -208,8 +221,10 @@ export class TeeBookingComponent implements OnInit {
 
   selectDate(date: Date): void {
     this.selectedDate = date;
+    this.dateSelected = true;
     this.updateCurrentTimeSlots(date);
     this.showCalendar = false;
+    this.selectedTime = null; // Reset time selection when date changes
   }
 
   selectTime(time: string): void {
@@ -219,29 +234,32 @@ export class TeeBookingComponent implements OnInit {
   incrementParticipants(): void {
     if (this.participantCount < this.maxParticipants) {
       this.participantCount++;
+      this.participantsSelected = true;
     }
   }
 
   decrementParticipants(): void {
     if (this.participantCount > 1) {
       this.participantCount--;
+      this.participantsSelected = this.participantCount > 0;
     }
   }
 
   selectTee(tee: '9' | '18'): void {
     this.selectedTee = tee;
-    // Update total price calculation
-    this.calculatePrice();
   }
 
   canBook(): boolean {
-    return !!this.selectedTime &&
+    return this.participantsSelected &&
            !!this.selectedTee &&
+           this.dateSelected &&
+           !!this.selectedTime &&
            this.participantCount > 0 &&
            this.participantCount <= this.maxParticipants;
   }
 
   calculatePrice(): number {
+    if (!this.selectedTee) return 0;
     const baseAmount = this.participantCount * this.basePrice;
     return this.selectedTee === '18' ? baseAmount * 1.8 : baseAmount;
   }
@@ -250,6 +268,8 @@ export class TeeBookingComponent implements OnInit {
   toggleCalendar(): void {
     this.showCalendar = !this.showCalendar;
     if (this.showCalendar) {
+      // Set current date to show the month containing selected date
+      this.currentDate = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
       this.generateCalendarDays();
     }
   }
@@ -334,6 +354,10 @@ export class TeeBookingComponent implements OnInit {
     this.selectedTime = null;
     this.selectedTee = null;
     this.participantCount = 1;
+    this.participantsSelected = false;
+    this.dateSelected = false;
+    this.selectedDate = new Date();
+    this.selectedDate.setHours(0, 0, 0, 0);
   }
 
   getDirections(): void {
@@ -360,18 +384,21 @@ export class TeeBookingComponent implements OnInit {
     }
   }
 
-  private copyToClipboard(text: string): void {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand('copy');
-      alert('Location details copied to clipboard!');
-    } catch (err) {
+  makeCall(): void {
+    window.location.href = `tel:${this.course.phone}`;
+  }
+
+  copyToClipboard(text: string): void {
+    navigator.clipboard.writeText(text).then(() => {
+      // Show a brief success message
+      const originalErrorMessage = this.errorMessage;
+      this.errorMessage = 'Copied to clipboard!';
+      setTimeout(() => {
+        this.errorMessage = originalErrorMessage;
+      }, 2000);
+    }).catch(err => {
       console.error('Failed to copy:', err);
-    }
-    document.body.removeChild(textarea);
+    });
   }
 
   handleMapError(event: ErrorEvent): void {
