@@ -2,6 +2,9 @@ from django.db import models
 from tinymce.models import HTMLField
 from django.core.validators import MaxValueValidator
 from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from decimal import Decimal
 import uuid
 import datetime
 
@@ -221,6 +224,123 @@ class CourseModel(models.Model):
         if self.courseAlternatePhoneNumber:
             contacts.append(self.courseAlternatePhoneNumber)
         return contacts
+    
+    @property
+    def available_tees(self):
+        """Return all available tees for this course"""
+        return self.tees.filter(hideStatus=0).order_by('holeNumber', 'pricePerPerson')
+    
+    def get_default_tee(self):
+        """Get the default tee (first available tee)"""
+        return self.available_tees.first()
+
+
+class TeeModel(models.Model):
+    id = models.AutoField(primary_key=True)
+    course = models.ForeignKey(CourseModel, on_delete=models.CASCADE, related_name="tees")
+    holeNumber = models.IntegerField(help_text="Number of holes for this tee (e.g., 9 or 18)")
+    label = models.CharField(max_length=100, null=True, blank=True, help_text="Optional name like 'Morning 9 Holes'")
+    pricePerPerson = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField(null=True, blank=True)
+    hideStatus = models.IntegerField(default=0)
+
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.holeNumber} Holes - {self.course.courseName}"
+    
+    def clean(self):
+        super().clean()
+        if self.holeNumber not in [9, 18]:
+            raise ValidationError("Hole number must be either 9 or 18")
+        if self.pricePerPerson <= 0:
+            raise ValidationError("Price per person must be greater than 0")
+
+    @property
+    def formatted_price(self):
+        return f"₹{self.pricePerPerson}"
+    
+    @property
+    def price_per_hour(self):
+        # Estimate: 9 holes = 2.5 hours, 18 holes = 4.5 hours
+        hours = 2.5 if self.holeNumber == 9 else 4.5
+        return self.pricePerPerson / Decimal(str(hours))
+
+
+class BookingModel(models.Model):
+    id = models.AutoField(primary_key=True)
+
+    member = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="bookings")
+    course = models.ForeignKey(CourseModel, on_delete=models.CASCADE, related_name="bookings")
+    tee = models.ForeignKey(TeeModel, on_delete=models.CASCADE, related_name="bookings")
+
+    bookingDate = models.DateField()
+    bookingTime = models.TimeField()
+    participants = models.PositiveIntegerField(default=1)
+    totalPrice = models.DecimalField(max_digits=10, decimal_places=2)
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled')
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    notes = models.TextField(null=True, blank=True)
+    hideStatus = models.IntegerField(default=0)
+    
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Calculate totalPrice automatically if not provided
+        if not self.totalPrice:
+            self.totalPrice = self.tee.pricePerPerson * self.participants
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.member.firstName} - {self.course.courseName} on {self.bookingDate}"
+    
+    def clean(self):
+        super().clean()
+        # Validate booking date is not in the past
+        if self.bookingDate < timezone.now().date():
+            raise ValidationError("Cannot book for past dates")
+        
+        # Validate booking time is reasonable (6 AM to 8 PM)
+        if not (6 <= self.bookingTime.hour <= 20):
+            raise ValidationError("Booking time must be between 6:00 AM and 8:00 PM")
+        
+        # Check for overlapping bookings
+        overlapping = BookingModel.objects.filter(
+            course=self.course,
+            bookingDate=self.bookingDate,
+            bookingTime=self.bookingTime,
+            status__in=['pending', 'confirmed']
+        ).exclude(id=self.id if self.id else None)
+        
+        if overlapping.exists():
+            raise ValidationError("This time slot is already booked")
+    
+    @property
+    def duration_hours(self):
+        return 2.5 if self.tee.holeNumber == 9 else 4.5
+    
+    @property
+    def end_time(self):
+        from datetime import datetime, timedelta
+        start_datetime = datetime.combine(self.bookingDate, self.bookingTime)
+        duration = timedelta(hours=self.duration_hours)
+        return (start_datetime + duration).time()
+    
+    @property
+    def can_cancel(self):
+        # Allow cancellation up to 24 hours before booking
+        booking_datetime = timezone.datetime.combine(self.bookingDate, self.bookingTime)
+        return booking_datetime - timezone.now() > timezone.timedelta(hours=24)
+
+
 
 
 class BlogModel(models.Model):

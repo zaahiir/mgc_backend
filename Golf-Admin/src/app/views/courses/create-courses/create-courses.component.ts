@@ -89,6 +89,7 @@ export class CreateCoursesComponent implements OnInit {
   isEditMode = false;
   courseId: string | null = null;
   hasExistingData = false;
+  courseTees: any[] = [];
 
   constructor(
     private formBuilder: FormBuilder,
@@ -137,6 +138,21 @@ export class CreateCoursesComponent implements OnInit {
     }
   }
 
+  private async loadCourseTees(): Promise<void> {
+    if (!this.courseId) return;
+
+    try {
+      const response = await this.courseService.getTeesByCourse(this.courseId);
+      if (response.data && response.data.code === 1) {
+        console.log('Course tees loaded:', response.data.data);
+        this.courseTees = response.data.data;
+      }
+    } catch (error) {
+      console.error('Error loading course tees:', error);
+      // Don't show error to user as this is optional information
+    }
+  }
+
   private async loadCourseData(): Promise<void> {
     if (!this.courseId) return;
 
@@ -171,6 +187,9 @@ export class CreateCoursesComponent implements OnInit {
         } else if (courseData.courseImage && !courseData.courseImage.includes('default-course.jpg')) {
           this.imagePreview = courseData.courseImage;
         }
+
+        // Load associated tees for this course
+        await this.loadCourseTees();
       }
     } catch (error) {
       console.error('Error loading course data:', error);
@@ -324,11 +343,13 @@ export class CreateCoursesComponent implements OnInit {
       const response = await this.courseService.processCourse(formData, requestId);
 
       if (response.data && response.data.code === 1) {
+        const successMessage = this.isEditMode
+          ? 'Golf course has been updated successfully'
+          : 'Golf course has been created successfully with a default 18-hole tee';
+        
         await Swal.fire({
           title: 'Success!',
-          text: this.isEditMode
-            ? 'Golf course has been updated successfully'
-            : 'Golf course has been created successfully',
+          text: successMessage,
           icon: 'success',
           confirmButtonText: 'Ok'
         });

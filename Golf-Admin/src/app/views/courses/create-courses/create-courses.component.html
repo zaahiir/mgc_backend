@@ -103,6 +103,9 @@
           <c-col md="12">
             <div class="mb-3">
               <label cLabel class="form-label">Amenities *</label>
+              <small class="text-muted d-block mb-2">
+                * A default 18-hole tee will be automatically created when you save this course.
+              </small>
               <div class="amenities-container mt-2">
                 <div *ngIf="amenitiesList.length === 0" class="text-muted">
                   Loading amenities...
@@ -139,6 +142,38 @@
               <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('courseAmenities')">
                 {{ getErrorMessage('courseAmenities') }}
               </c-form-feedback>
+            </div>
+          </c-col>
+
+          <!-- Tee Information (for edit mode) -->
+          <c-col md="12" *ngIf="isEditMode && courseTees && courseTees.length > 0">
+            <div class="mb-3">
+              <label cLabel class="form-label">Course Tees</label>
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Holes</th>
+                      <th>Label</th>
+                      <th>Price per Person</th>
+                      <th>Duration</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let tee of courseTees">
+                      <td>{{ tee.holeNumber }}</td>
+                      <td>{{ tee.label }}</td>
+                      <td>{{ tee.formattedPrice }}</td>
+                      <td>{{ tee.estimatedDuration }}</td>
+                      <td>{{ tee.description }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <small class="text-muted">
+                * A default 18-hole tee is automatically created when a new course is added.
+              </small>
             </div>
           </c-col>
 

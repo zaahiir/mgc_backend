@@ -228,6 +228,9 @@ export class LoginComponent implements OnInit {
       const username = this.loginForm.value.username;
       const password = this.loginForm.value.password;
 
+      // ===== AUTHENTICATION BYPASS - NEW VERSION =====
+      // Comment out the original authentication logic
+      /*
       this.authService.login(username, password).subscribe({
         next: (response) => {
           this.isLoading = false;
@@ -243,6 +246,28 @@ export class LoginComponent implements OnInit {
           console.error('Login error', error);
         }
       });
+      */
+
+      // ===== NEW BYPASS LOGIC =====
+      // Simulate loading delay
+      setTimeout(() => {
+        this.isLoading = false;
+        
+        // Store mock authentication data
+        if (isPlatformBrowser(this.platformId)) {
+          localStorage.setItem('access_token', 'mock_access_token');
+          localStorage.setItem('refresh_token', 'mock_refresh_token');
+          localStorage.setItem('user_type', 'member');
+          localStorage.setItem('user_id', '1');
+          localStorage.setItem('username', username);
+          localStorage.setItem('email', username + '@example.com');
+          localStorage.setItem('login_timestamp', Date.now().toString());
+        }
+        
+        // Navigate to home
+        this.router.navigate(['/home']);
+      }, 1000);
+      
     } else if (!this.loginForm.valid) {
       this.markFormGroupTouched(this.loginForm);
     }
@@ -255,6 +280,9 @@ export class LoginComponent implements OnInit {
       this.successMessage = '';
       const email = this.forgotPasswordForm.value.email;
 
+      // ===== AUTHENTICATION BYPASS - NEW VERSION =====
+      // Comment out the original password reset logic
+      /*
       this.authService.requestPasswordReset(email).subscribe({
         next: (response) => {
           this.isLoading = false;
@@ -276,6 +304,21 @@ export class LoginComponent implements OnInit {
           console.error('Password reset error', error);
         }
       });
+      */
+
+      // ===== NEW BYPASS LOGIC =====
+      // Simulate loading delay
+      setTimeout(() => {
+        this.isLoading = false;
+        this.successMessage = 'Verification code has been sent to your email. Please check your email and use the code to set a new password.';
+        this.forgotPasswordForm.reset();
+
+        // Automatically show the set new password form after 3 seconds
+        setTimeout(() => {
+          this.showSetNewPasswordForm();
+        }, 3000);
+      }, 1000);
+      
     } else {
       this.markFormGroupTouched(this.forgotPasswordForm);
     }
@@ -292,6 +335,9 @@ export class LoginComponent implements OnInit {
         confirm_password: this.setNewPasswordForm.value.confirm_password
       };
 
+      // ===== AUTHENTICATION BYPASS - NEW VERSION =====
+      // Comment out the original set new password logic
+      /*
       this.authService.setNewPassword(formData).subscribe({
         next: (response) => {
           this.isLoading = false;
@@ -316,6 +362,22 @@ export class LoginComponent implements OnInit {
           console.error('Set new password error', error);
         }
       });
+      */
+
+      // ===== NEW BYPASS LOGIC =====
+      // Simulate loading delay
+      setTimeout(() => {
+        this.isLoading = false;
+        this.successMessage = 'Password has been reset successfully. You can now login with your new password.';
+        this.setNewPasswordForm.reset();
+        this.verificationCodeArray.controls.forEach(control => control.setValue(''));
+
+        // Automatically go back to login form after 3 seconds
+        setTimeout(() => {
+          this.backToLogin();
+        }, 3000);
+      }, 1000);
+      
     } else {
       this.markFormGroupTouched(this.setNewPasswordForm);
     }

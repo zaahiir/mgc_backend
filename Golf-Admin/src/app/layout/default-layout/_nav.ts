@@ -37,11 +37,6 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-layers' }
   },
   {
-    name: 'Tee',
-    url: '/tee',
-    iconComponent: { name: 'cil-location-pin' }
-  },
-  {
     name: 'Amenities',
     url: '/amenities',
     iconComponent: { name: 'cil-location-pin' }

@@ -26,6 +26,7 @@ interface CourseInterface {
   courseDescription?: string; // From direct model field
   imageUrl?: string;       // From serializer method
   amenities?: number[];    // From serializer method
+  tees?: any[];           // From serializer method
 }
 
 @Component({
@@ -142,6 +143,16 @@ export class ListCoursesComponent implements OnInit {
     return course.timing || course.courseOpenFrom || 'N/A';
   }
 
+  // Get tee information for display
+  getTeeInfo(course: CourseInterface): string {
+    if (course.tees && course.tees.length > 0) {
+      const teeCount = course.tees.length;
+      const holeTypes = course.tees.map((tee: any) => `${tee.holeNumber}H`).join(', ');
+      return `${teeCount} tee${teeCount > 1 ? 's' : ''} (${holeTypes})`;
+    }
+    return 'No tees';
+  }
+
   // Extract town from address (first part before comma)
   getTownFromAddress(course: CourseInterface): string {
     const address = this.getCourseAddress(course);
@@ -161,7 +172,8 @@ export class ListCoursesComponent implements OnInit {
         this.getTownFromAddress(course).toLowerCase().includes(searchTermLower) ||
         this.getCoursePhone(course).toLowerCase().includes(searchTermLower) ||
         this.getCourseWebsite(course).toLowerCase().includes(searchTermLower) ||
-        this.getCourseLocation(course).toLowerCase().includes(searchTermLower)
+        this.getCourseLocation(course).toLowerCase().includes(searchTermLower) ||
+        this.getTeeInfo(course).toLowerCase().includes(searchTermLower)
       );
     }
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
@@ -175,7 +187,8 @@ export class ListCoursesComponent implements OnInit {
         this.getTownFromAddress(course).toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         this.getCoursePhone(course).toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         this.getCourseWebsite(course).toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        this.getCourseLocation(course).toLowerCase().includes(this.searchTerm.toLowerCase())
+        this.getCourseLocation(course).toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        this.getTeeInfo(course).toLowerCase().includes(this.searchTerm.toLowerCase())
       ).length :
       this.courseList.length;
     return Math.ceil(filteredLength / this.itemsPerPage);

@@ -39,6 +39,7 @@
               <th scope="col">Website</th>
               <th scope="col">Location</th>
               <th scope="col">Timing</th>
+              <th scope="col">Tees</th>
               <th scope="col">Action</th>
             </tr>
           </thead>
@@ -59,6 +60,9 @@
               </td>
               <td>{{ getCourseLocation(course) }}</td>
               <td>{{ getCourseTiming(course) }}</td>
+              <td>
+                <span class="badge bg-info">{{ getTeeInfo(course) }}</span>
+              </td>
               <td>
                 <a cButton
                    [routerLink]="['/courses/update', course.id]"

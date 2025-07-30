@@ -13,6 +13,7 @@ from .utils import PasswordManager
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.conf import settings
+from datetime import datetime, timedelta
 import json
 import logging
 import qrcode
@@ -1517,6 +1518,232 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
                 'message': f"Error: {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+
+class TeeViewSet(viewsets.ModelViewSet):
+    serializer_class = TeeSerializer
+    
+    def get_queryset(self):
+        queryset = TeeModel.objects.filter(hideStatus=0).select_related('course').order_by('holeNumber', 'pricePerPerson')
+        course_id = self.request.query_params.get('course_id')
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+        return queryset
+    
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        if pk == "0":
+            queryset = self.get_queryset()
+        else:
+            queryset = TeeModel.objects.filter(hideStatus=0, id=pk).select_related('course')
+        
+        serializer = TeeSerializer(queryset, many=True)
+        return Response({'code': 1, 'data': serializer.data})
+    
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        try:
+            instance = None if pk == "0" else TeeModel.objects.get(id=pk)
+            serializer = TeeSerializer(instance=instance, data=request.data)
+            
+            if serializer.is_valid():
+                tee = serializer.save()
+                return Response({
+                    'code': 1,
+                    'message': "Tee processed successfully",
+                    'data': TeeSerializer(tee).data
+                })
+            else:
+                return Response({
+                    'code': 0,
+                    'message': "Validation Error",
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except TeeModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': "Tee not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f"Error: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        try:
+            TeeModel.objects.filter(id=pk).update(hideStatus=1)
+            return Response({'code': 1, 'message': "Tee deleted successfully"})
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f"Error: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'])
+    def by_course(self, request):
+        course_id = request.query_params.get('course_id')
+        if not course_id:
+            return Response({'error': 'course_id parameter required'}, status=400)
+        
+        tees = self.get_queryset().filter(course_id=course_id)
+        serializer = self.get_serializer(tees, many=True)
+        return Response({
+            'code': 1,
+            'data': serializer.data,
+            'message': 'Tees retrieved successfully'
+        })
+
+class BookingViewSet(viewsets.ModelViewSet):
+    serializer_class = BookingSerializer
+    
+    def get_queryset(self):
+        queryset = BookingModel.objects.select_related('member', 'course', 'tee').order_by('-bookingDate', '-bookingTime')
+        
+        # Filter by member if provided
+        member_id = self.request.query_params.get('member_id')
+        if member_id:
+            queryset = queryset.filter(member_id=member_id)
+        
+        # Filter by date range
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date:
+            queryset = queryset.filter(bookingDate__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(bookingDate__lte=end_date)
+        
+        return queryset
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                # Calculate total price if not provided
+                if 'totalPrice' not in request.data or not request.data['totalPrice']:
+                    tee = TeeModel.objects.get(id=request.data['tee'])
+                    participants = int(request.data.get('participants', 1))
+                    serializer.validated_data['totalPrice'] = tee.pricePerPerson * participants
+                
+                instance = serializer.save()
+                return Response({
+                    'code': 1,
+                    'data': BookingSerializer(instance).data,
+                    'message': 'Booking created successfully'
+                }, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({
+                    'code': 0,
+                    'message': f'Error creating booking: {str(e)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({
+            'code': 0,
+            'errors': serializer.errors,
+            'message': 'Validation failed'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def available_slots(self, request):
+        """Get available time slots for a specific date and course"""
+        course_id = request.query_params.get('course_id')
+        booking_date = request.query_params.get('date')
+        tee_id = request.query_params.get('tee_id')
+        
+        if not all([course_id, booking_date, tee_id]):
+            return Response({
+                'code': 0,
+                'message': 'course_id, date, and tee_id parameters are required'
+            }, status=400)
+        
+        try:
+            date_obj = datetime.strptime(booking_date, '%Y-%m-%d').date()
+            tee = TeeModel.objects.get(id=tee_id)
+            
+            # Generate time slots (6 AM to 8 PM, every 30 minutes)
+            slots = []
+            start_time = datetime.strptime('06:00', '%H:%M').time()
+            end_time = datetime.strptime('20:00', '%H:%M').time()
+            current_time = datetime.combine(date_obj, start_time)
+            end_datetime = datetime.combine(date_obj, end_time)
+            
+            # Get existing bookings for this date and course
+            existing_bookings = BookingModel.objects.filter(
+                course_id=course_id,
+                bookingDate=date_obj,
+                status__in=['pending', 'confirmed']
+            ).values_list('bookingTime', 'tee__holeNumber')
+            
+            booked_times = set()
+            for booking_time, hole_number in existing_bookings:
+                # Block time slots based on duration
+                duration_hours = 2.5 if hole_number == 9 else 4.5
+                booking_start = datetime.combine(date_obj, booking_time)
+                booking_end = booking_start + timedelta(hours=duration_hours)
+                
+                # Block all 30-minute slots within this duration
+                slot_time = booking_start
+                while slot_time < booking_end:
+                    booked_times.add(slot_time.time())
+                    slot_time += timedelta(minutes=30)
+            
+            while current_time <= end_datetime:
+                slot_time = current_time.time()
+                is_available = slot_time not in booked_times
+                
+                # Check if there's enough time for the selected tee duration
+                if is_available:
+                    duration_hours = 2.5 if tee.holeNumber == 9 else 4.5
+                    slot_end = current_time + timedelta(hours=duration_hours)
+                    if slot_end.time() > end_time:
+                        is_available = False
+                
+                slots.append({
+                    'time': slot_time.strftime('%H:%M'),
+                    'available': is_available,
+                    'formatted_time': slot_time.strftime('%I:%M %p')
+                })
+                
+                current_time += timedelta(minutes=30)
+            
+            return Response({
+                'code': 1,
+                'data': slots,
+                'message': 'Available slots retrieved successfully'
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving slots: {str(e)}'
+            }, status=400)
+    
+    @action(detail=True, methods=['patch'])
+    def cancel_booking(self, request, pk=None):
+        """Cancel a booking"""
+        try:
+            booking = self.get_object()
+            if not booking.can_cancel:
+                return Response({
+                    'code': 0,
+                    'message': 'Cannot cancel booking less than 24 hours before the scheduled time'
+                }, status=400)
+            
+            booking.status = 'cancelled'
+            booking.save()
+            
+            return Response({
+                'code': 1,
+                'data': BookingSerializer(booking).data,
+                'message': 'Booking cancelled successfully'
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error cancelling booking: {str(e)}'
+            }, status=400)
+
 
 class BlogViewSet(viewsets.ModelViewSet):
     queryset = BlogModel.objects.filter(hideStatus=0)

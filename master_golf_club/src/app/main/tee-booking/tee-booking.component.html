@@ -59,16 +59,11 @@
               </div>
               <div class="tee-options">
                 <button class="tee-option" 
-                        [class.selected]="selectedTee === '9'"
-                        (click)="selectTee('9')">
-                  <span class="tee-name">Tees with 9 Holes</span>
-                  <span class="tee-price">£{{basePrice}}</span>
-                </button>
-                <button class="tee-option"
-                        [class.selected]="selectedTee === '18'"
-                        (click)="selectTee('18')">
-                  <span class="tee-name">Tees with 18 Holes</span>
-                  <span class="tee-price">£{{(basePrice * 1.8) | number:'1.0-0'}}</span>
+                        *ngFor="let tee of availableTees"
+                        [class.selected]="selectedTee?.id === tee.id"
+                        (click)="selectTee(tee)">
+                  <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
+                  <span class="tee-price">£{{tee.pricePerPerson}}</span>
                 </button>
               </div>
             </div>
@@ -273,7 +268,7 @@
               <div class="benefit-content">
                 <h3>Why Choose Our Course?</h3>
                 <p>Experience exceptional golfing conditions with our meticulously maintained fairways, challenging layout, and stunning natural surroundings. Perfect for golfers of all skill levels.</p>
-                <p><strong>Price:</strong> £{{basePrice}} per person</p>
+                <p><strong>Price:</strong> £{{selectedTee?.pricePerPerson || basePrice}} per person</p>
               </div>
             </div>
           </div>

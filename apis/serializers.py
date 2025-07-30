@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import *
+from django.utils import timezone
 import json
 
 
@@ -258,12 +259,13 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     imageUrl = serializers.SerializerMethodField()
     amenities = serializers.SerializerMethodField()
     allContacts = serializers.ReadOnlyField(source='all_contacts')
+    tees = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseModel
         fields = [
             'id', 'name', 'address', 'timing', 'phone', 'alternatePhone',
-            'website', 'description', 'location', 'imageUrl', 'amenities', 'allContacts'
+            'website', 'description', 'location', 'imageUrl', 'amenities', 'allContacts', 'tees'
         ]
 
     def get_amenities(self, obj):
@@ -278,6 +280,11 @@ class CourseDetailSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.courseImage.url)
             return obj.courseImage.url
         return 'assets/images/news/default-course.jpg'
+    
+    def get_tees(self, obj):
+        """Get all available tees for this course"""
+        tees = obj.available_tees
+        return TeeSerializer(tees, many=True).data
 
 
 class CourseCreateUpdateSerializer(serializers.ModelSerializer):
@@ -319,7 +326,23 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         if amenities_data:
             course.courseAmenities.set(amenities_data)
         
+        # Automatically create a default tee for the course
+        self.create_default_tee(course)
+        
         return course
+    
+    def create_default_tee(self, course):
+        """Create a default 18-hole tee for the course"""
+        from .models import TeeModel
+        
+        # Create default 18-hole tee
+        TeeModel.objects.create(
+            course=course,
+            holeNumber=18,
+            label="Standard 18 Holes",
+            pricePerPerson=1000.00,  # Default price, can be updated later
+            description="Standard 18-hole golf course experience"
+        )
     
     def update(self, instance, validated_data):
         amenities_data = validated_data.pop('courseAmenities', None)
@@ -395,6 +418,78 @@ class LegacyCollectionSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.courseImage.url)
             return obj.courseImage.url
         return 'assets/images/news/default-course.jpg'
+
+
+class TeeSerializer(serializers.ModelSerializer):
+    courseId = serializers.IntegerField(source='course.id', read_only=True)
+    courseName = serializers.CharField(source='course.courseName', read_only=True)
+    formattedPrice = serializers.CharField(source='formatted_price', read_only=True)
+    estimatedDuration = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeeModel
+        fields = [
+            'id', 'courseId', 'courseName', 'holeNumber', 'label', 
+            'pricePerPerson', 'formattedPrice', 'description', 'estimatedDuration',
+            'course', 'hideStatus'
+        ]
+        extra_kwargs = {
+            'course': {'required': True},
+            'holeNumber': {'required': True},
+            'pricePerPerson': {'required': True}
+        }
+    
+    def get_estimatedDuration(self, obj):
+        duration = 2.5 if obj.holeNumber == 9 else 4.5
+        return f"{duration} hours"
+    
+    def validate_holeNumber(self, value):
+        if value not in [9, 18]:
+            raise serializers.ValidationError("Hole number must be either 9 or 18")
+        return value
+    
+    def validate_pricePerPerson(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Price per person must be greater than 0")
+        return value
+
+class BookingSerializer(serializers.ModelSerializer):
+    memberName = serializers.CharField(source='member.firstName', read_only=True)
+    memberFullName = serializers.SerializerMethodField(read_only=True)
+    courseName = serializers.CharField(source='course.courseName', read_only=True)
+    teeInfo = serializers.SerializerMethodField(read_only=True)
+    canCancel = serializers.BooleanField(source='can_cancel', read_only=True)
+    endTime = serializers.TimeField(source='end_time', read_only=True)
+    formattedDate = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = BookingModel
+        fields = [
+            'id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
+            'tee', 'teeInfo', 'bookingDate', 'formattedDate', 'bookingTime', 'endTime',
+            'participants', 'totalPrice', 'status', 'notes', 'canCancel'
+        ]
+    
+    def get_memberFullName(self, obj):
+        return f"{obj.member.firstName} {obj.member.lastName}"
+    
+    def get_teeInfo(self, obj):
+        return f"{obj.tee.holeNumber} Holes @ {obj.tee.formatted_price}"
+    
+    def get_formattedDate(self, obj):
+        return obj.bookingDate.strftime('%B %d, %Y')
+    
+    def validate_bookingDate(self, value):
+        if value < timezone.now().date():
+            raise serializers.ValidationError("Cannot book for past dates")
+        return value
+    
+    def validate_participants(self, value):
+        if value < 1 or value > 4:
+            raise serializers.ValidationError("Participants must be between 1 and 4")
+        return value
+
+
 
 
 class BlogModelSerializers(serializers.ModelSerializer):

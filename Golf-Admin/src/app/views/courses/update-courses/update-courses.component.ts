@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgStyle, NgClass, NgForOf, NgIf, CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { RouterModule } from '@angular/router';
 import {
   RowComponent,
   ColComponent,
@@ -46,6 +47,7 @@ interface CourseData {
   location: string;    // API returns 'location' instead of 'courseLocation'
   imageUrl: string;    // API returns 'imageUrl' instead of 'courseImage'
   amenities: number[]; // API returns 'amenities' instead of 'courseAmenities'
+  tees?: any[];       // API returns 'tees' from serializer
   allContacts?: string[];
   hideStatus?: number;
 }
@@ -57,6 +59,7 @@ interface CourseData {
     NgIf,
     NgForOf,
     CommonModule,
+    RouterModule,
     RowComponent,
     ColComponent,
     TextColorDirective,
@@ -87,6 +90,7 @@ export class UpdateCoursesComponent implements OnInit {
   selectedFile: File | null = null;
   courseId: string = '';
   hasExistingData = false;
+  courseTees: any[] = [];
 
   constructor(
     private formBuilder: FormBuilder,
@@ -172,8 +176,13 @@ export class UpdateCoursesComponent implements OnInit {
           this.imagePreview = courseData.imageUrl;
         }
 
+        // Load associated tees for this course
+        this.courseTees = courseData.tees || [];
+        await this.loadCourseTees();
+
         console.log('Form values after patch:', this.golfCourseForm.value);
         console.log('Selected amenities:', this.selectedAmenities);
+        console.log('Course tees:', this.courseTees);
       } else {
         console.warn('No course data found or invalid response format');
         await Swal.fire({
@@ -194,6 +203,21 @@ export class UpdateCoursesComponent implements OnInit {
       this.router.navigate(['/courses']);
     } finally {
       this.loading = false;
+    }
+  }
+
+  private async loadCourseTees(): Promise<void> {
+    if (!this.courseId) return;
+
+    try {
+      const response = await this.courseService.getTeesByCourse(this.courseId);
+      if (response.data && response.data.code === 1) {
+        console.log('Course tees loaded:', response.data.data);
+        this.courseTees = response.data.data;
+      }
+    } catch (error) {
+      console.error('Error loading course tees:', error);
+      // Don't show error to user as this is optional information
     }
   }
 
@@ -278,6 +302,16 @@ export class UpdateCoursesComponent implements OnInit {
   // Helper method to safely render HTML (for SVG icons)
   getSafeHtml(html: string): SafeHtml {
     return this.domSanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  // Get tee information for display
+  getTeeInfo(): string {
+    if (this.courseTees && this.courseTees.length > 0) {
+      const teeCount = this.courseTees.length;
+      const holeTypes = this.courseTees.map((tee: any) => `${tee.holeNumber}H`).join(', ');
+      return `${teeCount} tee${teeCount > 1 ? 's' : ''} (${holeTypes})`;
+    }
+    return 'No tees';
   }
 
   get f() {

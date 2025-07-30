@@ -17,6 +17,9 @@ export class CourseService {
   private amenitiesProcessing: string;
   private amenitiesDeletion: string;
   private collectionAmenities: string;
+  private teeLists: string;
+  private teeProcessing: string;
+  private teeDeletion: string;
 
   constructor() {
     this.apiUrl = new BaseAPIUrl().getUrl(baseURLType);
@@ -36,6 +39,11 @@ export class CourseService {
     this.amenitiesProcessing = this.apiUrl + "amenities/0/processing/";
     this.amenitiesDeletion = this.apiUrl + "amenities/0/deletion/";
     this.collectionAmenities = this.apiUrl + "amenities/collection_amenities/";
+
+    // Tee endpoints
+    this.teeLists = this.apiUrl + "tee/0/listing/";
+    this.teeProcessing = this.apiUrl + "tee/0/processing/";
+    this.teeDeletion = this.apiUrl + "tee/0/deletion/";
   }
 
   // Course Management Methods (Admin)
@@ -102,6 +110,27 @@ export class CourseService {
     return axios.get(this.collectionAmenities);
   }
 
+  // Tee Management Methods
+  listTees(id: string = '0', courseId?: string) {
+    let url = this.teeLists.replace('0', id);
+    if (courseId) {
+      url += `?course_id=${courseId}`;
+    }
+    return axios.get(url);
+  }
+
+  processTee(data: any, id: string = '0') {
+    return axios.post(this.teeProcessing.replace('0', id), data);
+  }
+
+  deleteTee(id: string) {
+    return axios.get(this.teeDeletion.replace('0', id));
+  }
+
+  getTeesByCourse(courseId: string) {
+    return axios.get(`${this.apiUrl}tee/by_course/?course_id=${courseId}`);
+  }
+
   // Convenience Methods
   getCourse(id: string) {
     return this.listCourse(id);
@@ -127,5 +156,14 @@ export class CourseService {
     legacy?: boolean;
   }) {
     return this.searchCoursesCollection(params);
+  }
+
+  // Convenience methods for tees
+  getAllTees() {
+    return this.listTees('0');
+  }
+
+  getTee(id: string) {
+    return this.listTees(id);
   }
 }

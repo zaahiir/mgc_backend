@@ -1,31 +1,18 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import {
-  faClock,
-  faUsers,
-  faLocationDot,
-  faGlobe,
-  faPhone,
-  faDirections,
-  faShareAlt,
-  faParking,
-  faWifi,
-  faUtensils,
-  faShoppingBag,
-  faCalendar,
-  faChevronLeft,
-  faChevronRight,
-  faChevronUp,
-  faChevronDown,
-  faGolfBall,
-  faEnvelope,
-  faCopy,
-  faRoute
+import { ActivatedRoute } from '@angular/router';
+import { BookingService } from '../common-service/booking/booking.service';
+import { CollectionService } from '../common-service/collection/collection.service';
+import { 
+  faUsers, faGolfBall, faCalendarAlt, faClock, faMapMarkerAlt, 
+  faPhone, faDirections, faShare, faRoute, faCopy,
+  faChevronDown, faChevronUp, faChevronLeft, faChevronRight,
+  faWifi, faParking, faUtensils, faShoppingBag
 } from '@fortawesome/free-solid-svg-icons';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 interface Course {
   id: number;
@@ -33,29 +20,25 @@ interface Course {
   lane: string;
   address: string;
   code: string;
-  timing: string;
   phone: string;
-  website: string;
+  timing: string;
   imageUrl: string;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  amenities: string[];
+}
+
+interface Tee {
+  id: number;
+  holeNumber: number;
+  label: string;
+  pricePerPerson: number;
+  formattedPrice: string;
+  description: string;
+  estimatedDuration: string;
 }
 
 interface TimeSlot {
   time: string;
   available: boolean;
-}
-
-interface Booking {
-  date: Date;
-  time: string;
-  participants: number;
-  course: string;
-  totalPrice: number;
-  holes: number;
+  formatted_time: string;
 }
 
 interface CalendarDay {
@@ -68,341 +51,367 @@ interface CalendarDay {
   standalone: true,
   imports: [CommonModule, FormsModule, FontAwesomeModule],
   templateUrl: './tee-booking.component.html',
-  styleUrls: ['./tee-booking.component.css']
+  styleUrls: ['./tee-booking.component.scss']
 })
-export class TeeBookingComponent implements OnInit {
-  // Icons
-  locationIcon = faLocationDot;
-  clockIcon = faClock;
-  usersIcon = faUsers;
-  globeIcon = faGlobe;
-  phoneIcon = faPhone;
-  directionsIcon = faDirections;
-  shareIcon = faShareAlt;
-  parkingIcon = faParking;
-  wifiIcon = faWifi;
-  restaurantIcon = faUtensils;
-  shopIcon = faShoppingBag;
-  calendarIcon = faCalendar;
-  chevronLeftIcon = faChevronLeft;
-  chevronRightIcon = faChevronRight;
-  chevronUpIcon = faChevronUp;
-  chevronDownIcon = faChevronDown;
-  golfIcon = faGolfBall;
-  emailIcon = faEnvelope;
-  copyIcon = faCopy;
-  routeIcon = faRoute;
-
-  // Course Details
-  course: Course = {
+export class TeeBookingComponent implements OnInit, OnDestroy {
+  @Input() course: Course = {
     id: 1,
-    name: 'Aldenham - Church Course',
-    lane: 'Church Ln',
-    address: 'Aldenham, Radlett',
+    name: 'Aldenham Golf Club',
+    lane: 'Church Lane',
+    address: 'Watford, Hertfordshire',
     code: 'WD25 8NN',
-    timing: 'Weekends from 11am',
-    phone: '01923 853929',
-    website: '#',
-    imageUrl: 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
-    location: {
-      lat: 51.6754,
-      lng: -0.3169
-    },
-    amenities: ['WiFi', 'Parking', 'Restaurant', 'Pro Shop']
+    phone: '+44 1923 853929',
+    timing: 'Daily 6:00 AM - 8:00 PM',
+    imageUrl: 'assets/images/golf-course.jpg'
   };
 
-  // Map URL
-  mapUrl: SafeResourceUrl;
+  // Icons
+  usersIcon = faUsers;
+  golfIcon = faGolfBall;
+  calendarIcon = faCalendarAlt;
+  clockIcon = faClock;
+  locationIcon = faMapMarkerAlt;
+  phoneIcon = faPhone;
+  directionsIcon = faDirections;
+  shareIcon = faShare;
+  routeIcon = faRoute;
+  copyIcon = faCopy;
+  chevronDownIcon = faChevronDown;
+  chevronUpIcon = faChevronUp;
+  chevronLeftIcon = faChevronLeft;
+  chevronRightIcon = faChevronRight;
+  wifiIcon = faWifi;
+  parkingIcon = faParking;
+  restaurantIcon = faUtensils;
+  shopIcon = faShoppingBag;
 
-  // Booking State - Modified for sequential flow
+  // Booking state
   participantCount: number = 1;
   maxParticipants: number = 4;
-  participantsSelected: boolean = false;
-  selectedDate: Date;
-  dateSelected: boolean = false;
-  selectedTime: string | null = null;
-  availableDates: Date[] = [];
-  timeSlotsByDate: Map<string, TimeSlot[]> = new Map();
+  selectedTee: Tee | null = null;
+  availableTees: Tee[] = [];
+  selectedDate: Date = new Date();
+  selectedTime: string = '';
   currentTimeSlots: TimeSlot[] = [];
-  isLoading: boolean = false;
-  errorMessage: string = '';
-  initialLoad: boolean = true;
-  basePrice: number = 35; // Base price for 9 holes
-
-  // Tee Selection
-  selectedTee: '9' | '18' | null = null;
-
-  // Calendar State
+  basePrice: number = 25; // Base price for 9 holes
+  
+  // Calendar state
   showCalendar: boolean = false;
   currentDate: Date = new Date();
-  weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   calendarDays: CalendarDay[] = [];
+  weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  // UI state
+  isLoading: boolean = false;
+  errorMessage: string = '';
+  successMessage: string = '';
+  
+  private destroy$ = new Subject<void>();
 
   constructor(
-    private route: ActivatedRoute,
-    private sanitizer: DomSanitizer
-  ) {
-    // Initialize with today's date
-    this.selectedDate = new Date();
-    this.selectedDate.setHours(0, 0, 0, 0);
-    const osmUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.00030577182769775396%2C51.478569861898606&layer=mapnik';
-    this.mapUrl = this.sanitizer.bypassSecurityTrustResourceUrl(osmUrl);
+    private bookingService: BookingService,
+    private collectionService: CollectionService,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    this.loadCourseData();
+    this.loadAvailableTees();
+    this.generateCalendar();
+    this.setMinimumDate();
   }
 
-  ngOnInit() {
-    this.generateAvailableDates();
-    this.initializeTimeSlots();
-    this.generateCalendarDays();
-  }
-
-  private generateAvailableDates(): void {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    this.availableDates = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      return date;
-    });
-  }
-
-  private initializeTimeSlots(): void {
-    this.availableDates.forEach(date => {
-      const dateKey = this.getDateKey(date);
-      const timeSlots = this.generateTimeSlotsForDate(date);
-      this.timeSlotsByDate.set(dateKey, timeSlots);
-    });
-
-    this.updateCurrentTimeSlots(this.selectedDate);
-    this.initialLoad = false;
-  }
-
-  private generateTimeSlotsForDate(date: Date): TimeSlot[] {
-    const slots: TimeSlot[] = [];
-    const isToday = this.isToday(date);
-    const currentHour = new Date().getHours();
-    const currentMinute = new Date().getMinutes();
-
-    // Start from 7 AM to 7 PM (07:00 - 19:00)
-    for (let hour = 7; hour < 19; hour++) {
-      // Generate slots every 8 minutes
-      for (let minute = 0; minute < 60; minute += 8) {
-        if (isToday && (hour < currentHour || (hour === currentHour && minute <= currentMinute))) {
-          continue;
-        }
-
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push({
-          time: timeString,
-          available: Math.random() > 0.3 // 70% chance of being available
-        });
+  private loadCourseData(): void {
+    this.route.queryParams.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
+      const courseId = params['courseId'];
+      if (courseId) {
+        // Load course data based on courseId
+        this.loadCourseById(courseId);
       }
+    });
+  }
+
+  private async loadCourseById(courseId: string): Promise<void> {
+    this.isLoading = true;
+    this.errorMessage = '';
+    
+    try {
+      const response = await this.collectionService.getCourseDetail(parseInt(courseId));
+      
+      if (response.data.code === 1 && response.data.data) {
+        const courseData = response.data.data;
+        
+        // Map the API response to our Course interface
+        this.course = {
+          id: courseData.id,
+          name: courseData.name || 'Unnamed Course',
+          lane: courseData.location || '',
+          address: courseData.address || '',
+          code: courseData.location || '',
+          phone: courseData.phone || '',
+          timing: courseData.timing || '',
+          imageUrl: courseData.imageUrl || 'assets/images/golf-course.jpg'
+        };
+      } else {
+        this.errorMessage = response.data.message || 'Failed to load course details';
+      }
+    } catch (error) {
+      console.error('Error loading course data:', error);
+      this.errorMessage = 'Failed to load course details. Please try again later.';
+    } finally {
+      this.isLoading = false;
     }
-
-    return slots;
   }
 
-  private updateCurrentTimeSlots(date: Date): void {
-    const dateKey = this.getDateKey(date);
-    this.currentTimeSlots = this.timeSlotsByDate.get(dateKey) || [];
-
-    if (!this.initialLoad) {
-      this.selectedTime = null;
-    }
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  private getDateKey(date: Date): string {
-    return date.toISOString().split('T')[0];
-  }
-
-  isDateSelected(date: Date): boolean {
-    return this.getDateKey(date) === this.getDateKey(this.selectedDate);
-  }
-
-  selectDate(date: Date): void {
-    this.selectedDate = date;
-    this.dateSelected = true;
-    this.updateCurrentTimeSlots(date);
-    this.showCalendar = false;
-    this.selectedTime = null; // Reset time selection when date changes
-  }
-
-  selectTime(time: string): void {
-    this.selectedTime = time;
-  }
-
+  // Participant management
   incrementParticipants(): void {
     if (this.participantCount < this.maxParticipants) {
       this.participantCount++;
-      this.participantsSelected = true;
+      this.updateTotalPrice();
     }
   }
 
   decrementParticipants(): void {
     if (this.participantCount > 1) {
       this.participantCount--;
-      this.participantsSelected = this.participantCount > 0;
+      this.updateTotalPrice();
     }
   }
 
-  selectTee(tee: '9' | '18'): void {
+  // Tee selection
+  loadAvailableTees(): void {
+    this.bookingService.getTeesByCourse(this.course.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.code === 1 && response.data) {
+            this.availableTees = response.data;
+          }
+        },
+        error: (error) => {
+          console.error('Error loading tees:', error);
+          this.errorMessage = 'Failed to load available tees';
+        }
+      });
+  }
+
+  selectTee(tee: Tee): void {
     this.selectedTee = tee;
+    this.selectedTime = '';
+    this.loadAvailableTimeSlots();
   }
 
-  canBook(): boolean {
-    return this.participantsSelected &&
-           !!this.selectedTee &&
-           this.dateSelected &&
-           !!this.selectedTime &&
-           this.participantCount > 0 &&
-           this.participantCount <= this.maxParticipants;
+  // Date management
+  setMinimumDate(): void {
+    const today = new Date();
+    if (this.selectedDate < today) {
+      this.selectedDate = today;
+    }
   }
 
-  calculatePrice(): number {
-    if (!this.selectedTee) return 0;
-    const baseAmount = this.participantCount * this.basePrice;
-    return this.selectedTee === '18' ? baseAmount * 1.8 : baseAmount;
-  }
-
-  // Calendar Methods
   toggleCalendar(): void {
     this.showCalendar = !this.showCalendar;
-    if (this.showCalendar) {
-      // Set current date to show the month containing selected date
-      this.currentDate = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1);
-      this.generateCalendarDays();
-    }
   }
 
-  generateCalendarDays(): void {
-    const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
-    const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+  generateCalendar(): void {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
     
-    const firstDayToShow = new Date(firstDay);
-    firstDayToShow.setDate(firstDayToShow.getDate() - firstDay.getDay());
+    // First day of the month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
     
-    const lastDayToShow = new Date(lastDay);
-    lastDayToShow.setDate(lastDayToShow.getDate() + (6 - lastDay.getDay()));
+    // Start from the beginning of the week
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - startDate.getDay());
     
+    // Generate 42 days (6 weeks)
     this.calendarDays = [];
-    let currentDay = new Date(firstDayToShow);
-    
-    while (currentDay <= lastDayToShow) {
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      
       this.calendarDays.push({
-        date: new Date(currentDay),
-        otherMonth: currentDay.getMonth() !== this.currentDate.getMonth()
+        date: date,
+        otherMonth: date.getMonth() !== month
       });
-      currentDay.setDate(currentDay.getDate() + 1);
     }
   }
 
   previousMonth(): void {
-    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1);
-    this.generateCalendarDays();
+    this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+    this.generateCalendar();
   }
 
   nextMonth(): void {
-    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1);
-    this.generateCalendarDays();
+    this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+    this.generateCalendar();
+  }
+
+  selectDate(date: Date): void {
+    if (this.isDayAvailable(date)) {
+      this.selectedDate = new Date(date);
+      this.selectedTime = '';
+      this.showCalendar = false;
+      this.loadAvailableTimeSlots();
+    }
+  }
+
+  isDateSelected(date: Date): boolean {
+    return this.selectedDate && 
+           date.toDateString() === this.selectedDate.toDateString();
   }
 
   isToday(date: Date): boolean {
     const today = new Date();
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
+    return date.toDateString() === today.toDateString();
   }
 
   isDayAvailable(date: Date): boolean {
-    return this.availableDates.some(availableDate => 
-      availableDate.getDate() === date.getDate() &&
-      availableDate.getMonth() === date.getMonth() &&
-      availableDate.getFullYear() === date.getFullYear()
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    return date >= today;
+  }
+
+  // Time slot management
+  loadAvailableTimeSlots(): void {
+    if (!this.selectedTee || !this.selectedDate) {
+      return;
+    }
+
+    this.isLoading = true;
+    const dateString = this.selectedDate.toISOString().split('T')[0];
+    
+    this.bookingService.getAvailableSlots(this.course.id, dateString, this.selectedTee.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.isLoading = false;
+          if (response.code === 1 && response.data) {
+            this.currentTimeSlots = response.data;
+          } else {
+            this.errorMessage = 'Failed to load available time slots';
+          }
+        },
+        error: (error) => {
+          this.isLoading = false;
+          console.error('Error loading time slots:', error);
+          this.errorMessage = 'Failed to load available time slots';
+        }
+      });
+  }
+
+  selectTime(time: string): void {
+    this.selectedTime = time;
+  }
+
+  // Booking validation and submission
+  canBook(): boolean {
+    return !!(
+      this.participantCount > 0 &&
+      this.selectedTee &&
+      this.selectedDate &&
+      this.selectedTime &&
+      !this.isLoading
     );
   }
 
-  async bookTeeTime(): Promise<void> {
-    if (!this.canBook()) return;
+  updateTotalPrice(): void {
+    // This will be called whenever participants change
+    // The total price calculation is handled in the backend
+  }
+
+  getTotalPrice(): number {
+    if (!this.selectedTee) return 0;
+    return this.selectedTee.pricePerPerson * this.participantCount;
+  }
+
+  bookTeeTime(): void {
+    if (!this.canBook()) {
+      this.errorMessage = 'Please complete all booking details';
+      return;
+    }
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.successMessage = '';
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const booking: Booking = {
-        date: this.selectedDate,
-        time: this.selectedTime!,
-        participants: this.participantCount,
-        course: this.course.name,
-        totalPrice: this.calculatePrice(),
-        holes: this.selectedTee === '18' ? 18 : 9
-      };
-
-      console.log('Booking details:', booking);
-      alert('Booking successful!');
-      this.resetForm();
-    } catch (error) {
-      console.error('Booking failed:', error);
-      this.errorMessage = 'Failed to book tee time. Please try again.';
-    } finally {
-      this.isLoading = false;
-    }
-  }
-
-  private resetForm(): void {
-    this.selectedTime = null;
-    this.selectedTee = null;
-    this.participantCount = 1;
-    this.participantsSelected = false;
-    this.dateSelected = false;
-    this.selectedDate = new Date();
-    this.selectedDate.setHours(0, 0, 0, 0);
-  }
-
-  getDirections(): void {
-    const query = encodeURIComponent(`${this.course.name} ${this.course.address}`);
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${query}`;
-    window.open(url, '_blank');
-  }
-
-  async shareLocation(): Promise<void> {
-    const shareData = {
-      title: this.course.name,
-      text: `Check out ${this.course.name} at ${this.course.address}`,
-      url: window.location.href
+    const bookingData = {
+      member: 1, // This should come from authentication service
+      course: this.course.id,
+      tee: this.selectedTee!.id,
+      bookingDate: this.selectedDate.toISOString().split('T')[0],
+      bookingTime: this.selectedTime,
+      participants: this.participantCount,
+      totalPrice: this.getTotalPrice(),
+      status: 'pending' as const
     };
 
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        this.copyToClipboard(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
-      }
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
+    this.bookingService.createBooking(bookingData)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.isLoading = false;
+          if (response.code === 1) {
+            this.successMessage = 'Booking created successfully!';
+            this.resetBookingForm();
+          } else {
+            this.errorMessage = response.message || 'Booking failed';
+          }
+        },
+        error: (error) => {
+          this.isLoading = false;
+          console.error('Booking error:', error);
+          this.errorMessage = error.message || 'Failed to create booking';
+        }
+      });
   }
 
-  makeCall(): void {
-    window.location.href = `tel:${this.course.phone}`;
+  resetBookingForm(): void {
+    this.participantCount = 1;
+    this.selectedTee = null;
+    this.selectedDate = new Date();
+    this.selectedTime = '';
+    this.currentTimeSlots = [];
+    this.showCalendar = false;
   }
 
+  // Contact actions
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(() => {
-      // Show a brief success message
-      const originalErrorMessage = this.errorMessage;
-      this.errorMessage = 'Copied to clipboard!';
-      setTimeout(() => {
-        this.errorMessage = originalErrorMessage;
-      }, 2000);
-    }).catch(err => {
-      console.error('Failed to copy:', err);
+      // Show toast or feedback
+      console.log('Address copied to clipboard');
     });
   }
 
-  handleMapError(event: ErrorEvent): void {
-    console.error('Map loading error:', event);
-    this.errorMessage = 'Failed to load map. Please try again later.';
+  makeCall(): void {
+    window.open(`tel:${this.course.phone}`, '_self');
+  }
+
+  getDirections(): void {
+    const address = `${this.course.lane}, ${this.course.address}, ${this.course.code}`;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    window.open(mapsUrl, '_blank');
+  }
+
+  shareLocation(): void {
+    const address = `${this.course.lane}, ${this.course.address}, ${this.course.code}`;
+    if (navigator.share) {
+      navigator.share({
+        title: this.course.name,
+        text: `Check out ${this.course.name}`,
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+      });
+    } else {
+      this.copyToClipboard(address);
+    }
   }
 }
