@@ -7,6 +7,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
 from .serializers import *
+from .models import *
 from django.db.models import Q
 from django.db import transaction
 from .utils import PasswordManager
@@ -1469,6 +1470,9 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
             if 'amenities' in data and 'courseAmenities' not in data:
                 data['courseAmenities'] = data.pop('amenities')
 
+            # Extract tee data before processing course
+            tees_data = data.pop('tees', []) if 'tees' in data else []
+
             serializer = CourseCreateUpdateSerializer(
                 instance=instance,
                 data=data,
@@ -1481,6 +1485,44 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
                 # Handle amenities separately if provided
                 if 'courseAmenities' in data:
                     course.courseAmenities.set(data['courseAmenities'])
+
+                # Handle tee management
+                if tees_data:
+                    # Get existing tee IDs for this course
+                    existing_tee_ids = set(TeeModel.objects.filter(
+                        course=course, 
+                        hideStatus=0
+                    ).values_list('id', flat=True))
+                    
+                    # Process each tee
+                    processed_tee_ids = set()
+                    
+                    for tee_data in tees_data:
+                        tee_id = tee_data.get('id')
+                        
+                        if tee_id and tee_id in existing_tee_ids:
+                            # Update existing tee
+                            try:
+                                tee = TeeModel.objects.get(id=tee_id, course=course)
+                                tee.holeNumber = tee_data.get('holeNumber', tee.holeNumber)
+                                tee.pricePerPerson = tee_data.get('pricePerPerson', tee.pricePerPerson)
+                                tee.save()
+                                processed_tee_ids.add(tee_id)
+                            except TeeModel.DoesNotExist:
+                                continue
+                        else:
+                            # Create new tee
+                            new_tee = TeeModel.objects.create(
+                                course=course,
+                                holeNumber=tee_data.get('holeNumber'),
+                                pricePerPerson=tee_data.get('pricePerPerson')
+                            )
+                            processed_tee_ids.add(new_tee.id)
+                    
+                    # Delete tees that are no longer in the list
+                    tees_to_delete = existing_tee_ids - processed_tee_ids
+                    if tees_to_delete:
+                        TeeModel.objects.filter(id__in=tees_to_delete).update(hideStatus=1)
 
                 # Return the course data
                 response_serializer = CourseDetailSerializer(course, context={'request': request})

@@ -3,7 +3,14 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 
-import { DropdownModule, SidebarModule } from '@coreui/angular';
+import { 
+  DropdownModule, 
+  SidebarModule, 
+  GridModule, 
+  CardModule, 
+  FormModule, 
+  ButtonModule 
+} from '@coreui/angular';
 import { IconSetService } from '@coreui/icons-angular';
 import { routes } from './app.routes';
 import { AdminAuthInterceptor } from './auth/admin-auth.interceptor';
@@ -14,6 +21,10 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(
       SidebarModule,
       DropdownModule,
+      GridModule,
+      CardModule,
+      FormModule,
+      ButtonModule,
       HttpClientModule
     ),
     IconSetService,

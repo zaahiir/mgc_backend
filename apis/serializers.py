@@ -294,6 +294,11 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         required=False,
         allow_empty=True
     )
+    tees = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        allow_empty=True
+    )
     
     class Meta:
         model = CourseModel
@@ -301,7 +306,7 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
             'courseName', 'courseAddress', 'courseOpenFrom', 
             'coursePhoneNumber', 'courseAlternatePhoneNumber', 'courseWebsite',
             'courseDescription', 'courseLocation', 'courseImage', 
-            'courseAmenities', 'hideStatus'
+            'courseAmenities', 'tees', 'hideStatus'
         ]
     
     def validate_courseAmenities(self, value):
@@ -319,17 +324,45 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
                 )
         return value
     
+    def validate_tees(self, value):
+        """Validate tee data"""
+        if value:
+            for i, tee_data in enumerate(value):
+                if not isinstance(tee_data, dict):
+                    raise serializers.ValidationError(f"Tee data at index {i} must be a dictionary")
+                
+                hole_number = tee_data.get('holeNumber')
+                price_per_person = tee_data.get('pricePerPerson')
+                
+                if hole_number is None or not isinstance(hole_number, int) or hole_number <= 0:
+                    raise serializers.ValidationError(f"Invalid hole number for tee at index {i}")
+                
+                if price_per_person is None or not isinstance(price_per_person, (int, float)) or price_per_person <= 0:
+                    raise serializers.ValidationError(f"Invalid price for tee at index {i}")
+        
+        return value
+    
     def create(self, validated_data):
         amenities_data = validated_data.pop('courseAmenities', [])
+        tees_data = validated_data.pop('tees', [])
         course = CourseModel.objects.create(**validated_data)
         
         if amenities_data:
             course.courseAmenities.set(amenities_data)
         
+        # Create tees
+        for tee_data in tees_data:
+            TeeModel.objects.create(
+                course=course,
+                holeNumber=tee_data['holeNumber'],
+                pricePerPerson=tee_data['pricePerPerson']
+            )
+        
         return course
     
     def update(self, instance, validated_data):
         amenities_data = validated_data.pop('courseAmenities', None)
+        tees_data = validated_data.pop('tees', None)
         
         # Update all other fields
         for attr, value in validated_data.items():
@@ -339,6 +372,44 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         # Update amenities if provided
         if amenities_data is not None:
             instance.courseAmenities.set(amenities_data)
+        
+        # Update tees if provided
+        if tees_data is not None:
+            # Get existing tee IDs for this course
+            existing_tee_ids = set(TeeModel.objects.filter(
+                course=instance, 
+                hideStatus=0
+            ).values_list('id', flat=True))
+            
+            # Process each tee
+            processed_tee_ids = set()
+            
+            for tee_data in tees_data:
+                tee_id = tee_data.get('id')
+                
+                if tee_id and tee_id in existing_tee_ids:
+                    # Update existing tee
+                    try:
+                        tee = TeeModel.objects.get(id=tee_id, course=instance)
+                        tee.holeNumber = tee_data.get('holeNumber', tee.holeNumber)
+                        tee.pricePerPerson = tee_data.get('pricePerPerson', tee.pricePerPerson)
+                        tee.save()
+                        processed_tee_ids.add(tee_id)
+                    except TeeModel.DoesNotExist:
+                        continue
+                else:
+                    # Create new tee
+                    new_tee = TeeModel.objects.create(
+                        course=instance,
+                        holeNumber=tee_data.get('holeNumber'),
+                        pricePerPerson=tee_data.get('pricePerPerson')
+                    )
+                    processed_tee_ids.add(new_tee.id)
+            
+            # Delete tees that are no longer in the list
+            tees_to_delete = existing_tee_ids - processed_tee_ids
+            if tees_to_delete:
+                TeeModel.objects.filter(id__in=tees_to_delete).update(hideStatus=1)
         
         return instance
 

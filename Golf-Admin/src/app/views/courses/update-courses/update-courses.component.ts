@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { NgStyle, NgClass, NgForOf, NgIf, CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
+import { Router, ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { RouterModule } from '@angular/router';
 import {
   RowComponent,
   ColComponent,
@@ -19,9 +19,8 @@ import {
   ButtonDirective,
   ButtonModule
 } from '@coreui/angular';
-import Swal from 'sweetalert2';
-import { Router, ActivatedRoute } from '@angular/router';
 import { CourseService } from '../../common-service/course/course.service';
+import Swal from 'sweetalert2';
 
 interface Amenity {
   id: number;
@@ -52,6 +51,12 @@ interface CourseData {
   hideStatus?: number;
 }
 
+interface TeeData {
+  id?: number;
+  holeNumber: number;
+  pricePerPerson: number;
+}
+
 @Component({
   selector: 'app-update-courses',
   standalone: true,
@@ -59,7 +64,6 @@ interface CourseData {
     NgIf,
     NgForOf,
     CommonModule,
-    RouterModule,
     RowComponent,
     ColComponent,
     TextColorDirective,
@@ -101,37 +105,31 @@ export class UpdateCoursesComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.initializeForm();
+    this.courseId = this.route.snapshot.paramMap.get('id') || '';
     this.loadAmenities();
-
-    // Get course ID from route params
-    this.route.params.subscribe(params => {
-      this.courseId = params['id'];
-      if (this.courseId) {
-        this.loadCourseData();
-      }
-    });
+    this.loadCourseData();
+    this.initializeForm();
   }
 
   private async loadAmenities(): Promise<void> {
     try {
-      const response = await this.courseService.getAmenities();
-      console.log('Amenities response:', response.data);
-
-      if (response.data && response.data.code === 1) {
+      const response = await this.courseService.getAllAmenities();
+      if (response && response.data && response.data.code === 1) {
         this.amenitiesList = response.data.data.map((amenity: any) => ({
-          ...amenity,
-          title: amenity.amenityName || amenity.title,
-          tooltip: amenity.amenityTooltip || amenity.tooltip || amenity.amenityName
+          id: amenity.id,
+          amenityName: amenity.amenityName,
+          amenityTooltip: amenity.amenityTooltip,
+          title: amenity.amenityName, // For frontend compatibility
+          tooltip: amenity.amenityTooltip, // For frontend compatibility
+          icon_svg: amenity.amenity_icon_svg,
+          icon_path: amenity.amenity_icon_path,
+          viewbox: amenity.amenity_viewbox,
+          icon: amenity.amenityIcon // Fallback
         }));
-        console.log('Loaded amenities:', this.amenitiesList);
-      } else {
-        console.warn('Unexpected amenities response format:', response.data);
-        this.amenitiesList = [];
       }
     } catch (error) {
       console.error('Error loading amenities:', error);
-      await Swal.fire({
+      Swal.fire({
         title: 'Error!',
         text: 'Failed to load amenities',
         icon: 'error',
@@ -144,65 +142,46 @@ export class UpdateCoursesComponent implements OnInit {
     if (!this.courseId) return;
 
     try {
-      this.loading = true;
-      const response = await this.courseService.listCourse(this.courseId);
-      console.log('Course data response:', response.data);
-
-      if (response.data && response.data.code === 1 && response.data.data.length > 0) {
-        const courseData: CourseData = response.data.data[0];
+      const response = await this.courseService.getCourse(this.courseId);
+      if (response && response.data && response.data.code === 1 && response.data.data.length > 0) {
+        const courseData = response.data.data[0];
         this.hasExistingData = true;
 
-        console.log('Course data loaded:', courseData);
-
-        // Map the response data to form fields - using the correct field names from API
+        // Update selected amenities
+        this.selectedAmenities = courseData.amenities || [];
         this.golfCourseForm.patchValue({
-          courseName: courseData.name || '',
-          courseAddress: courseData.address || '',
-          courseOpenFrom: courseData.timing || '',
-          coursePhoneNumber: courseData.phone || '',
-          courseAlternatePhoneNumber: courseData.alternatePhone || '',
-          courseWebsite: courseData.website || '',
-          courseDescription: courseData.description || '',
-          courseLocation: courseData.location || '',
+          courseAmenities: this.selectedAmenities
+        });
+
+        // Load course tees
+        await this.loadCourseTees();
+
+        // Update form with course data
+        this.golfCourseForm.patchValue({
+          courseName: courseData.name || courseData.courseName,
+          courseAddress: courseData.address || courseData.courseAddress,
+          courseOpenFrom: courseData.timing || courseData.courseOpenFrom,
+          coursePhoneNumber: courseData.phone || courseData.coursePhoneNumber,
+          courseAlternatePhoneNumber: courseData.alternatePhone || courseData.courseAlternatePhoneNumber,
+          courseWebsite: courseData.website || courseData.courseWebsite,
+          courseDescription: courseData.description || courseData.courseDescription,
+          courseLocation: courseData.location || courseData.courseLocation,
           hideStatus: courseData.hideStatus || 0
         });
 
-        // Set selected amenities
-        this.selectedAmenities = courseData.amenities || [];
-        this.golfCourseForm.patchValue({ courseAmenities: this.selectedAmenities });
-
-        // Set image preview if exists
-        if (courseData.imageUrl && !courseData.imageUrl.includes('default-course.jpg')) {
+        // Set image preview if available
+        if (courseData.imageUrl) {
           this.imagePreview = courseData.imageUrl;
         }
-
-        // Load associated tees for this course
-        this.courseTees = courseData.tees || [];
-        await this.loadCourseTees();
-
-        console.log('Form values after patch:', this.golfCourseForm.value);
-        console.log('Selected amenities:', this.selectedAmenities);
-        console.log('Course tees:', this.courseTees);
-      } else {
-        console.warn('No course data found or invalid response format');
-        await Swal.fire({
-          title: 'Warning!',
-          text: 'No course data found',
-          icon: 'warning',
-          confirmButtonText: 'Ok'
-        });
       }
     } catch (error) {
       console.error('Error loading course data:', error);
-      await Swal.fire({
+      Swal.fire({
         title: 'Error!',
         text: 'Failed to load course data',
         icon: 'error',
         confirmButtonText: 'Ok'
       });
-      this.router.navigate(['/courses']);
-    } finally {
-      this.loading = false;
     }
   }
 
@@ -211,13 +190,31 @@ export class UpdateCoursesComponent implements OnInit {
 
     try {
       const response = await this.courseService.getTeesByCourse(this.courseId);
-      if (response.data && response.data.code === 1) {
-        console.log('Course tees loaded:', response.data.data);
+      if (response && response.data && response.data.code === 1) {
         this.courseTees = response.data.data;
+        
+        // Clear existing tees and add loaded tees to form
+        while (this.teesFormArray.length !== 0) {
+          this.teesFormArray.removeAt(0);
+        }
+        
+        if (this.courseTees.length > 0) {
+          this.courseTees.forEach(tee => {
+            this.teesFormArray.push(this.createTeeFormGroup({
+              id: tee.id,
+              holeNumber: tee.holeNumber,
+              pricePerPerson: tee.pricePerPerson
+            }));
+          });
+        } else {
+          // Add default tee if no tees exist
+          this.addDefaultTee();
+        }
       }
     } catch (error) {
       console.error('Error loading course tees:', error);
-      // Don't show error to user as this is optional information
+      // Add default tee if loading fails
+      this.addDefaultTee();
     }
   }
 
@@ -233,8 +230,135 @@ export class UpdateCoursesComponent implements OnInit {
       courseLocation: ['', [Validators.required]],
       courseAmenities: [[], [Validators.required, Validators.minLength(1)]],
       courseImage: [null],
-      hideStatus: [0]
+      hideStatus: [0],
+      tees: this.formBuilder.array([], [Validators.required, Validators.minLength(1)])
     });
+  }
+
+  // Tee FormArray getter
+  get teesFormArray(): FormArray {
+    return this.golfCourseForm.get('tees') as FormArray;
+  }
+
+  // Create a new tee form group
+  private createTeeFormGroup(teeData?: TeeData): FormGroup {
+    return this.formBuilder.group({
+      id: [teeData?.id || null],
+      holeNumber: [
+        teeData?.holeNumber || '', 
+        [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]
+      ],
+      pricePerPerson: [
+        teeData?.pricePerPerson || '', 
+        [Validators.required, Validators.min(1), Validators.max(50000)]
+      ]
+    });
+  }
+
+  // Add a new tee
+  addTee(): void {
+    const teeForm = this.createTeeFormGroup({
+      holeNumber: 9, // Default to 9 holes
+      pricePerPerson: 1000
+    });
+    this.teesFormArray.push(teeForm);
+  }
+
+  // Add default tee for new courses
+  private addDefaultTee(): void {
+    const defaultTee = this.createTeeFormGroup({
+      holeNumber: 9,
+      pricePerPerson: 1000
+    });
+    this.teesFormArray.push(defaultTee);
+  }
+
+  // Remove a tee
+  removeTee(index: number): void {
+    if (this.teesFormArray.length > 1) {
+      this.teesFormArray.removeAt(index);
+    } else {
+      Swal.fire({
+        title: 'Cannot Remove',
+        text: 'At least one tee must be defined for the course',
+        icon: 'warning',
+        confirmButtonText: 'Ok'
+      });
+    }
+  }
+
+  // Get tee form group at index
+  getTeeFormGroup(index: number): FormGroup {
+    return this.teesFormArray.at(index) as FormGroup;
+  }
+
+  // Check if tee field is invalid
+  isTeeFieldInvalid(teeIndex: number, fieldName: string): boolean {
+    const teeGroup = this.getTeeFormGroup(teeIndex);
+    const field = teeGroup.get(fieldName);
+    return Boolean(field && field.invalid && (field.dirty || field.touched || this.submitted));
+  }
+
+  // Get tee field error message
+  getTeeErrorMessage(teeIndex: number, fieldName: string): string {
+    const teeGroup = this.getTeeFormGroup(teeIndex);
+    const control = teeGroup.get(fieldName);
+    if (!control || !control.errors) return '';
+  
+    const errors = control.errors;
+  
+    if (errors['required']) {
+      switch (fieldName) {
+        case 'holeNumber': return 'Please enter number of holes';
+        case 'pricePerPerson': return 'Price per person is required';
+        default: return 'This field is required';
+      }
+    }
+  
+    if (errors['min']) {
+      if (fieldName === 'holeNumber') return 'Hole number must be at least 1';
+      if (fieldName === 'pricePerPerson') return 'Price must be at least ₹1';
+    }
+  
+    if (errors['max']) {
+      if (fieldName === 'pricePerPerson') return 'Price cannot exceed ₹50,000';
+    }
+  
+    if (errors['pattern']) {
+      if (fieldName === 'holeNumber') return 'Hole number must be a whole number';
+    }
+  
+    return 'Invalid value';
+  }
+
+  // Validate tee data
+  private validateTeeData(): boolean {
+    const teesArray = this.teesFormArray;
+    
+    if (teesArray.length === 0) {
+      Swal.fire({
+        title: 'Validation Error',
+        text: 'At least one tee must be defined for the course',
+        icon: 'error',
+        confirmButtonText: 'Ok'
+      });
+      return false;
+    }
+    
+    for (let i = 0; i < teesArray.length; i++) {
+      const teeGroup = teesArray.at(i) as FormGroup;
+      if (teeGroup.invalid) {
+        Swal.fire({
+          title: 'Validation Error',
+          text: `Please fix errors in tee ${i + 1}`,
+          icon: 'error',
+          confirmButtonText: 'Ok'
+        });
+        return false;
+      }
+    }
+    
+    return true;
   }
 
   onFileChange(event: Event): void {
@@ -322,80 +446,72 @@ export class UpdateCoursesComponent implements OnInit {
     this.submitted = true;
 
     if (this.golfCourseForm.invalid) {
-      // Mark all fields as touched to show validation errors
-      Object.keys(this.golfCourseForm.controls).forEach(key => {
-        const control = this.golfCourseForm.get(key);
-        control?.markAsTouched();
+      Swal.fire({
+        title: 'Validation Error',
+        text: 'Please fix the errors in the form',
+        icon: 'error',
+        confirmButtonText: 'Ok'
       });
-
-      // Scroll to first error
-      const firstErrorElement = document.querySelector('.is-invalid');
-      if (firstErrorElement) {
-        firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
       return;
     }
 
+    if (!this.validateTeeData()) {
+      return;
+    }
+
+    this.loading = true;
+
     try {
-      this.loading = true;
-
-      // Create FormData object to handle file upload
       const formData = new FormData();
+      const formValue = this.golfCourseForm.value;
 
-      // Add all form fields to FormData (matching backend field names)
-      const formValues = this.golfCourseForm.value;
+      // Add basic course data
+      formData.append('courseName', formValue.courseName);
+      formData.append('courseAddress', formValue.courseAddress);
+      formData.append('courseOpenFrom', formValue.courseOpenFrom);
+      formData.append('coursePhoneNumber', formValue.coursePhoneNumber);
+      formData.append('courseAlternatePhoneNumber', formValue.courseAlternatePhoneNumber || '');
+      formData.append('courseWebsite', formValue.courseWebsite || '');
+      formData.append('courseDescription', formValue.courseDescription || '');
+      formData.append('courseLocation', formValue.courseLocation);
+      formData.append('hideStatus', formValue.hideStatus.toString());
 
-      // Add course fields
-      formData.append('courseName', formValues.courseName || '');
-      formData.append('courseAddress', formValues.courseAddress || '');
-      formData.append('courseOpenFrom', formValues.courseOpenFrom || '');
-      formData.append('coursePhoneNumber', formValues.coursePhoneNumber || '');
-      formData.append('courseAlternatePhoneNumber', formValues.courseAlternatePhoneNumber || '');
-      formData.append('courseWebsite', formValues.courseWebsite || '');
-      formData.append('courseDescription', formValues.courseDescription || '');
-      formData.append('courseLocation', formValues.courseLocation || '');
-      formData.append('hideStatus', formValues.hideStatus.toString());
-
-      // Add amenities as JSON string (as expected by backend)
+      // Add amenities
       formData.append('courseAmenities', JSON.stringify(this.selectedAmenities));
 
-      // Add the file if selected
+      // Add tees
+      const teesData = this.teesFormArray.value;
+      formData.append('tees', JSON.stringify(teesData));
+
+      // Add image if selected
       if (this.selectedFile) {
         formData.append('courseImage', this.selectedFile);
       }
 
-      console.log('Submitting form data:', formValues);
-      console.log('Selected amenities:', this.selectedAmenities);
-
       const response = await this.courseService.processCourse(formData, this.courseId);
 
-      if (response.data && response.data.code === 1) {
-        await Swal.fire({
+      if (response && response.data && response.data.code === 1) {
+        Swal.fire({
           title: 'Success!',
-          text: 'Golf course has been updated successfully',
+          text: 'Course updated successfully',
           icon: 'success',
           confirmButtonText: 'Ok'
+        }).then(() => {
+          this.router.navigate(['/courses']);
         });
-        this.router.navigate(['/courses']);
       } else {
-        throw new Error(response.data?.message || 'Unknown error occurred');
+        Swal.fire({
+          title: 'Error!',
+          text: response?.data?.message || 'Failed to update course',
+          icon: 'error',
+          confirmButtonText: 'Ok'
+        });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating course:', error);
-
-      let errorMessage = 'Failed to update golf course';
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.errors) {
-        const errors = error.response.data.errors;
-        errorMessage = Object.keys(errors).map(key => `${key}: ${errors[key].join(', ')}`).join('\n');
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      await Swal.fire({
+      Swal.fire({
         title: 'Error!',
-        text: errorMessage,
+        text: 'Failed to update course',
         icon: 'error',
         confirmButtonText: 'Ok'
       });
@@ -405,11 +521,9 @@ export class UpdateCoursesComponent implements OnInit {
   }
 
   async onDelete(): Promise<void> {
-    if (!this.courseId || !this.hasExistingData) return;
-
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: 'This action cannot be undone!',
+      text: "You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -418,26 +532,33 @@ export class UpdateCoursesComponent implements OnInit {
     });
 
     if (result.isConfirmed) {
+      this.loading = true;
+
       try {
-        this.loading = true;
         const response = await this.courseService.deleteCourse(this.courseId);
 
-        if (response.data && response.data.code === 1) {
-          await Swal.fire({
+        if (response && response.data && response.data.code === 1) {
+          Swal.fire({
             title: 'Deleted!',
-            text: 'Golf course has been deleted successfully',
+            text: 'Course has been deleted.',
             icon: 'success',
             confirmButtonText: 'Ok'
+          }).then(() => {
+            this.router.navigate(['/courses']);
           });
-          this.router.navigate(['/courses']);
         } else {
-          throw new Error(response.data?.message || 'Failed to delete course');
+          Swal.fire({
+            title: 'Error!',
+            text: response?.data?.message || 'Failed to delete course',
+            icon: 'error',
+            confirmButtonText: 'Ok'
+          });
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error deleting course:', error);
-        await Swal.fire({
+        Swal.fire({
           title: 'Error!',
-          text: 'Failed to delete golf course',
+          text: 'Failed to delete course',
           icon: 'error',
           confirmButtonText: 'Ok'
         });
@@ -449,18 +570,19 @@ export class UpdateCoursesComponent implements OnInit {
 
   onReset(): void {
     this.submitted = false;
+    this.golfCourseForm.reset();
     this.selectedAmenities = [];
     this.imagePreview = null;
     this.selectedFile = null;
-    this.golfCourseForm.reset({
-      hideStatus: 0,
-      courseAmenities: []
-    });
-
-    // Reload the course data
-    if (this.courseId) {
-      this.loadCourseData();
+    
+    // Clear tees and add default tee
+    while (this.teesFormArray.length !== 0) {
+      this.teesFormArray.removeAt(0);
     }
+    this.addDefaultTee();
+    
+    // Reload course data
+    this.loadCourseData();
   }
 
   onCancel(): void {
@@ -473,34 +595,16 @@ export class UpdateCoursesComponent implements OnInit {
   }
 
   getErrorMessage(fieldName: string): string {
-    const control = this.golfCourseForm.get(fieldName);
-    if (!control || !control.errors) return '';
+    const field = this.golfCourseForm.get(fieldName);
+    if (!field || !field.errors) return '';
 
-    const errors = control.errors;
+    const errors = field.errors;
 
     if (errors['required']) {
-      switch (fieldName) {
-        case 'courseAmenities':
-          return 'Please select at least one amenity';
-        case 'courseName':
-          return 'Course name is required';
-        case 'courseAddress':
-          return 'Course address is required';
-        case 'courseOpenFrom':
-          return 'Opening hours are required';
-        case 'coursePhoneNumber':
-          return 'Phone number is required';
-        case 'courseLocation':
-          return 'Course location is required';
-        default:
-          return 'This field is required';
-      }
+      return 'This field is required';
     }
 
     if (errors['minlength']) {
-      if (fieldName === 'courseAmenities') {
-        return 'Please select at least one amenity';
-      }
       return `Minimum length is ${errors['minlength'].requiredLength} characters`;
     }
 
@@ -508,14 +612,14 @@ export class UpdateCoursesComponent implements OnInit {
       switch (fieldName) {
         case 'coursePhoneNumber':
         case 'courseAlternatePhoneNumber':
-          return 'Invalid phone number format';
+          return 'Please enter a valid phone number';
         case 'courseWebsite':
-          return 'Invalid website URL format (must start with http:// or https://)';
+          return 'Please enter a valid URL starting with http:// or https://';
         default:
           return 'Invalid format';
       }
     }
 
-    return 'Invalid input';
+    return 'Invalid value';
   }
 }

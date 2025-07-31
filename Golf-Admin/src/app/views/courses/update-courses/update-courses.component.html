@@ -40,7 +40,40 @@
           </c-col>
 
           <c-col [cFormFloating]="true" md="12">
-            <input cFormControl id="courseOpenFrom" formControlName="courseOpenFrom" type="text" placeholder="Opening Hours (e.g., 6:00 AM)" />
+            <select cFormSelect id="courseOpenFrom" formControlName="courseOpenFrom" class="form-select">
+              <option value="" disabled>Select Opening Time</option>
+              <option value="5:00 AM">5:00 AM</option>
+              <option value="5:30 AM">5:30 AM</option>
+              <option value="6:00 AM">6:00 AM</option>
+              <option value="6:30 AM">6:30 AM</option>
+              <option value="7:00 AM">7:00 AM</option>
+              <option value="7:30 AM">7:30 AM</option>
+              <option value="8:00 AM">8:00 AM</option>
+              <option value="8:30 AM">8:30 AM</option>
+              <option value="9:00 AM">9:00 AM</option>
+              <option value="9:30 AM">9:30 AM</option>
+              <option value="10:00 AM">10:00 AM</option>
+              <option value="10:30 AM">10:30 AM</option>
+              <option value="11:00 AM">11:00 AM</option>
+              <option value="11:30 AM">11:30 AM</option>
+              <option value="12:00 PM">12:00 PM</option>
+              <option value="12:30 PM">12:30 PM</option>
+              <option value="1:00 PM">1:00 PM</option>
+              <option value="1:30 PM">1:30 PM</option>
+              <option value="2:00 PM">2:00 PM</option>
+              <option value="2:30 PM">2:30 PM</option>
+              <option value="3:00 PM">3:00 PM</option>
+              <option value="3:30 PM">3:30 PM</option>
+              <option value="4:00 PM">4:00 PM</option>
+              <option value="4:30 PM">4:30 PM</option>
+              <option value="5:00 PM">5:00 PM</option>
+              <option value="5:30 PM">5:30 PM</option>
+              <option value="6:00 PM">6:00 PM</option>
+              <option value="6:30 PM">6:30 PM</option>
+              <option value="7:00 PM">7:00 PM</option>
+              <option value="7:30 PM">7:30 PM</option>
+              <option value="8:00 PM">8:00 PM</option>
+            </select>
             <label cLabel for="courseOpenFrom" class="ms-2">Opening Hours *</label>
             <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('courseOpenFrom')">
               {{ getErrorMessage('courseOpenFrom') }}
@@ -102,9 +135,6 @@
           <c-col md="12">
             <div class="mb-3">
               <label cLabel class="form-label">Amenities *</label>
-              <small class="text-muted d-block mb-2">
-                * Course tees are managed separately and will be displayed below.
-              </small>
               <div class="amenities-container mt-2">
                 <div *ngIf="amenitiesList.length === 0" class="text-muted">
                   Loading amenities...
@@ -144,46 +174,100 @@
             </div>
           </c-col>
 
-          <!-- Tee Information -->
-          <c-col md="12" *ngIf="courseTees && courseTees.length > 0">
+          <!-- Tee Management Section -->
+          <c-col md="12">
             <div class="mb-3">
-              <label cLabel class="form-label">Course Tees</label>
-              <div class="table-responsive">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Holes</th>
-                      <th>Label</th>
-                      <th>Price per Person</th>
-                      <th>Duration</th>
-                      <th>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let tee of courseTees">
-                      <td>{{ tee.holeNumber }}</td>
-                      <td>{{ tee.label }}</td>
-                      <td>{{ tee.formattedPrice }}</td>
-                      <td>{{ tee.estimatedDuration }}</td>
-                      <td>{{ tee.description }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <small class="text-muted">
-                * Tees are managed separately. You can add, edit, or remove tees through the tee management system.
-              </small>
-              <!-- Tee Management Actions -->
-              <div class="mt-3">
-                <a
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <label cLabel class="form-label mb-0">Course Tees *</label>
+                <button
                   cButton
-                  color="info"
-                  class="btn btn-sm me-2"
-                  [routerLink]="['/tees']"
-                  [queryParams]="{ courseId: courseId }">
-                  Manage Tees
-                </a>
-                <span class="badge bg-info">{{ getTeeInfo() }}</span>
+                  color="success"
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  (click)="addTee()"
+                  [disabled]="loading"
+                >
+                  <i class="fas fa-plus me-1"></i>
+                  Add Tee
+                </button>
+              </div>
+
+              <!-- Tees Form Array -->
+              <div formArrayName="tees">
+                <div *ngFor="let tee of teesFormArray.controls; let i = index" 
+                     [formGroupName]="i" 
+                     class="card mb-3 tee-card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Tee #{{ i + 1 }}</h6>
+                    <button
+                      *ngIf="teesFormArray.length > 1"
+                      cButton
+                      color="danger"
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      (click)="removeTee(i)"
+                      [disabled]="loading"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                  <div class="card-body">
+                    <div class="row g-3">
+                      <!-- Hole Number -->
+                      <c-col md="6">
+                        <label cLabel [for]="'holeNumber_' + i" class="form-label">Holes *</label>
+                        <input 
+                          cFormControl 
+                          [id]="'holeNumber_' + i"
+                          formControlName="holeNumber" 
+                          type="number" 
+                          min="1"
+                          step="1"
+                          placeholder="Enter number of holes"
+                          class="form-control"
+                          [class.is-invalid]="isTeeFieldInvalid(i, 'holeNumber')"
+                        />
+                        <c-form-feedback [valid]="false" *ngIf="isTeeFieldInvalid(i, 'holeNumber')">
+                          {{ getTeeErrorMessage(i, 'holeNumber') }}
+                        </c-form-feedback>
+                      </c-col>
+
+                      <!-- Price Per Person -->
+                      <c-col md="6">
+                        <label cLabel [for]="'pricePerPerson_' + i" class="form-label">Price (₹) *</label>
+                        <input 
+                          cFormControl 
+                          [id]="'pricePerPerson_' + i"
+                          formControlName="pricePerPerson" 
+                          type="number" 
+                          min="1"
+                          step="0.01"
+                          placeholder="1000"
+                          class="form-control"
+                          [class.is-invalid]="isTeeFieldInvalid(i, 'pricePerPerson')"
+                        />
+                        <c-form-feedback [valid]="false" *ngIf="isTeeFieldInvalid(i, 'pricePerPerson')">
+                          {{ getTeeErrorMessage(i, 'pricePerPerson') }}
+                        </c-form-feedback>
+                      </c-col>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Validation Error for Tees Array -->
+              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('tees')">
+                {{ getErrorMessage('tees') }}
+              </c-form-feedback>
+
+              <!-- Help Text -->
+              <div class="form-text">
+                <small class="text-muted">
+                  <i class="fas fa-info-circle me-1"></i>
+                  Add multiple tees to offer different pricing options. Each tee can have any number of holes with its own pricing.
+                </small>
               </div>
             </div>
           </c-col>
@@ -231,9 +315,48 @@
             >
               Cancel
             </button>
+
+            <button
+              *ngIf="hasExistingData"
+              (click)="onDelete()"
+              cButton
+              color="danger"
+              type="button"
+              [disabled]="loading"
+              class="ms-auto"
+            >
+              Delete Course
+            </button>
           </c-col>
         </form>
       </c-card-body>
     </c-card>
   </c-col>
 </c-row>
+
+<style>
+.tee-card {
+  border: 1px solid #dee2e6;
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.tee-card:hover {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.amenities-container button {
+  transition: all 0.2s ease-in-out;
+}
+
+.amenity-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.form-control-plaintext {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+</style>
