@@ -23,6 +23,7 @@ from django.core.mail import EmailMultiAlternatives
 import os
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+import decimal
 
 logger = logging.getLogger(__name__)
  
@@ -1470,8 +1471,17 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
             if 'amenities' in data and 'courseAmenities' not in data:
                 data['courseAmenities'] = data.pop('amenities')
 
-            # Extract tee data before processing course
-            tees_data = data.pop('tees', []) if 'tees' in data else []
+            # Parse tees if it's a JSON string
+            tees_data = []
+            if 'tees' in data:
+                if isinstance(data['tees'], str):
+                    try:
+                        tees_data = json.loads(data['tees'])
+                    except json.JSONDecodeError:
+                        tees_data = []
+                else:
+                    tees_data = data['tees']
+                data.pop('tees')
 
             serializer = CourseCreateUpdateSerializer(
                 instance=instance,
@@ -1498,26 +1508,38 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
                     processed_tee_ids = set()
                     
                     for tee_data in tees_data:
+                        if not isinstance(tee_data, dict):
+                            continue
+                            
                         tee_id = tee_data.get('id')
+                        hole_number = tee_data.get('holeNumber')
+                        price_per_person = tee_data.get('pricePerPerson')
+                        
+                        # Validate required fields
+                        if not hole_number or not price_per_person:
+                            continue
                         
                         if tee_id and tee_id in existing_tee_ids:
                             # Update existing tee
                             try:
                                 tee = TeeModel.objects.get(id=tee_id, course=course)
-                                tee.holeNumber = tee_data.get('holeNumber', tee.holeNumber)
-                                tee.pricePerPerson = tee_data.get('pricePerPerson', tee.pricePerPerson)
+                                tee.holeNumber = int(hole_number)
+                                tee.pricePerPerson = float(price_per_person)
                                 tee.save()
                                 processed_tee_ids.add(tee_id)
-                            except TeeModel.DoesNotExist:
+                            except (TeeModel.DoesNotExist, ValueError, TypeError):
                                 continue
                         else:
                             # Create new tee
-                            new_tee = TeeModel.objects.create(
-                                course=course,
-                                holeNumber=tee_data.get('holeNumber'),
-                                pricePerPerson=tee_data.get('pricePerPerson')
-                            )
-                            processed_tee_ids.add(new_tee.id)
+                            try:
+                                new_tee = TeeModel.objects.create(
+                                    course=course,
+                                    holeNumber=int(hole_number),
+                                    pricePerPerson=float(price_per_person)
+                                )
+                                processed_tee_ids.add(new_tee.id)
+                            except (ValueError, TypeError):
+                                continue
                     
                     # Delete tees that are no longer in the list
                     tees_to_delete = existing_tee_ids - processed_tee_ids
