@@ -326,23 +326,7 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         if amenities_data:
             course.courseAmenities.set(amenities_data)
         
-        # Automatically create a default tee for the course
-        self.create_default_tee(course)
-        
         return course
-    
-    def create_default_tee(self, course):
-        """Create a default 18-hole tee for the course"""
-        from .models import TeeModel
-        
-        # Create default 18-hole tee
-        TeeModel.objects.create(
-            course=course,
-            holeNumber=18,
-            label="Standard 18 Holes",
-            pricePerPerson=1000.00,  # Default price, can be updated later
-            description="Standard 18-hole golf course experience"
-        )
     
     def update(self, instance, validated_data):
         amenities_data = validated_data.pop('courseAmenities', None)
@@ -424,13 +408,12 @@ class TeeSerializer(serializers.ModelSerializer):
     courseId = serializers.IntegerField(source='course.id', read_only=True)
     courseName = serializers.CharField(source='course.courseName', read_only=True)
     formattedPrice = serializers.CharField(source='formatted_price', read_only=True)
-    estimatedDuration = serializers.SerializerMethodField()
 
     class Meta:
         model = TeeModel
         fields = [
-            'id', 'courseId', 'courseName', 'holeNumber', 'label', 
-            'pricePerPerson', 'formattedPrice', 'description', 'estimatedDuration',
+            'id', 'courseId', 'courseName', 'holeNumber', 
+            'pricePerPerson', 'formattedPrice',
             'course', 'hideStatus'
         ]
         extra_kwargs = {
@@ -439,13 +422,9 @@ class TeeSerializer(serializers.ModelSerializer):
             'pricePerPerson': {'required': True}
         }
     
-    def get_estimatedDuration(self, obj):
-        duration = 2.5 if obj.holeNumber == 9 else 4.5
-        return f"{duration} hours"
-    
     def validate_holeNumber(self, value):
-        if value not in [9, 18]:
-            raise serializers.ValidationError("Hole number must be either 9 or 18")
+        if value <= 0:
+            raise serializers.ValidationError("Hole number must be a positive integer")
         return value
     
     def validate_pricePerPerson(self, value):

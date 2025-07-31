@@ -1,6 +1,7 @@
+// create-courses.component.ts - Updated with tee management
 import { Component, OnInit } from '@angular/core';
 import { NgStyle, NgClass, NgForOf, NgIf, CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import {
   RowComponent,
@@ -26,12 +27,12 @@ interface Amenity {
   id: number;
   amenityName: string;
   amenityTooltip: string;
-  title: string;  // For frontend compatibility
-  tooltip: string;  // For frontend compatibility
+  title: string;
+  tooltip: string;
   icon_svg?: string;
   icon_path?: string;
   viewbox?: string;
-  icon?: string;  // Fallback for old implementations
+  icon?: string;
 }
 
 interface CourseData {
@@ -48,7 +49,14 @@ interface CourseData {
   courseAmenities: number[];
   hideStatus: number;
   imageUrl?: string;
-  amenities?: number[];  // Alternative field name for compatibility
+  amenities?: number[];
+  tees?: any[];
+}
+
+interface TeeData {
+  id?: number;
+  holeNumber: number;
+  pricePerPerson: number;
 }
 
 @Component({
@@ -109,8 +117,144 @@ export class CreateCoursesComponent implements OnInit {
         this.courseId = params['id'];
         this.isEditMode = true;
         this.loadCourseData();
+      } else {
+        // Add default tee for new course
+        this.addDefaultTee();
       }
     });
+  }
+
+  private initializeForm(): void {
+    this.golfCourseForm = this.formBuilder.group({
+      courseName: ['', [Validators.required, Validators.minLength(2)]],
+      courseAddress: ['', [Validators.required]],
+      courseOpenFrom: ['6:00 AM', [Validators.required]],
+      coursePhoneNumber: ['', [Validators.required, Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
+      courseAlternatePhoneNumber: ['', [Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
+      courseWebsite: ['', [Validators.pattern(/^https?:\/\/.+/)]],
+      courseDescription: [''],
+      courseLocation: ['', [Validators.required]],
+      courseAmenities: [[], [Validators.required, Validators.minLength(1)]],
+      courseImage: [null],
+      hideStatus: [0],
+      tees: this.formBuilder.array([], [Validators.required, Validators.minLength(1)])
+    });
+  }
+
+  // Tee FormArray getter
+  get teesFormArray(): FormArray {
+    return this.golfCourseForm.get('tees') as FormArray;
+  }
+
+  // Create a new tee form group
+  private createTeeFormGroup(teeData?: TeeData): FormGroup {
+    return this.formBuilder.group({
+      id: [teeData?.id || null],
+      holeNumber: [
+        teeData?.holeNumber || '', 
+        [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]
+      ],
+      pricePerPerson: [
+        teeData?.pricePerPerson || '', 
+        [Validators.required, Validators.min(1), Validators.max(50000)]
+      ]
+    });
+  }
+
+  // Add a new tee
+  addTee(): void {
+    const teeForm = this.createTeeFormGroup({
+      holeNumber: 9, // Default to 9 holes
+      pricePerPerson: 1000
+    });
+    this.teesFormArray.push(teeForm);
+  }
+
+  // Add default tee for new courses
+  private addDefaultTee(): void {
+    const defaultTee = this.createTeeFormGroup({
+      holeNumber: 9,
+      pricePerPerson: 1000
+    });
+    this.teesFormArray.push(defaultTee);
+  }
+
+  // Remove a tee
+  removeTee(index: number): void {
+    if (this.teesFormArray.length > 1) {
+      this.teesFormArray.removeAt(index);
+    } else {
+      Swal.fire({
+        title: 'Cannot Remove',
+        text: 'At least one tee must be defined for the course',
+        icon: 'warning',
+        confirmButtonText: 'Ok'
+      });
+    }
+  }
+
+  // Get tee form group at index
+  getTeeFormGroup(index: number): FormGroup {
+    return this.teesFormArray.at(index) as FormGroup;
+  }
+
+  // Check if tee field is invalid
+  isTeeFieldInvalid(teeIndex: number, fieldName: string): boolean {
+    const teeGroup = this.getTeeFormGroup(teeIndex);
+    const field = teeGroup.get(fieldName);
+    return Boolean(field && field.invalid && (field.dirty || field.touched || this.submitted));
+  }
+
+  // Get tee field error message
+  getTeeErrorMessage(teeIndex: number, fieldName: string): string {
+    const teeGroup = this.getTeeFormGroup(teeIndex);
+    const control = teeGroup.get(fieldName);
+    if (!control || !control.errors) return '';
+  
+    const errors = control.errors;
+  
+    if (errors['required']) {
+      switch (fieldName) {
+        case 'holeNumber': return 'Please enter number of holes';
+        case 'pricePerPerson': return 'Price per person is required';
+        default: return 'This field is required';
+      }
+    }
+  
+    if (errors['min']) {
+      if (fieldName === 'holeNumber') return 'Hole number must be at least 1';
+      if (fieldName === 'pricePerPerson') return 'Price must be at least ₹1';
+    }
+  
+    if (errors['max']) {
+      if (fieldName === 'pricePerPerson') return 'Price cannot exceed ₹50,000';
+    }
+  
+    if (errors['pattern']) {
+      if (fieldName === 'holeNumber') return 'Hole number must be a positive integer';
+    }
+  
+    return 'Invalid input';
+  }
+
+  private validateTeeData(): boolean {
+    const teesData = this.teesFormArray.value;
+    
+    // Check for duplicate hole numbers
+    const holeNumbers = teesData.map((tee: any) => tee.holeNumber);
+    const duplicates = holeNumbers.filter((item: number, index: number) => holeNumbers.indexOf(item) !== index);
+    
+    if (duplicates.length > 0) {
+      Swal.fire({
+        title: 'Duplicate Tees!',
+        text: 'You have duplicate hole configurations. Each tee must have a unique number of holes.',
+        icon: 'warning',
+        confirmButtonText: 'Ok'
+      });
+      return false;
+    }
+  
+    return true;
   }
 
   private async loadAmenities(): Promise<void> {
@@ -138,21 +282,6 @@ export class CreateCoursesComponent implements OnInit {
     }
   }
 
-  private async loadCourseTees(): Promise<void> {
-    if (!this.courseId) return;
-
-    try {
-      const response = await this.courseService.getTeesByCourse(this.courseId);
-      if (response.data && response.data.code === 1) {
-        console.log('Course tees loaded:', response.data.data);
-        this.courseTees = response.data.data;
-      }
-    } catch (error) {
-      console.error('Error loading course tees:', error);
-      // Don't show error to user as this is optional information
-    }
-  }
-
   private async loadCourseData(): Promise<void> {
     if (!this.courseId) return;
 
@@ -177,7 +306,7 @@ export class CreateCoursesComponent implements OnInit {
           hideStatus: courseData.hideStatus || 0
         });
 
-        // Set selected amenities - handle both possible field names
+        // Set selected amenities
         this.selectedAmenities = courseData.courseAmenities || courseData.amenities || [];
         this.golfCourseForm.patchValue({ courseAmenities: this.selectedAmenities });
 
@@ -188,7 +317,7 @@ export class CreateCoursesComponent implements OnInit {
           this.imagePreview = courseData.courseImage;
         }
 
-        // Load associated tees for this course
+        // Load tees data
         await this.loadCourseTees();
       }
     } catch (error) {
@@ -204,20 +333,42 @@ export class CreateCoursesComponent implements OnInit {
     }
   }
 
-  private initializeForm(): void {
-    this.golfCourseForm = this.formBuilder.group({
-      courseName: ['', [Validators.required, Validators.minLength(2)]],
-      courseAddress: ['', [Validators.required]],
-      courseOpenFrom: [''],
-      coursePhoneNumber: ['', [Validators.required, Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
-      courseAlternatePhoneNumber: ['', [Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
-      courseWebsite: ['', [Validators.pattern(/^https?:\/\/.+/)]],
-      courseDescription: [''],
-      courseLocation: ['', [Validators.required]],
-      courseAmenities: [[], [Validators.required, Validators.minLength(1)]],
-      courseImage: [null],
-      hideStatus: [0]
-    });
+  private async loadCourseTees(): Promise<void> {
+    if (!this.courseId) return;
+
+    try {
+      const response = await this.courseService.getTeesByCourse(this.courseId);
+      if (response.data && response.data.code === 1) {
+        const tees = response.data.data;
+        console.log('Course tees loaded:', tees);
+        
+        // Clear existing tee forms
+        while (this.teesFormArray.length > 0) {
+          this.teesFormArray.removeAt(0);
+        }
+
+        // Add loaded tees to form
+        if (tees && tees.length > 0) {
+          tees.forEach((tee: any) => {
+            const teeForm = this.createTeeFormGroup({
+              id: tee.id,
+              holeNumber: tee.holeNumber,
+              pricePerPerson: tee.pricePerPerson
+            });
+            this.teesFormArray.push(teeForm);
+          });
+        } else {
+          // Add default tee if no tees exist
+          this.addDefaultTee();
+        }
+      }
+    } catch (error) {
+      console.error('Error loading course tees:', error);
+      // Add default tee if loading fails
+      if (this.teesFormArray.length === 0) {
+        this.addDefaultTee();
+      }
+    }
   }
 
   onFileChange(event: Event): void {
@@ -276,13 +427,11 @@ export class CreateCoursesComponent implements OnInit {
     this.golfCourseForm.get('courseAmenities')?.markAsTouched();
   }
 
-  // Helper method to get amenity title by ID
   getAmenityTitle(amenityId: number): string {
     const amenity = this.amenitiesList.find(a => a.id === amenityId);
     return amenity ? amenity.title : `Amenity ${amenityId}`;
   }
 
-  // Helper method to safely render HTML (for SVG icons)
   getSafeHtml(html: string): SafeHtml {
     return this.domSanitizer.bypassSecurityTrustHtml(html);
   }
@@ -301,6 +450,14 @@ export class CreateCoursesComponent implements OnInit {
         control?.markAsTouched();
       });
 
+      // Also mark tee form fields as touched
+      this.teesFormArray.controls.forEach(teeGroup => {
+        Object.keys(teeGroup.value).forEach(key => {
+          const control = teeGroup.get(key);
+          control?.markAsTouched();
+        });
+      });
+
       // Scroll to first error
       const firstErrorElement = document.querySelector('.is-invalid');
       if (firstErrorElement) {
@@ -314,8 +471,6 @@ export class CreateCoursesComponent implements OnInit {
 
       // Create FormData object to handle file upload
       const formData = new FormData();
-
-      // Add all form fields to FormData (matching backend field names)
       const formValues = this.golfCourseForm.value;
 
       // Add course fields
@@ -329,23 +484,27 @@ export class CreateCoursesComponent implements OnInit {
       formData.append('courseLocation', formValues.courseLocation || '');
       formData.append('hideStatus', formValues.hideStatus.toString());
 
-      // Add amenities as JSON string (as expected by backend)
+      // Add amenities as JSON string
       formData.append('courseAmenities', JSON.stringify(this.selectedAmenities));
+
+      // Add tees data as JSON string
+      formData.append('tees', JSON.stringify(formValues.tees));
 
       // Add the file if selected
       if (this.selectedFile) {
         formData.append('courseImage', this.selectedFile);
       }
 
-      // Determine the ID for the request (0 for create, actual ID for update)
+      // Determine the ID for the request
       const requestId = this.isEditMode && this.courseId ? this.courseId : '0';
 
       const response = await this.courseService.processCourse(formData, requestId);
 
       if (response.data && response.data.code === 1) {
+        const teeCount = formValues.tees.length;
         const successMessage = this.isEditMode
-          ? 'Golf course has been updated successfully'
-          : 'Golf course has been created successfully with a default 18-hole tee';
+          ? `Golf course has been updated successfully with ${teeCount} tee(s)`
+          : `Golf course has been created successfully with ${teeCount} tee(s)`;
         
         await Swal.fire({
           title: 'Success!',
@@ -386,7 +545,7 @@ export class CreateCoursesComponent implements OnInit {
 
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: 'This action cannot be undone!',
+      text: 'This action cannot be undone! This will also delete all associated tees.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -402,7 +561,7 @@ export class CreateCoursesComponent implements OnInit {
         if (response.data && response.data.code === 1) {
           await Swal.fire({
             title: 'Deleted!',
-            text: 'Golf course has been deleted successfully',
+            text: 'Golf course and all associated tees have been deleted successfully',
             icon: 'success',
             confirmButtonText: 'Ok'
           });
@@ -429,6 +588,12 @@ export class CreateCoursesComponent implements OnInit {
     this.selectedAmenities = [];
     this.imagePreview = null;
     this.selectedFile = null;
+    
+    // Clear tee forms
+    while (this.teesFormArray.length > 0) {
+      this.teesFormArray.removeAt(0);
+    }
+
     this.golfCourseForm.reset({
       hideStatus: 0,
       courseAmenities: []
@@ -437,6 +602,9 @@ export class CreateCoursesComponent implements OnInit {
     // If in edit mode, reload the data
     if (this.isEditMode) {
       this.loadCourseData();
+    } else {
+      // Add default tee for new course
+      this.addDefaultTee();
     }
   }
 
@@ -455,10 +623,14 @@ export class CreateCoursesComponent implements OnInit {
       switch (fieldName) {
         case 'courseAmenities':
           return 'Please select at least one amenity';
+        case 'tees':
+          return 'At least one tee must be defined';
         case 'courseName':
           return 'Course name is required';
         case 'courseAddress':
           return 'Course address is required';
+        case 'courseOpenFrom':
+          return 'Opening hours are required';
         case 'coursePhoneNumber':
           return 'Phone number is required';
         case 'courseLocation':
@@ -471,6 +643,9 @@ export class CreateCoursesComponent implements OnInit {
     if (errors['minlength']) {
       if (fieldName === 'courseAmenities') {
         return 'Please select at least one amenity';
+      }
+      if (fieldName === 'tees') {
+        return 'At least one tee must be defined';
       }
       return `Minimum length is ${errors['minlength'].requiredLength} characters`;
     }

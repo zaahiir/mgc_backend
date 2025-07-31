@@ -225,7 +225,7 @@ export class UpdateCoursesComponent implements OnInit {
     this.golfCourseForm = this.formBuilder.group({
       courseName: ['', [Validators.required, Validators.minLength(2)]],
       courseAddress: ['', [Validators.required]],
-      courseOpenFrom: [''],
+      courseOpenFrom: ['6:00 AM', [Validators.required]],
       coursePhoneNumber: ['', [Validators.required, Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
       courseAlternatePhoneNumber: ['', [Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
       courseWebsite: ['', [Validators.pattern(/^https?:\/\/.+/)]],
@@ -486,6 +486,8 @@ export class UpdateCoursesComponent implements OnInit {
           return 'Course name is required';
         case 'courseAddress':
           return 'Course address is required';
+        case 'courseOpenFrom':
+          return 'Opening hours are required';
         case 'coursePhoneNumber':
           return 'Phone number is required';
         case 'courseLocation':

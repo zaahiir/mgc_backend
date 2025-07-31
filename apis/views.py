@@ -1676,8 +1676,8 @@ class BookingViewSet(viewsets.ModelViewSet):
             
             booked_times = set()
             for booking_time, hole_number in existing_bookings:
-                # Block time slots based on duration
-                duration_hours = 2.5 if hole_number == 9 else 4.5
+                # Block time slots based on duration (10 minutes per hole)
+                duration_hours = hole_number * 0.167  # 10 minutes per hole
                 booking_start = datetime.combine(date_obj, booking_time)
                 booking_end = booking_start + timedelta(hours=duration_hours)
                 
@@ -1693,7 +1693,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 
                 # Check if there's enough time for the selected tee duration
                 if is_available:
-                    duration_hours = 2.5 if tee.holeNumber == 9 else 4.5
+                    duration_hours = tee.holeNumber * 0.167  # 10 minutes per hole
                     slot_end = current_time + timedelta(hours=duration_hours)
                     if slot_end.time() > end_time:
                         is_available = False

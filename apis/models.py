@@ -238,10 +238,8 @@ class CourseModel(models.Model):
 class TeeModel(models.Model):
     id = models.AutoField(primary_key=True)
     course = models.ForeignKey(CourseModel, on_delete=models.CASCADE, related_name="tees")
-    holeNumber = models.IntegerField(help_text="Number of holes for this tee (e.g., 9 or 18)")
-    label = models.CharField(max_length=100, null=True, blank=True, help_text="Optional name like 'Morning 9 Holes'")
+    holeNumber = models.IntegerField(help_text="Number of holes for this tee (any positive integer)")
     pricePerPerson = models.DecimalField(max_digits=10, decimal_places=2)
-    description = models.TextField(null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
 
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -252,8 +250,8 @@ class TeeModel(models.Model):
     
     def clean(self):
         super().clean()
-        if self.holeNumber not in [9, 18]:
-            raise ValidationError("Hole number must be either 9 or 18")
+        if self.holeNumber <= 0:
+            raise ValidationError("Hole number must be a positive integer")
         if self.pricePerPerson <= 0:
             raise ValidationError("Price per person must be greater than 0")
 
@@ -263,9 +261,10 @@ class TeeModel(models.Model):
     
     @property
     def price_per_hour(self):
-        # Estimate: 9 holes = 2.5 hours, 18 holes = 4.5 hours
-        hours = 2.5 if self.holeNumber == 9 else 4.5
-        return self.pricePerPerson / Decimal(str(hours))
+        # Calculate hours based on hole number: approximately 10 minutes per hole
+        hours_per_hole = 0.167
+        total_hours = self.holeNumber * hours_per_hole
+        return self.pricePerPerson / Decimal(str(total_hours))
 
 
 class BookingModel(models.Model):
@@ -325,7 +324,9 @@ class BookingModel(models.Model):
     
     @property
     def duration_hours(self):
-        return 2.5 if self.tee.holeNumber == 9 else 4.5
+        # Calculate hours based on hole number: approximately 10 minutes per hole
+        hours_per_hole = 0.167
+        return self.tee.holeNumber * hours_per_hole
     
     @property
     def end_time(self):
