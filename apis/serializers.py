@@ -420,12 +420,13 @@ class TeeSerializer(serializers.ModelSerializer):
     courseId = serializers.IntegerField(source='course.id', read_only=True)
     courseName = serializers.CharField(source='course.courseName', read_only=True)
     formattedPrice = serializers.CharField(source='formatted_price', read_only=True)
+    label = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = TeeModel
         fields = [
             'id', 'courseId', 'courseName', 'holeNumber', 
-            'pricePerPerson', 'formattedPrice',
+            'pricePerPerson', 'formattedPrice', 'label',
             'course', 'hideStatus'
         ]
         extra_kwargs = {
@@ -433,6 +434,9 @@ class TeeSerializer(serializers.ModelSerializer):
             'holeNumber': {'required': True},
             'pricePerPerson': {'required': True}
         }
+    
+    def get_label(self, obj):
+        return f"{obj.holeNumber} Holes"
     
     def validate_holeNumber(self, value):
         if value <= 0:

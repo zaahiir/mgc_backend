@@ -57,14 +57,26 @@
                   <label>Select Tee</label>
                 </div>
               </div>
+              
               <div class="tee-options">
                 <button class="tee-option" 
                         *ngFor="let tee of availableTees"
                         [class.selected]="selectedTee?.id === tee.id"
                         (click)="selectTee(tee)">
                   <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
-                  <span class="tee-price">£{{tee.pricePerPerson}}</span>
+                  <span class="tee-price">{{tee.formattedPrice}}</span>
                 </button>
+                
+                <!-- Show message when no tees available -->
+                <div *ngIf="availableTees.length === 0 && !isLoading" class="no-tees-message">
+                  <p>No tees available for this course.</p>
+                  <button class="theme-btn" (click)="loadAvailableTees()">Retry Loading Tees</button>
+                </div>
+                
+                <!-- Show loading state -->
+                <div *ngIf="isLoading" class="loading-message">
+                  <p>Loading available tees...</p>
+                </div>
               </div>
             </div>
 
@@ -149,12 +161,45 @@
               </div>
             </div>
 
+            <!-- Booking Summary (only visible when all steps completed) -->
+            <div class="booking-summary" *ngIf="canBook()">
+              <div class="summary-header">
+                <h4>Booking Summary</h4>
+              </div>
+              <div class="summary-details">
+                <div class="summary-item">
+                  <span class="label">Tee:</span>
+                  <span class="value">{{selectedTee?.label}}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">Date:</span>
+                  <span class="value">{{selectedDate | date:'MMM d, yyyy'}}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">Time:</span>
+                  <span class="value">{{selectedTime}}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">Participants:</span>
+                  <span class="value">{{participantCount}}</span>
+                </div>
+                <div class="summary-item total">
+                  <span class="label">Total Price:</span>
+                  <span class="value">£{{getTotalPrice()}}</span>
+                </div>
+              </div>
+            </div>
+
             <button class="theme-btn w-100"
                     [disabled]="!canBook()"
                     [class.loading]="isLoading"
                     (click)="bookTeeTime()">
               {{isLoading ? 'Booking...' : 'Book Now'}}
             </button>
+
+            <div class="success-message" *ngIf="successMessage">
+              {{successMessage}}
+            </div>
 
             <div class="error-message" *ngIf="errorMessage">
               {{errorMessage}}

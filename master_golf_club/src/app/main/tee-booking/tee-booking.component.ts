@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { ActivatedRoute } from '@angular/router';
-import { BookingService } from '../common-service/booking/booking.service';
 import { CollectionService } from '../common-service/collection/collection.service';
 import { 
   faUsers, faGolfBall, faCalendarAlt, faClock, faMapMarkerAlt, 
@@ -109,14 +108,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(
-    private bookingService: BookingService,
     private collectionService: CollectionService,
     private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadCourseData();
-    this.loadAvailableTees();
     this.generateCalendar();
     this.setMinimumDate();
   }
@@ -129,6 +126,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       if (courseId) {
         // Load course data based on courseId
         this.loadCourseById(courseId);
+      } else {
+        // If no courseId, try to load tees for default course
+        console.log('No courseId provided, using default course');
+        this.loadAvailableTees();
       }
     });
   }
@@ -138,7 +139,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     
     try {
+      console.log('Loading course with ID:', courseId);
       const response = await this.collectionService.getCourseDetail(parseInt(courseId));
+      
+      console.log('Course response:', response);
       
       if (response.data.code === 1 && response.data.data) {
         const courseData = response.data.data;
@@ -147,14 +151,20 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.course = {
           id: courseData.id,
           name: courseData.name || 'Unnamed Course',
-          lane: courseData.location || '',
+          lane: courseData.lane || courseData.address || '',
           address: courseData.address || '',
-          code: courseData.location || '',
+          code: courseData.code || '',
           phone: courseData.phone || '',
           timing: courseData.timing || '',
           imageUrl: courseData.imageUrl || 'assets/images/golf-course.jpg'
         };
+        
+        console.log('Course loaded:', this.course);
+        
+        // Load tees after course data is loaded
+        await this.loadAvailableTees();
       } else {
+        console.error('Failed to load course:', response.data);
         this.errorMessage = response.data.message || 'Failed to load course details';
       }
     } catch (error) {
@@ -186,20 +196,33 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   // Tee selection
-  loadAvailableTees(): void {
-    this.bookingService.getTeesByCourse(this.course.id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.code === 1 && response.data) {
-            this.availableTees = response.data;
-          }
-        },
-        error: (error) => {
-          console.error('Error loading tees:', error);
-          this.errorMessage = 'Failed to load available tees';
-        }
-      });
+  async loadAvailableTees(): Promise<void> {
+    try {
+      console.log('Loading tees for course ID:', this.course.id);
+      const response = await this.collectionService.getTeesByCourse(this.course.id);
+      
+      console.log('Tee response:', response);
+      
+      if (response.data.code === 1 && response.data.data) {
+        this.availableTees = response.data.data.map((tee: any) => ({
+          id: tee.id,
+          holeNumber: tee.holeNumber,
+          label: tee.label || `${tee.holeNumber} Holes`,
+          pricePerPerson: tee.pricePerPerson,
+          formattedPrice: tee.formattedPrice || `£${tee.pricePerPerson}`,
+          description: `${tee.holeNumber} holes of golf`,
+          estimatedDuration: `${Math.round(tee.holeNumber * 10)} minutes`
+        }));
+        
+        console.log('Available tees loaded:', this.availableTees);
+      } else {
+        console.error('Failed to load tees:', response.data);
+        this.errorMessage = response.data.message || 'Failed to load available tees';
+      }
+    } catch (error) {
+      console.error('Error loading tees:', error);
+      this.errorMessage = 'Failed to load available tees. Please try again later.';
+    }
   }
 
   selectTee(tee: Tee): void {
@@ -282,7 +305,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   // Time slot management
-  loadAvailableTimeSlots(): void {
+  async loadAvailableTimeSlots(): Promise<void> {
     if (!this.selectedTee || !this.selectedDate) {
       return;
     }
@@ -290,23 +313,24 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     const dateString = this.selectedDate.toISOString().split('T')[0];
     
-    this.bookingService.getAvailableSlots(this.course.id, dateString, this.selectedTee.id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          this.isLoading = false;
-          if (response.code === 1 && response.data) {
-            this.currentTimeSlots = response.data;
-          } else {
-            this.errorMessage = 'Failed to load available time slots';
-          }
-        },
-        error: (error) => {
-          this.isLoading = false;
-          console.error('Error loading time slots:', error);
-          this.errorMessage = 'Failed to load available time slots';
-        }
-      });
+    try {
+      const response = await this.collectionService.getAvailableSlots(
+        this.course.id, 
+        dateString, 
+        this.selectedTee.id
+      );
+      
+      this.isLoading = false;
+      if (response.data.code === 1 && response.data.data) {
+        this.currentTimeSlots = response.data.data;
+      } else {
+        this.errorMessage = 'Failed to load available time slots';
+      }
+    } catch (error) {
+      this.isLoading = false;
+      console.error('Error loading time slots:', error);
+      this.errorMessage = 'Failed to load available time slots';
+    }
   }
 
   selectTime(time: string): void {
@@ -334,7 +358,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     return this.selectedTee.pricePerPerson * this.participantCount;
   }
 
-  bookTeeTime(): void {
+  async bookTeeTime(): Promise<void> {
     if (!this.canBook()) {
       this.errorMessage = 'Please complete all booking details';
       return;
@@ -345,7 +369,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.successMessage = '';
 
     const bookingData = {
-      member: 1, // This should come from authentication service
+      member: 1, // Default member ID for non-logged users
       course: this.course.id,
       tee: this.selectedTee!.id,
       bookingDate: this.selectedDate.toISOString().split('T')[0],
@@ -355,24 +379,21 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       status: 'pending' as const
     };
 
-    this.bookingService.createBooking(bookingData)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          this.isLoading = false;
-          if (response.code === 1) {
-            this.successMessage = 'Booking created successfully!';
-            this.resetBookingForm();
-          } else {
-            this.errorMessage = response.message || 'Booking failed';
-          }
-        },
-        error: (error) => {
-          this.isLoading = false;
-          console.error('Booking error:', error);
-          this.errorMessage = error.message || 'Failed to create booking';
-        }
-      });
+    try {
+      const response = await this.collectionService.createBooking(bookingData);
+      
+      this.isLoading = false;
+      if (response.data.code === 1) {
+        this.successMessage = 'Booking created successfully!';
+        this.resetBookingForm();
+      } else {
+        this.errorMessage = response.data.message || 'Booking failed';
+      }
+    } catch (error: any) {
+      this.isLoading = false;
+      console.error('Booking error:', error);
+      this.errorMessage = error.response?.data?.message || 'Failed to create booking';
+    }
   }
 
   resetBookingForm(): void {
