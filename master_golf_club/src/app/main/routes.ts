@@ -26,6 +26,10 @@ export const mainRoutes: Routes = [
       loadComponent: () => import('./news/news.component').then(m => m.NewsComponent)
     },
     {
+      path: 'news/:id',
+      loadComponent: () => import('./news/news.component').then(m => m.NewsComponent)
+    },
+    {
       path: 'membersNews',
       loadComponent: () => import('./members-news/members-news.component').then(m => m.MembersNewsComponent)
     },

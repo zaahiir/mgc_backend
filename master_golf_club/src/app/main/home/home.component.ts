@@ -54,7 +54,7 @@ export class HomeComponent implements OnInit {
     showReadMore: false,
     date: '31 DEC',
     imageSrc: 'assets/images/news/news-1.jpg',
-    route: '/news/0'
+    route: '/news'
   };
 
   smallNewsArticles = [
@@ -64,7 +64,7 @@ export class HomeComponent implements OnInit {
       highlight: 'Tournaments',
       date: '28 OCT',
       imageSrc: 'assets/images/news/news-6.jpg',
-      route: '/news/0'
+      route: '/news'
     },
     {
       id: 0,
@@ -72,7 +72,7 @@ export class HomeComponent implements OnInit {
       highlight: 'Coaching',
       date: '28 OCT',
       imageSrc: 'assets/images/news/news-2.jpg',
-      route: '/news/0'
+      route: '/news'
     },
     {
       id: 0,
@@ -80,7 +80,7 @@ export class HomeComponent implements OnInit {
       highlight: 'Equipment',
       date: '28 OCT',
       imageSrc: 'assets/images/news/news-3.jpg',
-      route: '/news/0'
+      route: '/news'
     },
     {
       id: 0,
@@ -88,7 +88,7 @@ export class HomeComponent implements OnInit {
       highlight: 'Events',
       date: '28 OCT',
       imageSrc: 'assets/images/news/news-7.jpg',
-      route: '/news/0'
+      route: '/news'
     }
   ];
 
@@ -194,6 +194,7 @@ export class HomeComponent implements OnInit {
         showReadMore: truncatedDesc.truncated,
         date: this.newsService.formatDate(featured.blogDate),
         imageSrc: featuredImageUrl || 'assets/images/news/news-1.jpg', // Use formatted URL or fallback
+        // route: '/news'
         route: `/news/${featured.id}`
       };
 
@@ -211,7 +212,8 @@ export class HomeComponent implements OnInit {
           highlight: blog.blogHighlight || 'News',
           date: this.newsService.formatDate(blog.blogDate),
           imageSrc: articleImageUrl || `assets/images/news/news-${(i % 4) + 2}.jpg`, // Use formatted URL or fallback
-          route: `/news/${blog.id}`
+          // route: '/news'
+        route: `/news/${blog.id}`
         };
       }
 

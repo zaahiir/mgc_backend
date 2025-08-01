@@ -35,49 +35,6 @@
   margin-bottom: 0;
 }
 
-/* Search Widget */
-.search-widget .form-group {
-  position: relative;
-  margin-bottom: 0px;
-}
-
-.search-widget .form-group input[type='search'] {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 60px;
-  border: 1px solid #e5e5e5;
-  border-radius: 10px;
-  padding: 10px 30px;
-  font-size: 16px;
-  color: #6A6A6A;
-  padding-right: 60px;
-  font-family: var(--text-font);
-  transition: border-color 0.3s ease;
-}
-
-.search-widget .form-group button[type='submit'] {
-  position: absolute;
-  top: 17px;
-  right: 40px;
-  font-size: 17px;
-  color: var(--title-color);
-  background: none;
-  border: none;
-  transition: all 500ms ease;
-  cursor: pointer;
-}
-
-.search-widget .form-group input:focus {
-  border-color: var(--theme-color) !important;
-  outline: none;
-}
-
-.search-widget .form-group input:focus + button,
-.search-widget .form-group button:hover {
-  color: var(--theme-color);
-}
-
 /* Post Widget */
 .post-widget-content .post {
   position: relative;
@@ -144,20 +101,18 @@
 
 .post-widget-content .post .post-date {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   line-height: 26px;
-  padding-left: 26px;
   color: #666;
   font-family: var(--text-font);
 }
 
-.post-widget-content .post .post-date::before {
-  content: "📅";
-  position: absolute;
-  left: 0px;
-  top: 0px;
-  color: var(--theme-color);
+.post-widget-content .post .post-date fa-icon {
+  color: #77a96a;
+  font-size: 14px;
 }
 
 /* News Block */

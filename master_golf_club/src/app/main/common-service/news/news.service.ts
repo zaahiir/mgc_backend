@@ -22,6 +22,12 @@ export interface BlogResponse {
   message: string;
 }
 
+export interface SingleBlogResponse {
+  code: number;
+  data: BlogPost;
+  message: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -57,17 +63,34 @@ export class NewsService {
     );
   }
 
-  getLatestNews(count: number = 5): Observable<BlogResponse> {
-    return from(axios.get(this.lists)).pipe(
+  // Get individual blog post by ID
+  getBlogById(id: string): Observable<SingleBlogResponse> {
+    const url = this.apiUrl + `blog/${id}/listing/`;
+    return from(axios.get(url)).pipe(
       map(response => {
         const data = response.data;
-        if (data && data.data && Array.isArray(data.data)) {
-          data.data = data.data
-            .sort((a: BlogPost, b: BlogPost) => new Date(b.blogDate).getTime() - new Date(a.blogDate).getTime())
-            .slice(0, count);
+        // The backend returns an array even for single items, so we need to extract the first item
+        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+          return {
+            code: data.code,
+            data: data.data[0], // Extract the first (and only) item
+            message: data.message
+          };
+        } else {
+          // Return error response if no data found
+          return {
+            code: 0,
+            data: null,
+            message: "Blog post not found"
+          };
         }
-        return data;
       })
+    );
+  }
+
+  getLatestNews(count: number = 5): Observable<BlogResponse> {
+    return from(axios.get(this.latestNews)).pipe(
+      map(response => response.data)
     );
   }
 

@@ -55,8 +55,7 @@
           <div class="news-content">
             <span class="category">{{ item.category }}</span>
             <h3 class="news-title">
-              <!-- <a [routerLink]="['/news', item.id]">{{ item.title }}</a> -->
-              <a [routerLink]="['/news']">{{ item.title }}</a>
+              <a [routerLink]="['/news', item.id]">{{ item.title }}</a>
             </h3>
             <p class="news-description" [innerHTML]="item.description"></p>
           </div>
