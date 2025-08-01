@@ -46,16 +46,16 @@ export const navItems: INavData[] = [
     url: '/events',
     iconComponent: { name: 'cil-calendar' }
   },
-  {
-    name: 'Tournament',
-    url: '/tournament',
-    iconComponent: { name: 'cil-star' }
-  },
-  {
-    name: 'ScoreBoard',
-    url: '/scoreBoard',
-    iconComponent: { name: 'cil-list-numbered' }
-  },
+  // {
+  //   name: 'Tournament',
+  //   url: '/tournament',
+  //   iconComponent: { name: 'cil-star' }
+  // },
+  // {
+  //   name: 'ScoreBoard',
+  //   url: '/scoreBoard',
+  //   iconComponent: { name: 'cil-list-numbered' }
+  // },
   {
     name: 'Blog',
     url: '/blog',
@@ -66,11 +66,11 @@ export const navItems: INavData[] = [
     url: '/concept',
     iconComponent: { name: 'cil-indent-decrease' }
   },
-  {
-    name: 'Coupon',
-    url: '/coupon',
-    iconComponent: { name: 'cil-credit-card' }
-  },
+  // {
+  //   name: 'Coupon',
+  //   url: '/coupon',
+  //   iconComponent: { name: 'cil-credit-card' }
+  // },
   {
     name: 'Report',
     url: '/base/popovers',
