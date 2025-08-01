@@ -84,10 +84,10 @@ export class NewsComponent implements OnInit {
             content: {
               intro: this.extractIntro(this.renderHtmlContent(blog.blogDescription)),
               body: this.extractBody(this.renderHtmlContent(blog.blogDescription)),
-              quote: {
-                text: blog.blogQuote || this.extractQuote(this.renderHtmlContent(blog.blogDescription)),
-                author: blog.blogQuoteCreator || 'MGC Team'
-              }
+                             quote: {
+                 text: this.cleanQuoteText(blog.blogQuote),
+                 author: blog.blogQuoteCreator || 'MGC Team'
+               }
             }
           };
         } else {
@@ -216,6 +216,23 @@ export class NewsComponent implements OnInit {
 
   extractQuote(description: string): string {
     if (!description) return 'Golf is not just a game, it\'s a way of life.';
+    
+    // If it's HTML content, extract text from the last paragraph
+    if (this.hasHtmlContent(description)) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = description;
+      const paragraphs = tempDiv.querySelectorAll('p');
+      if (paragraphs.length > 0) {
+        const lastParagraph = paragraphs[paragraphs.length - 1];
+        return lastParagraph.textContent || lastParagraph.innerText || 'Golf is not just a game, it\'s a way of life.';
+      }
+      // If no paragraphs, get the last sentence from text content
+      const textContent = tempDiv.textContent || tempDiv.innerText || '';
+      const sentences = textContent.split('.');
+      return sentences[sentences.length - 1] || 'Golf is not just a game, it\'s a way of life.';
+    }
+    
+    // For plain text, extract the last sentence
     const sentences = description.split('.');
     return sentences[sentences.length - 1] || 'Golf is not just a game, it\'s a way of life.';
   }
@@ -238,5 +255,30 @@ export class NewsComponent implements OnInit {
   hasHtmlContent(content: string): boolean {
     if (!content) return false;
     return /<[^>]*>/g.test(content);
+  }
+
+  // Method to clean quote text by removing HTML tags
+  cleanQuoteText(quoteText: string | undefined): string {
+    if (!quoteText) return '';
+    
+    // Create a temporary div to extract text content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = quoteText;
+    
+    // Get the text content and clean it
+    let cleanText = tempDiv.textContent || tempDiv.innerText || quoteText;
+    
+    // Remove any remaining HTML entities and clean up whitespace
+    cleanText = cleanText
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim();
+    
+    // Return empty string if the cleaned text is empty or only contains whitespace
+    return cleanText || '';
   }
 }

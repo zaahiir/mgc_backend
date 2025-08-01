@@ -85,13 +85,13 @@
                   <div class="text-box">
                     <div class="mb-30" [innerHTML]="sanitizeHtml(mainArticle.content.intro)"></div>
                     <div *ngIf="mainArticle.content.body && mainArticle.content.body.trim()" class="mb-60" [innerHTML]="sanitizeHtml(mainArticle.content.body)"></div>
-                    <blockquote *ngIf="mainArticle.content.quote.text && mainArticle.content.quote.text.trim()">
-                      <div class="icon-box">
-                        <img src="assets/images/icons/icon-6.png" alt="Quote icon">
-                      </div>
-                      <h4>"{{ mainArticle.content.quote.text }}"</h4>
-                      <h3>{{ mainArticle.content.quote.author }}</h3>
-                    </blockquote>
+                                         <blockquote *ngIf="mainArticle.content.quote.text && mainArticle.content.quote.text.trim()">
+                       <div class="icon-box">
+                         <img src="assets/images/icons/icon-6.png" alt="Quote icon">
+                       </div>
+                       <h4>"{{ mainArticle.content.quote.text }}"</h4>
+                       <h3>{{ mainArticle.content.quote.author }}</h3>
+                     </blockquote>
                   </div>
                 </div>
               </div>
