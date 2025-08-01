@@ -600,3 +600,70 @@ class AboutModelSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError("Successful years count cannot be negative")
         return value
+
+
+class EventModelSerializer(serializers.ModelSerializer):
+    mainImageUrl = serializers.SerializerMethodField()
+    additionalImages = serializers.SerializerMethodField()
+    formattedEventOptions = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = EventModel
+        fields = '__all__'
+        extra_kwargs = {
+            'slug': {'required': False},
+            'event_options': {'required': False},
+            'meta_description': {'required': False},
+            'additional_info': {'required': False},
+            'additional_activities': {'required': False},
+            'website': {'required': False},
+            'image_1': {'required': False},
+            'image_2': {'required': False},
+            'image_3': {'required': False},
+            'image_4': {'required': False},
+        }
+    
+    def get_mainImageUrl(self, obj):
+        """Return full main image URL"""
+        if obj.main_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.main_image.url)
+            return obj.main_image.url
+        return None
+    
+    def get_additionalImages(self, obj):
+        """Return list of additional image URLs"""
+        images = []
+        for i in range(1, 5):
+            img = getattr(obj, f'image_{i}')
+            if img:
+                request = self.context.get('request')
+                if request:
+                    images.append(request.build_absolute_uri(img.url))
+                else:
+                    images.append(img.url)
+        return images
+    
+    def get_formattedEventOptions(self, obj):
+        """Return formatted event options"""
+        return obj.formatted_event_options
+    
+    def validate_event_options(self, value):
+        """Validate event options format"""
+        if value and not isinstance(value, list):
+            raise serializers.ValidationError("Event options must be a list")
+        
+        if value:
+            for option in value:
+                if not isinstance(option, dict) or 'value' not in option or 'label' not in option:
+                    raise serializers.ValidationError("Each event option must have 'value' and 'label' keys")
+        
+        return value
+    
+    def validate_end_date(self, value):
+        """Validate end date is not before start date"""
+        start_date = self.initial_data.get('start_date')
+        if start_date and value < start_date:
+            raise serializers.ValidationError("End date cannot be before start date")
+        return value

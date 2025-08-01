@@ -475,3 +475,103 @@ class AboutModel(models.Model):
     class Meta:
         verbose_name = "About Section"
         verbose_name_plural = "About Sections"
+
+
+class EventModel(models.Model):
+    # Basic Information
+    title = models.CharField(max_length=255, help_text="Event title")
+    date = models.CharField(max_length=50, help_text="Display date (e.g., '22 August')")
+    location = models.CharField(max_length=255, help_text="Event location")
+    
+    # Images
+    main_image = models.ImageField(upload_to='events/main/', help_text="Main event image")
+    image_1 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 1")
+    image_2 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 2")
+    image_3 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 3")
+    image_4 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 4")
+    
+    # Event Content
+    description = models.TextField(help_text="Main event description")
+    additional_info = models.TextField(blank=True, null=True, help_text="Additional information about the event")
+    
+    # Activities Section
+    activities_description = models.TextField(help_text="Description of activities and features")
+    additional_activities = models.TextField(blank=True, null=True, help_text="Additional activities information")
+    
+    # Event Details
+    organizer = models.CharField(max_length=255, help_text="Event organizer name")
+    start_date = models.DateField(help_text="Event start date")
+    end_date = models.DateField(help_text="Event end date")
+    time = models.CharField(max_length=50, help_text="Event time (e.g., '12:00 PM')")
+    cost = models.CharField(max_length=50, help_text="Event cost (e.g., '$60')")
+    
+    # Venue Information
+    venue = models.CharField(max_length=255, help_text="Venue name")
+    address = models.TextField(help_text="Venue address")
+    email = models.EmailField(help_text="Contact email")
+    phone = models.CharField(max_length=50, help_text="Contact phone number")
+    website = models.URLField(blank=True, null=True, help_text="Venue website")
+    
+    # Event Options (stored as JSON for the dropdown)
+    event_options = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Event options for contact form dropdown as JSON array"
+    )
+    
+    # Status and Visibility
+    is_active = models.BooleanField(default=True, help_text="Is event active/visible")
+    is_featured = models.BooleanField(default=False, help_text="Is event featured")
+    
+    # SEO and Meta
+    meta_description = models.TextField(blank=True, null=True, max_length=160, help_text="SEO meta description")
+    slug = models.SlugField(unique=True, blank=True, help_text="URL slug for the event")
+    
+    # Timestamps
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+    hideStatus = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['-start_date', '-createdAt']
+        verbose_name = "Event"
+        verbose_name_plural = "Events"
+    
+    def __str__(self):
+        return self.title
+    
+    def save(self, *args, **kwargs):
+        # Auto-generate slug from title if not provided
+        if not self.slug:
+            from django.utils.text import slugify
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+    
+    @property
+    def additional_images(self):
+        """Return list of additional images that are not None"""
+        images = []
+        for i in range(1, 5):  # image_1 to image_4
+            img = getattr(self, f'image_{i}')
+            if img:
+                images.append(img.url)
+        return images
+    
+    @property
+    def formatted_event_options(self):
+        """Return formatted event options for frontend"""
+        if not self.event_options:
+            return [
+                {'value': '1', 'label': 'Courses & Instructors'},
+                {'value': '2', 'label': 'Golf Accommodation'},
+                {'value': '3', 'label': 'Fitness Center'},
+                {'value': '4', 'label': 'Golf Practice'},
+                {'value': '5', 'label': 'Skill Development'},
+                {'value': '6', 'label': 'Basic Foundation'}
+            ]
+        return self.event_options
+    
+    def get_absolute_url(self):
+        """Return absolute URL for the event"""
+        from django.urls import reverse
+        return reverse('event_detail', kwargs={'slug': self.slug})
