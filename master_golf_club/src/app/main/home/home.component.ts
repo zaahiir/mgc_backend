@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { NewsService, BlogPost } from '../common-service/news/news.service';
+import { AboutService, AboutData } from '../common-service/about/about.service';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 
@@ -33,6 +34,15 @@ export class HomeComponent implements OnInit {
       imageSrc: 'assets/images/service/service-4.jpg'
     }
   ];
+
+  // Default about data in case API fails
+  aboutData = {
+    heading: 'Immerse yourself in a luxury golf outing',
+    subTitle: 'About Golfer',
+    description: 'Lorem ipsum dolor sit amet consectetur. Nam quis bibendum lacinia eu id in. Quisque porttitor tortor blandit nunc sed ac id. Mattis in nunc libero viverra. Consectetur leo nibh ac at amet. Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia magnam expedita numquam asperiores deserunt vel! Aperiam, similique nobis. Veniam dolorem vel quas veritatis autem iste quaerat, provident deserunt fuga ullam. Lorem ipsum dolor sit amet consectetur adipisicing elit. Odio maxime blanditiis dolorem non nulla quis quo amet aliquam sint consequuntur, provident nihil sunt dicta iure vel inventore rerum ad id.',
+    partnerGolfClubs: 0,
+    successfulYears: 0
+  };
 
   // Default news data in case API fails
   featuredNews = {
@@ -84,11 +94,55 @@ export class HomeComponent implements OnInit {
 
   isLoading = true;
   error = false;
+  aboutLoading = false;
+  aboutError = false;
 
-  constructor(private newsService: NewsService) {}
+  constructor(
+    private newsService: NewsService,
+    private aboutService: AboutService
+  ) {}
 
   ngOnInit(): void {
     this.loadLatestNews();
+    this.loadAboutData();
+  }
+
+  loadAboutData(): void {
+    this.aboutLoading = true;
+    this.aboutError = false;
+
+    this.aboutService.getAboutData().pipe(
+      catchError(error => {
+        console.error('Error loading about data:', error);
+        this.aboutError = true;
+        this.aboutLoading = false;
+        // Return empty response with default structure
+        return of({ status: 'error', message: 'Error fetching about data', data: null });
+      })
+    ).subscribe(response => {
+      this.aboutLoading = false;
+
+      if (response && response.status === 'success' && response.data) {
+        this.updateAboutDisplay(response.data);
+      } else {
+        // If no data or error in response, use fallback data
+        console.log('Using fallback about data');
+        // Keep the default about data as defined in the component
+      }
+    });
+  }
+
+  updateAboutDisplay(aboutData: AboutData): void {
+    // Strip HTML tags from description for plain text display
+    const plainDescription = this.aboutService.stripHtmlTags(aboutData.aboutDescription);
+    
+    this.aboutData = {
+      heading: aboutData.aboutHeading || 'Immerse yourself in a luxury golf outing',
+      subTitle: 'About Golfer',
+      description: plainDescription || 'Lorem ipsum dolor sit amet consectetur. Nam quis bibendum lacinia eu id in. Quisque porttitor tortor blandit nunc sed ac id. Mattis in nunc libero viverra. Consectetur leo nibh ac at amet. Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia magnam expedita numquam asperiores deserunt vel! Aperiam, similique nobis. Veniam dolorem vel quas veritatis autem iste quaerat, provident deserunt fuga ullam. Lorem ipsum dolor sit amet consectetur adipisicing elit. Odio maxime blanditiis dolorem non nulla quis quo amet aliquam sint consequuntur, provident nihil sunt dicta iure vel inventore rerum ad id.',
+      partnerGolfClubs: aboutData.partnerGolfClubs || 0,
+      successfulYears: aboutData.successfulYears || 0
+    };
   }
 
   loadLatestNews(): void {

@@ -50,12 +50,41 @@
       <div class="row">
         <div class="col-lg-6 col-md-12">
           <div class="content-box">
-            <div class="sec-title">
-              <span class="sub-title">About Golfer</span>
-              <h2>Immerse yourself in a luxury golf outing</h2>
+            <!-- Loading State for About -->
+            <div *ngIf="aboutLoading" class="text-center">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-2">Loading about section...</p>
             </div>
-            <div class="text-box">
-              <p>Lorem ipsum dolor sit amet consectetur. Nam quis bibendum lacinia eu id in. Quisque porttitor tortor blandit nunc sed ac id. Mattis in nunc libero viverra. Consectetur leo nibh ac at amet. Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia magnam expedita numquam asperiores deserunt vel! Aperiam, similique nobis. Veniam dolorem vel quas veritatis autem iste quaerat, provident deserunt fuga ullam. Lorem ipsum dolor sit amet consectetur adipisicing elit. Odio maxime blanditiis dolorem non nulla quis quo amet aliquam sint consequuntur, provident nihil sunt dicta iure vel inventore rerum ad id.</p>
+            
+            <!-- About Content (always show, even if API fails) -->
+            <div *ngIf="!aboutLoading">
+              <div class="sec-title">
+                <span class="sub-title">{{aboutData.subTitle}}</span>
+                <h2>{{aboutData.heading}}</h2>
+              </div>
+              <div class="text-box">
+                <p>{{aboutData.description}}</p>
+              </div>
+              
+              <!-- Stats Section -->
+              <div class="stats-section mt-4" *ngIf="aboutData.partnerGolfClubs > 0 || aboutData.successfulYears > 0">
+                <div class="row">
+                  <div class="col-6" *ngIf="aboutData.partnerGolfClubs > 0">
+                    <div class="stat-item text-center">
+                      <h3 class="stat-number">{{aboutData.partnerGolfClubs}}+</h3>
+                      <p class="stat-label">Partner Golf Clubs</p>
+                    </div>
+                  </div>
+                  <div class="col-6" *ngIf="aboutData.successfulYears > 0">
+                    <div class="stat-item text-center">
+                      <h3 class="stat-number">{{aboutData.successfulYears}}+</h3>
+                      <p class="stat-label">Successful Years</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

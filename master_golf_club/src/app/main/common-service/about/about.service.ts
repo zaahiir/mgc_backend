@@ -30,9 +30,11 @@ export class AboutService {
   private getAbout: string;
 
   constructor() {
-    this.baseUrl = BaseAPIUrl.getBaseUrl(baseURLType.backend);
-    this.apiUrl = `${this.baseUrl}/about`;
-    this.getAbout = `${this.apiUrl}/get_about/`;
+    const baseAPIUrl = new BaseAPIUrl();
+    this.apiUrl = baseAPIUrl.getUrl(baseURLType);
+    // Fix: Use apiUrl directly for API calls, same as news service
+    this.baseUrl = this.apiUrl.replace(/\/api[s]?\/?$/, '');
+    this.getAbout = `${this.apiUrl}about/get_about/`;
   }
 
   getBaseUrl(): string {
