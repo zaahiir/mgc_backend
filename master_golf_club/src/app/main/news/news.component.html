@@ -83,8 +83,8 @@
                   <span class="category">{{ mainArticle.category }}</span>
                   <h2>{{ mainArticle.title }}</h2>
                   <div class="text-box">
-                    <p class="mb-30">{{ mainArticle.content.intro }}</p>
-                    <p class="mb-60">{{ mainArticle.content.body }}</p>
+                    <div class="mb-30" [innerHTML]="sanitizeHtml(mainArticle.content.intro)"></div>
+                    <div *ngIf="mainArticle.content.body && mainArticle.content.body.trim()" class="mb-60" [innerHTML]="sanitizeHtml(mainArticle.content.body)"></div>
                     <blockquote *ngIf="mainArticle.content.quote.text && mainArticle.content.quote.text.trim()">
                       <div class="icon-box">
                         <img src="assets/images/icons/icon-6.png" alt="Quote icon">

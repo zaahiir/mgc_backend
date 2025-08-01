@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { NewsService, BlogPost } from '../common-service/news/news.service';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faCalendarAlt } from '@fortawesome/free-solid-svg-icons';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 interface NewsItem {
   id: number;
@@ -52,7 +53,8 @@ export class NewsComponent implements OnInit {
   constructor(
     private newsService: NewsService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit() {
@@ -188,12 +190,26 @@ export class NewsComponent implements OnInit {
 
   extractIntro(description: string): string {
     if (!description) return '';
+    
+    // If it's HTML content, return the full content for intro
+    if (this.hasHtmlContent(description)) {
+      return description;
+    }
+    
+    // For plain text, extract first two sentences
     const sentences = description.split('.');
     return sentences.slice(0, 2).join('.') + '.';
   }
 
   extractBody(description: string): string {
     if (!description) return '';
+    
+    // If it's HTML content, return empty for body since intro will contain full content
+    if (this.hasHtmlContent(description)) {
+      return '';
+    }
+    
+    // For plain text, extract sentences 3-4
     const sentences = description.split('.');
     return sentences.slice(2, 4).join('.') + '.';
   }
@@ -208,12 +224,14 @@ export class NewsComponent implements OnInit {
   renderHtmlContent(htmlContent: string): string {
     if (!htmlContent) return '';
     
-    // Create a temporary div to parse HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
-    
-    // Extract text content while preserving basic formatting
-    return tempDiv.textContent || tempDiv.innerText || '';
+    // Return the HTML content as-is for proper rendering
+    return htmlContent;
+  }
+
+  // Method to safely sanitize HTML content
+  sanitizeHtml(htmlContent: string): SafeHtml {
+    if (!htmlContent) return '';
+    return this.sanitizer.bypassSecurityTrustHtml(htmlContent);
   }
 
   // Method to check if content has HTML tags
