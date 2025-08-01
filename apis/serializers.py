@@ -578,3 +578,25 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
         representation['convertedDate'] = instance.converted_date.isoformat() if instance.converted_date else None
         
         return representation
+
+
+class AboutModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AboutModel
+        fields = '__all__'
+        extra_kwargs = {
+            'aboutHeading': {'required': False},
+            'aboutDescription': {'required': False},
+            'partnerGolfClubs': {'required': False},
+            'successfulYears': {'required': False},
+        }
+
+    def validate_partnerGolfClubs(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Partner golf clubs count cannot be negative")
+        return value
+
+    def validate_successfulYears(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Successful years count cannot be negative")
+        return value

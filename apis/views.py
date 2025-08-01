@@ -2240,17 +2240,137 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
             logger.error(f"Error marking enquiry as converted: {str(e)}", exc_info=True)
             response = {'code': 0, 'message': f"Error: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+
+class AboutViewSet(viewsets.ModelViewSet):
+    queryset = AboutModel.objects.filter(hideStatus=0)
+    serializer_class = AboutModelSerializer
+
+    @action(detail=False, methods=['GET'], url_path='get_about')
+    def get_about(self, request):
+        try:
+            about = AboutModel.get_solo()
+            serializer = self.get_serializer(about)
+            return Response({
+                'status': 'success',
+                'message': 'About section retrieved successfully',
+                'data': serializer.data
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+
+    @action(detail=False, methods=['POST'], url_path='create_or_update_about')
+    def create_or_update_about(self, request):
+        try:
+            about = AboutModel.get_solo()
+            serializer = self.get_serializer(about, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'status': 'success',
+                    'message': 'About section updated successfully',
+                    'data': serializer.data
+                })
+            else:
+                return Response({
+                    'status': 'error',
+                    'message': 'Validation error',
+                    'errors': serializer.errors
+                }, status=400)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        try:
+            about = self.get_object()
+            serializer = self.get_serializer(about)
+            return Response({
+                'status': 'success',
+                'message': 'About section retrieved successfully',
+                'data': serializer.data
+            })
+        except AboutModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'About section not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        try:
+            about = self.get_object()
+            serializer = self.get_serializer(about, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'status': 'success',
+                    'message': 'About section updated successfully',
+                    'data': serializer.data
+                })
+            else:
+                return Response({
+                    'status': 'error',
+                    'message': 'Validation error',
+                    'errors': serializer.errors
+                }, status=400)
+        except AboutModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'About section not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        try:
+            about = self.get_object()
+            about.hideStatus = 1
+            about.save()
+            return Response({
+                'status': 'success',
+                'message': 'About section deleted successfully'
+            })
+        except AboutModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'About section not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+
 
 def index_view(request):
     courses = CourseModel.objects.filter(hideStatus=0).order_by('-createdAt')
     blogs = BlogModel.objects.filter(hideStatus=0).order_by('-createdAt')
     concept = ConceptModel.get_solo()
+    about = AboutModel.get_solo()
 
     context = {
         'courses': courses,
         'blogs': blogs,
-        'concepts': [concept]
+        'concepts': [concept],
+        'about': about
     }
     return render(request, 'index.html', context)
 

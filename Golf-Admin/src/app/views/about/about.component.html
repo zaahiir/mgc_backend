@@ -1,1 +1,108 @@
-<p>about works!</p>
+<!-- about.component.html -->
+<c-row>
+  <c-col xs="12">
+    <c-card class="mb-4">
+      <c-card-header>
+        <strong>Manage About Section</strong>
+      </c-card-header>
+      <c-card-body>
+        <form [formGroup]="aboutForm" (ngSubmit)="onSubmit()" class="row g-3 needs-validation">
+          <!-- About Heading -->
+          <c-col [cFormFloating]="true" md="12">
+            <input
+              cFormControl
+              id="aboutHeading"
+              formControlName="aboutHeading"
+              type="text"
+              placeholder="About Heading"
+            />
+            <label cLabel for="aboutHeading">About Heading</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('aboutHeading')">
+              {{ getErrorMessage('aboutHeading') }}
+            </c-form-feedback>
+          </c-col>
+
+          <!-- About Description with TinyMCE -->
+          <c-col md="12">
+            <label cLabel for="aboutDescription">About Description</label>
+            <editor 
+              apiKey="jrj64u0e25jw0n4a9v0jbajhi9iakdkeyta9ryl58xwmqwz7"
+              formControlName="aboutDescription"
+              [init]="{
+                plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+                height: 300,
+                menubar: false,
+                branding: false,
+                elementpath: false,
+                statusbar: false
+              }"
+            ></editor>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('aboutDescription')">
+              {{ getErrorMessage('aboutDescription') }}
+            </c-form-feedback>
+          </c-col>
+
+          <!-- Partner Golf Clubs Count -->
+          <c-col [cFormFloating]="true" md="6">
+            <input
+              cFormControl
+              id="partnerGolfClubs"
+              formControlName="partnerGolfClubs"
+              type="number"
+              placeholder="Partner Golf Clubs"
+              min="0"
+            />
+            <label cLabel for="partnerGolfClubs">Partner Golf Clubs Count</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('partnerGolfClubs')">
+              {{ getErrorMessage('partnerGolfClubs') }}
+            </c-form-feedback>
+          </c-col>
+
+          <!-- Successful Years Count -->
+          <c-col [cFormFloating]="true" md="6">
+            <input
+              cFormControl
+              id="successfulYears"
+              formControlName="successfulYears"
+              type="number"
+              placeholder="Successful Years"
+              min="0"
+            />
+            <label cLabel for="successfulYears">Successful Years Count</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('successfulYears')">
+              {{ getErrorMessage('successfulYears') }}
+            </c-form-feedback>
+          </c-col>
+
+          <!-- Form Actions -->
+          <c-col xs="12">
+            <button cButton class="me-2" color="primary" type="submit" [disabled]="loading || aboutForm.invalid">
+              <c-spinner *ngIf="loading" size="sm" class="me-1"></c-spinner>
+              {{ loading ? 'Saving...' : 'Update About Section' }}
+            </button>
+            <button cButton color="secondary" type="button" (click)="onReset()" [disabled]="loading">
+              Reset Form
+            </button>
+          </c-col>
+        </form>
+
+        <!-- Current Data Display -->
+        <div *ngIf="aboutData" class="mt-4">
+          <h5>Current About Section Data:</h5>
+          <div class="card">
+            <div class="card-body">
+              <p><strong>Heading:</strong> {{ aboutData.aboutHeading || 'Not set' }}</p>
+              <p><strong>Partner Golf Clubs:</strong> {{ aboutData.partnerGolfClubs || 0 }}</p>
+              <p><strong>Successful Years:</strong> {{ aboutData.successfulYears || 0 }}</p>
+              <div *ngIf="aboutData.aboutDescription">
+                <strong>Description:</strong>
+                <div class="mt-2" [innerHTML]="aboutData.aboutDescription"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>

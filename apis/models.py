@@ -444,3 +444,32 @@ class MemberEnquiryModel(models.Model):
         verbose_name = "Member Enquiry"
         verbose_name_plural = "Member Enquiries"
         ordering = ['-createdAt']
+
+
+class AboutModel(models.Model):
+    id = models.AutoField(primary_key=True)
+    aboutHeading = models.CharField(max_length=255, null=True, blank=True, help_text="About section heading")
+    aboutDescription = HTMLField(null=True, blank=True, help_text="About section description with rich text")
+    partnerGolfClubs = models.IntegerField(default=0, help_text="Number of partner golf clubs")
+    successfulYears = models.IntegerField(default=0, help_text="Number of successful years")
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"About Section - {self.aboutHeading or 'No Heading'}"
+
+    @classmethod
+    def get_solo(cls):
+        """Get or create the singleton instance"""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def save(self, *args, **kwargs):
+        """Ensure only one instance exists"""
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "About Section"
+        verbose_name_plural = "About Sections"

@@ -472,20 +472,20 @@
                                 <div class="box-info pt-100 pb-100">
                                     <div class="title-move z-index-1 " data-dsn-grid="move-section" data-dsn-move="-70" data-dsn-duration="100%" data-dsn-opacity="1.2" data-dsn-responsive="tablet">
                                         <h2 class="section-title mb-30 dsn-up dsn-text-shadow text-transform-upper">
-											Exclusive Access to<br /> Top-Tier Golf Courses
+											{% if about.aboutHeading %}{{ about.aboutHeading|safe }}{% else %}Exclusive Access to<br /> Top-Tier Golf Courses{% endif %}
 										</h2>
                                     </div>
                                     <p class="max-w570 dsn-up mb-10" style="text-align:justify;">
-                                        Master Golf Club is the ultimate private members' club, offering unparalleled privileges to its members. Our ethos is rooted in providing exclusive access to a wide variety of prestigious golf courses under one comprehensive membership.
+                                        {% if about.aboutDescription %}{{ about.aboutDescription|safe }}{% else %}Master Golf Club is the ultimate private members' club, offering unparalleled privileges to its members. Our ethos is rooted in providing exclusive access to a wide variety of prestigious golf courses under one comprehensive membership.
                                         <br> For our corporate clients, we offer access to our network of partner clubs, complemented by our bespoke Golf Concierge services and an experienced in-house team specializing in golf event management. At Master
-                                        Golf Club, we deliver a seamless and elevated golfing experience tailored to the needs of our discerning members.
+                                        Golf Club, we deliver a seamless and elevated golfing experience tailored to the needs of our discerning members.{% endif %}
 
                                     </p>
 
                                     <div class="box-awards d-grid dsn-up grid-md-2  mt-30">
                                         <div class="box-awards-item has-border dsn-up ">
                                             <h5 class="number background-section p-10">
-												<span class="title" style="color:black;">18</span>
+												<span class="title" style="color:black;">{% if about.partnerGolfClubs %}{{ about.partnerGolfClubs }}{% else %}18{% endif %}</span>
 												<span class="sm-title-block">Partner
 													<br> golf course</span>
 											</h5>
@@ -493,7 +493,7 @@
 
                                         <div class="box-awards-item has-border dsn-up">
                                             <h5 class="number background-section p-10">
-												<span class="title" style="color:black;">10</span>
+												<span class="title" style="color:black;">{% if about.successfulYears %}{{ about.successfulYears }}{% else %}10{% endif %}</span>
 												<span class="sm-title-block">Sucessfull <br> years</span>
 											</h5>
                                         </div>
