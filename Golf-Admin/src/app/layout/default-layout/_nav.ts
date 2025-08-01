@@ -7,6 +7,16 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-speedometer' }
   },
   {
+    name: 'About',
+    url: '/about',
+    iconComponent: { name: 'cil-star' }
+  },
+  {
+    name: 'Update Concept',
+    url: '/concept',
+    iconComponent: { name: 'cil-indent-decrease' }
+  },
+  {
     name: 'Enquiries',
     url: '/enquiry',
     iconComponent: { name: 'cil-notes' }
@@ -17,9 +27,9 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-location-pin' }
   },
   {
-    name: 'Booking',
-    url: '/bookings',
-    iconComponent: { name: 'cil-pencil' }
+    name: 'Plan',
+    url: '/plan',
+    iconComponent: { name: 'cil-notes' }
   },
   {
     name: 'Members',
@@ -27,14 +37,9 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cilPeople' }
   },
   {
-    name: 'Plan',
-    url: '/plan',
-    iconComponent: { name: 'cil-notes' }
-  },
-  {
-    name: 'Courses',
-    url: '/courses',
-    iconComponent: { name: 'cil-layers' }
+    name: 'Booking',
+    url: '/bookings',
+    iconComponent: { name: 'cil-pencil' }
   },
   {
     name: 'Amenities',
@@ -42,30 +47,30 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-location-pin' }
   },
   {
-    name: 'Events',
-    url: '/events',
-    iconComponent: { name: 'cil-calendar' }
+    name: 'Courses',
+    url: '/courses',
+    iconComponent: { name: 'cil-layers' }
   },
-  // {
-  //   name: 'Tournament',
-  //   url: '/tournament',
-  //   iconComponent: { name: 'cil-star' }
-  // },
-  // {
-  //   name: 'ScoreBoard',
-  //   url: '/scoreBoard',
-  //   iconComponent: { name: 'cil-list-numbered' }
-  // },
   {
     name: 'Blog',
     url: '/blog',
     iconComponent: { name: 'cil-indent-decrease' }
   },
   {
-    name: 'Update Concept',
-    url: '/concept',
-    iconComponent: { name: 'cil-indent-decrease' }
+    name: 'Events',
+    url: '/events',
+    iconComponent: { name: 'cil-calendar' }
   },
+  {
+    name: 'Contact',
+    url: '/contact',
+    iconComponent: { name: 'cil-credit-card' }
+  },
+  // {
+  //   name: 'Tournament',
+  //   url: '/tournament',
+  //   iconComponent: { name: 'cil-star' }
+  // },
   // {
   //   name: 'Coupon',
   //   url: '/coupon',
