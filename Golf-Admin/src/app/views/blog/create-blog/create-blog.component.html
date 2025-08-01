@@ -60,6 +60,30 @@
             </c-form-feedback>
           </c-col>
 
+          <!-- Blog Quote -->
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="blogQuote" formControlName="blogQuote" placeholder="Quote (Optional)" rows="3"></textarea>
+            <label cLabel for="blogQuote" class="ms-2">Quote (Optional)</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogQuote')">
+              {{ getErrorMessage('blogQuote') }}
+            </c-form-feedback>
+          </c-col>
+
+          <!-- Blog Quote Creator -->
+          <c-col [cFormFloating]="true" md="6">
+            <input
+              cFormControl
+              id="blogQuoteCreator"
+              formControlName="blogQuoteCreator"
+              type="text"
+              placeholder="Quote Creator Name"
+            />
+            <label cLabel for="blogQuoteCreator">Quote Creator Name (Optional)</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('blogQuoteCreator')">
+              {{ getErrorMessage('blogQuoteCreator') }}
+            </c-form-feedback>
+          </c-col>
+
           <!-- Blog Image -->
           <c-col md="12">
             <div class="mb-3">

@@ -350,6 +350,8 @@ class BlogModel(models.Model):
     blogHighlight = models.TextField(null=True, blank=True)
     blogDescription = HTMLField()
     blogImage = models.ImageField(upload_to='blog_images/', null=True, blank=True)
+    blogQuote = models.TextField(null=True, blank=True, help_text="Quote text for the blog")
+    blogQuoteCreator = models.CharField(max_length=255, null=True, blank=True, help_text="Name of the quote creator")
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)

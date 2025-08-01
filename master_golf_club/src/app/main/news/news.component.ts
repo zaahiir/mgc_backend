@@ -80,11 +80,11 @@ export class NewsComponent implements OnInit {
             category: this.newsService.extractCategory(blog),
             image: this.newsService.formatImageUrl(blog.blogImage) || 'assets/images/news/default-news.jpg',
             content: {
-              intro: this.extractIntro(blog.blogDescription),
-              body: this.extractBody(blog.blogDescription),
+              intro: this.extractIntro(this.renderHtmlContent(blog.blogDescription)),
+              body: this.extractBody(this.renderHtmlContent(blog.blogDescription)),
               quote: {
-                text: this.extractQuote(blog.blogDescription),
-                author: 'MGC Team'
+                text: blog.blogQuote || this.extractQuote(this.renderHtmlContent(blog.blogDescription)),
+                author: blog.blogQuoteCreator || 'MGC Team'
               }
             }
           };
@@ -202,5 +202,23 @@ export class NewsComponent implements OnInit {
     if (!description) return 'Golf is not just a game, it\'s a way of life.';
     const sentences = description.split('.');
     return sentences[sentences.length - 1] || 'Golf is not just a game, it\'s a way of life.';
+  }
+
+  // Method to safely render HTML content
+  renderHtmlContent(htmlContent: string): string {
+    if (!htmlContent) return '';
+    
+    // Create a temporary div to parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    // Extract text content while preserving basic formatting
+    return tempDiv.textContent || tempDiv.innerText || '';
+  }
+
+  // Method to check if content has HTML tags
+  hasHtmlContent(content: string): boolean {
+    if (!content) return false;
+    return /<[^>]*>/g.test(content);
   }
 }

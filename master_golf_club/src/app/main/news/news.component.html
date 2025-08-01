@@ -85,7 +85,7 @@
                   <div class="text-box">
                     <p class="mb-30">{{ mainArticle.content.intro }}</p>
                     <p class="mb-60">{{ mainArticle.content.body }}</p>
-                    <blockquote>
+                    <blockquote *ngIf="mainArticle.content.quote.text && mainArticle.content.quote.text.trim()">
                       <div class="icon-box">
                         <img src="assets/images/icons/icon-6.png" alt="Quote icon">
                       </div>

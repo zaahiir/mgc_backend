@@ -11,6 +11,8 @@ export interface BlogPost {
   blogHighlight: string;
   blogDescription: string;
   blogImage: string;
+  blogQuote?: string;
+  blogQuoteCreator?: string;
   hideStatus: number;
   createdAt: string;
   updatedAt: string;
