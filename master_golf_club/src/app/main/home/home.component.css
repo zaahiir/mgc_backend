@@ -766,3 +766,168 @@
     line-height: 24px;
   }
 }
+
+/* HTML content styling for about description */
+.about-section .text-box p {
+  font-family: var(--text-font, inherit);
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--text-color, inherit);
+  margin-bottom: 1rem;
+}
+
+.about-section .text-box p:last-child {
+  margin-bottom: 0;
+}
+
+/* Ensure all HTML elements within the about description inherit global styles */
+.about-section .text-box p * {
+  font-family: var(--text-font, inherit) !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: var(--text-color, inherit) !important;
+}
+
+/* Specific styling for common HTML elements in about description */
+.about-section .text-box p h1,
+.about-section .text-box p h2,
+.about-section .text-box p h3,
+.about-section .text-box p h4,
+.about-section .text-box p h5,
+.about-section .text-box p h6 {
+  font-family: var(--title-font, inherit) !important;
+  font-weight: 600;
+  color: var(--title-color, inherit) !important;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+}
+
+.about-section .text-box p h1:first-child,
+.about-section .text-box p h2:first-child,
+.about-section .text-box p h3:first-child,
+.about-section .text-box p h4:first-child,
+.about-section .text-box p h5:first-child,
+.about-section .text-box p h6:first-child {
+  margin-top: 0;
+}
+
+.about-section .text-box p p {
+  margin-bottom: 1rem;
+  font-family: var(--text-font, inherit);
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p ul,
+.about-section .text-box p ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  font-family: var(--text-font, inherit);
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p li {
+  margin-bottom: 0.25rem;
+  font-family: var(--text-font, inherit);
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p strong,
+.about-section .text-box p b {
+  font-weight: 600;
+  font-family: var(--text-font, inherit);
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p em,
+.about-section .text-box p i {
+  font-style: italic;
+  font-family: var(--text-font, inherit);
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p a {
+  color: var(--theme-color, #007bff);
+  text-decoration: underline;
+  font-family: var(--text-font, inherit);
+}
+
+.about-section .text-box p a:hover {
+  color: var(--secondary-color, #0056b3);
+}
+
+.about-section .text-box p blockquote {
+  border-left: 4px solid var(--theme-color, #007bff);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  font-family: var(--text-font, inherit);
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p code {
+  background-color: #f8f9fa;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p pre {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-family: 'Courier New', monospace;
+  color: var(--text-color, inherit);
+}
+
+.about-section .text-box p pre code {
+  background-color: transparent;
+  padding: 0;
+  font-family: 'Courier New', monospace;
+  color: var(--text-color, inherit);
+}
+
+/* Responsive styles for HTML content */
+@media (max-width: 768px) {
+  .about-section .text-box p {
+    font-size: 0.9em;
+  }
+  
+  .about-section .text-box p h1,
+  .about-section .text-box p h2,
+  .about-section .text-box p h3 {
+    font-size: 1.2em;
+  }
+  
+  .about-section .text-box p h4,
+  .about-section .text-box p h5,
+  .about-section .text-box p h6 {
+    font-size: 1.1em;
+  }
+}
+
+@media (max-width: 576px) {
+  .about-section .text-box p {
+    font-size: 0.85em;
+  }
+  
+  .about-section .text-box p h1,
+  .about-section .text-box p h2,
+  .about-section .text-box p h3 {
+    font-size: 1.1em;
+  }
+  
+  .about-section .text-box p h4,
+  .about-section .text-box p h5,
+  .about-section .text-box p h6 {
+    font-size: 1em;
+  }
+  
+  .about-section .text-box p ul,
+  .about-section .text-box p ol {
+    padding-left: 1rem;
+  }
+}

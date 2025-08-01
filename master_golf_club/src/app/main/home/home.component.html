@@ -65,7 +65,7 @@
                 <h2>{{aboutData.heading}}</h2>
               </div>
               <div class="text-box">
-                <p>{{aboutData.description}}</p>
+                <p [innerHTML]="getSafeHtml(aboutData.description)"></p>
               </div>
               
               <!-- Stats Section -->

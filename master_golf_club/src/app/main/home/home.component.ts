@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { NewsService, BlogPost } from '../common-service/news/news.service';
 import { AboutService, AboutData } from '../common-service/about/about.service';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 
@@ -99,7 +100,8 @@ export class HomeComponent implements OnInit {
 
   constructor(
     private newsService: NewsService,
-    private aboutService: AboutService
+    private aboutService: AboutService,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -133,13 +135,14 @@ export class HomeComponent implements OnInit {
   }
 
   updateAboutDisplay(aboutData: AboutData): void {
-    // Strip HTML tags from description for plain text display
-    const plainDescription = this.aboutService.stripHtmlTags(aboutData.aboutDescription);
+    // Preserve HTML content for proper rendering
+    console.log('About data received:', aboutData);
+    console.log('About description (HTML):', aboutData.aboutDescription);
     
     this.aboutData = {
       heading: aboutData.aboutHeading || 'Immerse yourself in a luxury golf outing',
       subTitle: 'About Golfer',
-      description: plainDescription || 'Lorem ipsum dolor sit amet consectetur. Nam quis bibendum lacinia eu id in. Quisque porttitor tortor blandit nunc sed ac id. Mattis in nunc libero viverra. Consectetur leo nibh ac at amet. Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia magnam expedita numquam asperiores deserunt vel! Aperiam, similique nobis. Veniam dolorem vel quas veritatis autem iste quaerat, provident deserunt fuga ullam. Lorem ipsum dolor sit amet consectetur adipisicing elit. Odio maxime blanditiis dolorem non nulla quis quo amet aliquam sint consequuntur, provident nihil sunt dicta iure vel inventore rerum ad id.',
+      description: aboutData.aboutDescription || 'Lorem ipsum dolor sit amet consectetur. Nam quis bibendum lacinia eu id in. Quisque porttitor tortor blandit nunc sed ac id. Mattis in nunc libero viverra. Consectetur leo nibh ac at amet. Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia magnam expedita numquam asperiores deserunt vel! Aperiam, similique nobis. Veniam dolorem vel quas veritatis autem iste quaerat, provident deserunt fuga ullam. Lorem ipsum dolor sit amet consectetur adipisicing elit. Odio maxime blanditiis dolorem non nulla quis quo amet aliquam sint consequuntur, provident nihil sunt dicta iure vel inventore rerum ad id.',
       partnerGolfClubs: aboutData.partnerGolfClubs || 0,
       successfulYears: aboutData.successfulYears || 0
     };
@@ -240,6 +243,13 @@ export class HomeComponent implements OnInit {
     // Join the first 'wordLimit' words back together
     const truncated = words.slice(0, wordLimit).join(' ') + '...';
     return { text: truncated, truncated: true };
+  }
+
+  getSafeHtml(html: string | null | undefined): SafeHtml {
+    if (!html) {
+      return '';
+    }
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   // ENHANCED: Function to handle image errors with better fallback logic

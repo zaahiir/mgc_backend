@@ -7,7 +7,7 @@ import { map } from 'rxjs/operators';
 export interface AboutData {
   id: number;
   aboutHeading: string;
-  aboutDescription: string;
+  aboutDescription?: string;
   partnerGolfClubs: number;
   successfulYears: number;
   hideStatus: number;
