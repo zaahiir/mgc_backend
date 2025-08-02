@@ -11,6 +11,7 @@ export class MemberTeamService {
   private processing: string;
   private deletion: string;
   private activeInstructorsUrl: string;
+  private activeProtocolsUrl: string;
 
   constructor() {
     this.apiUrl = new BaseAPIUrl().getUrl(baseURLType);
@@ -18,6 +19,7 @@ export class MemberTeamService {
     this.processing = this.apiUrl + "instructor/0/processing/";
     this.deletion = this.apiUrl + "instructor/0/deletion/";
     this.activeInstructorsUrl = this.apiUrl + "instructor/active_instructors/";
+    this.activeProtocolsUrl = this.apiUrl + "protocol/active_protocols/";
   }
 
   listInstructors(id: string = '0') {
@@ -34,5 +36,9 @@ export class MemberTeamService {
 
   getActiveInstructors() {
     return axios.get(this.activeInstructorsUrl);
+  }
+
+  getActiveProtocols() {
+    return axios.get(this.activeProtocolsUrl);
   }
 }

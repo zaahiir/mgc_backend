@@ -12,6 +12,12 @@ interface Instructor {
   twitterUrl?: string;
 }
 
+interface Protocol {
+  id: number;
+  protocolTitle: string;
+  protocolDescription: string;
+}
+
 @Component({
   selector: 'app-members-team',
   standalone: true,
@@ -21,13 +27,17 @@ interface Instructor {
 })
 export class MembersTeamComponent implements OnInit {
   teamMembers: Instructor[] = [];
+  protocols: Protocol[] = [];
   loading: boolean = true;
+  protocolLoading: boolean = true;
   error: string | null = null;
+  protocolError: string | null = null;
 
   constructor(private memberTeamService: MemberTeamService) {}
 
   ngOnInit() {
     this.loadInstructors();
+    this.loadProtocols();
   }
 
   loadInstructors() {
@@ -59,6 +69,31 @@ export class MembersTeamComponent implements OnInit {
       });
   }
 
+  loadProtocols() {
+    this.protocolLoading = true;
+    this.protocolError = null;
+
+    this.memberTeamService.getActiveProtocols()
+      .then(response => {
+        if (response.data && response.data.status === 'success') {
+          this.protocols = response.data.data.map((protocol: any) => ({
+            id: protocol.id,
+            protocolTitle: protocol.protocolTitle,
+            protocolDescription: protocol.protocolDescription
+          }));
+        } else {
+          this.protocolError = 'Failed to load protocols';
+        }
+      })
+      .catch(error => {
+        console.error('Error loading protocols:', error);
+        this.protocolError = 'Failed to load protocols. Please try again later.';
+      })
+      .finally(() => {
+        this.protocolLoading = false;
+      });
+  }
+
   getSocialLinks(instructor: Instructor) {
     return {
       facebook: instructor.facebookUrl || '#',
@@ -70,5 +105,19 @@ export class MembersTeamComponent implements OnInit {
 
   getInstructorImage(instructor: Instructor): string {
     return instructor.instructorPhotoUrl || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3';
+  }
+
+  getProtocolTitle(): string {
+    if (this.protocols.length > 0) {
+      return this.protocols[0].protocolTitle;
+    }
+    return 'Dress Code Policies & Clubhouse Info';
+  }
+
+  getProtocolDescription(): string {
+    if (this.protocols.length > 0) {
+      return this.protocols[0].protocolDescription;
+    }
+    return 'Our golf club maintains the highest standards of elegance and professionalism. We believe that proper attire enhances the overall experience for all members and guests, creating an atmosphere of respect and tradition. Our golf club maintains the highest standards of elegance and professionalism. We believe that proper attire enhances the overall experience for all members and guests, creating an atmosphere of respect and tradition. Our golf club maintains the highest standards of elegance and professionalism. We believe that proper attire enhances the overall experience for all members and guests, creating an atmosphere of respect and tradition.';
   }
 }
