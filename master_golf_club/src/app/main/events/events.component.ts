@@ -1,14 +1,22 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EventsService, Event } from '../common-service/events/events.service';
 import { AuthService } from '../../auth/auth.service';
+import { 
+  faCalendarAlt, faMapMarkerAlt, faClock, faUser, 
+  faEnvelope, faPhone, faHeart, faHeartBroken, 
+  faCheckCircle, faSpinner, faExclamationTriangle,
+  faUsers, faCalendarDay, faCalendarCheck, faMoneyBillWave,
+  faBuilding, faInfoCircle, faSignInAlt, faTimes
+} from '@fortawesome/free-solid-svg-icons';
 
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FontAwesomeModule],
   templateUrl: './events.component.html',
   styleUrl: './events.component.css'
 })
@@ -20,6 +28,27 @@ export class EventsComponent implements OnInit {
   isMember = false;
   memberId: number | null = null;
   interestLoading = false;
+
+  // Icons
+  calendarIcon = faCalendarAlt;
+  locationIcon = faMapMarkerAlt;
+  clockIcon = faClock;
+  userIcon = faUser;
+  emailIcon = faEnvelope;
+  phoneIcon = faPhone;
+  heartIcon = faHeart;
+  heartBrokenIcon = faHeartBroken;
+  checkCircleIcon = faCheckCircle;
+  spinnerIcon = faSpinner;
+  exclamationTriangleIcon = faExclamationTriangle;
+  usersIcon = faUsers;
+  calendarDayIcon = faCalendarDay;
+  calendarCheckIcon = faCalendarCheck;
+  moneyIcon = faMoneyBillWave;
+  buildingIcon = faBuilding;
+  infoIcon = faInfoCircle;
+  signInIcon = faSignInAlt;
+  timesIcon = faTimes;
 
   constructor(
     private route: ActivatedRoute,

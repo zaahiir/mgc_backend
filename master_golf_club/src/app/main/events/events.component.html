@@ -3,18 +3,24 @@
   <div class="auto-container">
     <!-- Loading State -->
     <div *ngIf="loading" class="text-center">
-      <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
+      <div class="loading-container">
+        <fa-icon [icon]="spinnerIcon" class="spinner-icon"></fa-icon>
+        <p class="mt-3">Loading event details...</p>
       </div>
-      <p class="mt-3">Loading event details...</p>
     </div>
 
     <!-- Error State -->
     <div *ngIf="error && !loading" class="text-center">
-      <div class="alert alert-danger" role="alert">
-        {{ error }}
+      <div class="error-container">
+        <fa-icon [icon]="exclamationTriangleIcon" class="error-icon"></fa-icon>
+        <div class="alert alert-danger" role="alert">
+          {{ error }}
+        </div>
+        <button class="theme-btn" (click)="loadEventData()">
+          <fa-icon [icon]="timesIcon"></fa-icon>
+          Try Again
+        </button>
       </div>
-      <button class="btn btn-primary" (click)="loadEventData()">Try Again</button>
     </div>
 
     <!-- Event Content -->
@@ -32,8 +38,14 @@
             <div class="content-one">
               <!-- Event Info -->
               <ul class="post-info">
-                <li><i class="icon-17"></i>{{ formatDate(eventData.EventDate) }}</li>
-                <li><i class="icon-3"></i>{{ eventData.EventVenue }}</li>
+                <li>
+                  <fa-icon [icon]="calendarIcon" class="info-icon"></fa-icon>
+                  {{ formatDate(eventData.EventDate) }}
+                </li>
+                <li>
+                  <fa-icon [icon]="locationIcon" class="info-icon"></fa-icon>
+                  {{ eventData.EventVenue }}
+                </li>
               </ul>
 
               <!-- Event Title -->
@@ -59,7 +71,10 @@
             <!-- Activities Section -->
             <div class="content-two" *ngIf="eventData.EventActivities">
               <div class="text-box mb_60">
-                <h3>Activities and Features:</h3>
+                <h3>
+                  <fa-icon [icon]="usersIcon" class="section-icon"></fa-icon>
+                  Activities and Features:
+                </h3>
                 <div [innerHTML]="eventData.EventActivities"></div>
               </div>
             </div>
@@ -72,33 +87,90 @@
             <!-- Event Details Widget -->
             <div class="event-info sidebar-widget">
               <div class="widget-title">
-                <h3>Event Details</h3>
+                <h3>
+                  <fa-icon [icon]="infoIcon" class="widget-icon"></fa-icon>
+                  Event Details
+                </h3>
               </div>
               <ul class="info-list">
-                <li><span>Organizer :</span>{{ eventData.EventDetailOrganizer }}</li>
-                <li><span>Start Date :</span>{{ formatDate(eventData.EventDate) }}</li>
-                <li><span>End Date :</span>{{ formatDate(eventData.EventEndDate) }}</li>
-                <li><span>Time :</span>{{ eventData.EventTime }}</li>
-                <li><span>Cost :</span>{{ eventData.EventEntryPrice }}</li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="userIcon" class="list-icon"></fa-icon>
+                    Organizer :
+                  </span>
+                  {{ eventData.EventDetailOrganizer }}
+                </li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="calendarDayIcon" class="list-icon"></fa-icon>
+                    Start Date :
+                  </span>
+                  {{ formatDate(eventData.EventDate) }}
+                </li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="calendarCheckIcon" class="list-icon"></fa-icon>
+                    End Date :
+                  </span>
+                  {{ formatDate(eventData.EventEndDate) }}
+                </li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="clockIcon" class="list-icon"></fa-icon>
+                    Time :
+                  </span>
+                  {{ eventData.EventTime }}
+                </li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="moneyIcon" class="list-icon"></fa-icon>
+                    Cost :
+                  </span>
+                  {{ eventData.EventEntryPrice }}
+                </li>
               </ul>
             </div>
 
             <!-- Event Venue Widget -->
             <div class="event-venue sidebar-widget">
               <div class="widget-title">
-                <h3>Event Venue</h3>
+                <h3>
+                  <fa-icon [icon]="buildingIcon" class="widget-icon"></fa-icon>
+                  Event Venue
+                </h3>
               </div>
               <ul class="info-list">
-                <li><span>Venue :</span>{{ eventData.EventVenue }}</li>
-                <li><span>E-mail :</span><a [href]="'mailto:' + eventData.EventEmail">{{ eventData.EventEmail }}</a></li>
-                <li><span>Phone :</span><a [href]="'tel:' + eventData.EventPhone">{{ eventData.EventPhone }}</a></li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="locationIcon" class="list-icon"></fa-icon>
+                    Venue :
+                  </span>
+                  {{ eventData.EventVenue }}
+                </li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="emailIcon" class="list-icon"></fa-icon>
+                    E-mail :
+                  </span>
+                  <a [href]="'mailto:' + eventData.EventEmail">{{ eventData.EventEmail }}</a>
+                </li>
+                <li>
+                  <span>
+                    <fa-icon [icon]="phoneIcon" class="list-icon"></fa-icon>
+                    Phone :
+                  </span>
+                  <a [href]="'tel:' + eventData.EventPhone">{{ eventData.EventPhone }}</a>
+                </li>
               </ul>
             </div>
 
             <!-- Interest Button Widget (for members) -->
             <div class="form-inner" *ngIf="canShowInterestButton()">
               <div class="widget-title">
-                <h3>Show Interest</h3>
+                <h3>
+                  <fa-icon [icon]="heartIcon" class="widget-icon"></fa-icon>
+                  Show Interest
+                </h3>
               </div>
               <div class="text-center">
                 <p class="mb-3">Are you interested in this event?</p>
@@ -110,6 +182,7 @@
                   class="theme-btn btn-one w-100"
                   (click)="showInterest()"
                   [disabled]="interestLoading">
+                  <fa-icon [icon]="heartIcon" class="btn-icon"></fa-icon>
                   <span *ngIf="!interestLoading">Show Interest</span>
                   <span *ngIf="interestLoading">Registering...</span>
                 </button>
@@ -121,13 +194,15 @@
                   class="theme-btn btn-two w-100"
                   (click)="toggleInterest()"
                   [disabled]="interestLoading">
+                  <fa-icon [icon]="heartBrokenIcon" class="btn-icon"></fa-icon>
                   <span *ngIf="!interestLoading">Remove Interest</span>
                   <span *ngIf="interestLoading">Updating...</span>
                 </button>
 
                 <div *ngIf="isInterested()" class="mt-3">
                   <small class="text-success">
-                    <i class="fas fa-check-circle"></i> You're interested in this event
+                    <fa-icon [icon]="checkCircleIcon" class="success-icon"></fa-icon>
+                    You're interested in this event
                   </small>
                 </div>
               </div>
@@ -136,11 +211,17 @@
             <!-- Contact Form Widget (for non-members) -->
             <div class="form-inner" *ngIf="!isMember">
               <div class="widget-title">
-                <h3>Contact</h3>
+                <h3>
+                  <fa-icon [icon]="signInIcon" class="widget-icon"></fa-icon>
+                  Contact
+                </h3>
               </div>
               <div class="text-center">
                 <p class="mb-3">Please log in as a member to show interest in this event.</p>
-                <a href="/login" class="theme-btn btn-one">Login</a>
+                <a href="/login" class="theme-btn btn-one">
+                  <fa-icon [icon]="signInIcon" class="btn-icon"></fa-icon>
+                  Login
+                </a>
               </div>
             </div>
           </div>
