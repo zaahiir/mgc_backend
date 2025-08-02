@@ -2948,15 +2948,15 @@ class MessageViewSet(viewsets.ModelViewSet):
         """Get messages with proper filtering"""
         return MessageModel.objects.filter(hideStatus=0).order_by('-createdAt')
 
-    @action(detail=True, methods=['GET'])
-    def listing(self, request, pk=None):
+    @action(detail=False, methods=['GET'], url_path='listing/(?P<message_id>[^/.]+)')
+    def listing(self, request, message_id=None):
         """List messages"""
         try:
-            if pk == "0":
+            if message_id == "0":
                 messages = MessageModel.objects.filter(hideStatus=0).order_by('-createdAt')
                 serializer = MessageModelSerializer(messages, many=True)
             else:
-                messages = MessageModel.objects.filter(hideStatus=0, id=pk).order_by('-createdAt')
+                messages = MessageModel.objects.filter(hideStatus=0, id=message_id).order_by('-createdAt')
                 serializer = MessageModelSerializer(messages, many=True)
             
             response = {'code': 1, 'data': serializer.data, 'message': "Messages retrieved successfully"}
@@ -2966,18 +2966,18 @@ class MessageViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': f"Error retrieving messages: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['POST'])
-    def processing(self, request, pk=None):
+    @action(detail=False, methods=['POST'], url_path='processing/(?P<message_id>[^/.]+)')
+    def processing(self, request, message_id=None):
         """Process message (create or update)"""
         try:
             data = request.data.copy()
             
-            if pk == "0":
+            if message_id == "0":
                 # Creating new message
                 serializer = MessageModelSerializer(data=data)
             else:
                 # Updating existing message
-                instance = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+                instance = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
                 serializer = MessageModelSerializer(instance, data=data, partial=True)
             
             if serializer.is_valid():
@@ -2993,11 +2993,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': f"Error processing message: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['GET'])
-    def deletion(self, request, pk=None):
+    @action(detail=False, methods=['GET'], url_path='deletion/(?P<message_id>[^/.]+)')
+    def deletion(self, request, message_id=None):
         """Soft delete message"""
         try:
-            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
             message.hideStatus = 1
             message.save(update_fields=['hideStatus', 'updatedAt'])
             
@@ -3008,11 +3008,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': f"Error deleting message: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['POST'])
-    def mark_as_read(self, request, pk=None):
+    @action(detail=False, methods=['POST'], url_path='mark_as_read/(?P<message_id>[^/.]+)')
+    def mark_as_read(self, request, message_id=None):
         """Mark message as read"""
         try:
-            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
             message.mark_as_read()
             
             response = {'code': 1, 'message': "Message marked as read"}
@@ -3022,11 +3022,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': f"Error marking message as read: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['POST'])
-    def mark_as_replied(self, request, pk=None):
+    @action(detail=False, methods=['POST'], url_path='mark_as_replied/(?P<message_id>[^/.]+)')
+    def mark_as_replied(self, request, message_id=None):
         """Mark message as replied"""
         try:
-            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
             message.mark_as_replied()
             
             response = {'code': 1, 'message': "Message marked as replied"}
@@ -3036,11 +3036,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': f"Error marking message as replied: {str(e)}"}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['POST'])
-    def mark_as_closed(self, request, pk=None):
+    @action(detail=False, methods=['POST'], url_path='mark_as_closed/(?P<message_id>[^/.]+)')
+    def mark_as_closed(self, request, message_id=None):
         """Mark message as closed"""
         try:
-            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
             message.mark_as_closed()
             
             response = {'code': 1, 'message': "Message marked as closed"}

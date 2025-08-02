@@ -80,6 +80,10 @@ export const routes: Routes = [
         loadChildren: () => import('./views/memberEnquiry/routes').then((m) => m.memberEnquiryRoutes)
       },
       {
+        path: 'memberMessage',
+        loadChildren: () => import('./views/member-message/routes').then((m) => m.memberMessageRoutes)
+      },
+      {
         path: 'amenities',
         loadChildren: () => import('./views/amenities/routes').then((m) => m.amenitiesRoutes)
       },
