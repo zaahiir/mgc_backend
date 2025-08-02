@@ -107,11 +107,13 @@ export class EventsComponent implements OnInit {
         }
         alert('Interest registered successfully!');
       } else {
-        alert('Failed to register interest. Please try again.');
+        const errorMessage = response.data?.message || 'Failed to register interest. Please try again.';
+        alert(errorMessage);
       }
     } catch (error: any) {
       console.error('Error showing interest:', error);
-      alert('Failed to register interest. Please try again.');
+      const errorMessage = error.response?.data?.message || 'Failed to register interest. Please try again.';
+      alert(errorMessage);
     } finally {
       this.interestLoading = false;
     }
@@ -136,11 +138,13 @@ export class EventsComponent implements OnInit {
         const action = this.eventData?.memberInterest?.is_interested ? 'registered' : 'removed';
         alert(`Interest ${action} successfully!`);
       } else {
-        alert('Failed to update interest. Please try again.');
+        const errorMessage = response.data?.message || 'Failed to update interest. Please try again.';
+        alert(errorMessage);
       }
     } catch (error: any) {
       console.error('Error toggling interest:', error);
-      alert('Failed to update interest. Please try again.');
+      const errorMessage = error.response?.data?.message || 'Failed to update interest. Please try again.';
+      alert(errorMessage);
     } finally {
       this.interestLoading = false;
     }

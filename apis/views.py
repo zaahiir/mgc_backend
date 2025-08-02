@@ -24,6 +24,28 @@ import os
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import decimal
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.contrib.auth import login, logout
+from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from django.db.models import Q
+from datetime import datetime, timedelta
+import json
+import random
+import string
+import qrcode
+from io import BytesIO
+import base64
+from .models import *
+from .serializers import *
 
 logger = logging.getLogger(__name__)
  
@@ -2580,6 +2602,8 @@ class EventViewSet(viewsets.ModelViewSet):
 class EventInterestViewSet(viewsets.ModelViewSet):
     """ViewSet for managing event interests"""
     serializer_class = EventInterestSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """Get interests for the authenticated member"""
@@ -2596,16 +2620,25 @@ class EventInterestViewSet(viewsets.ModelViewSet):
         try:
             member = MemberModel.objects.get(email=request.user.email)
         except MemberModel.DoesNotExist:
-            return Response({'error': 'Member not found'}, status=404)
+            return Response({
+                'status': 'error',
+                'message': 'Member not found'
+            }, status=404)
         
         event_id = request.data.get('event')
         if not event_id:
-            return Response({'error': 'Event ID is required'}, status=400)
+            return Response({
+                'status': 'error',
+                'message': 'Event ID is required'
+            }, status=400)
         
         try:
             event = EventModel.objects.get(id=event_id, hideStatus=0)
         except EventModel.DoesNotExist:
-            return Response({'error': 'Event not found'}, status=404)
+            return Response({
+                'status': 'error',
+                'message': 'Event not found'
+            }, status=404)
         
         # Check if interest already exists
         interest, created = EventInterestModel.objects.get_or_create(
@@ -2620,7 +2653,11 @@ class EventInterestViewSet(viewsets.ModelViewSet):
             interest.save()
         
         serializer = self.get_serializer(interest)
-        return Response(serializer.data, status=201 if created else 200)
+        return Response({
+            'status': 'success',
+            'message': 'Interest registered successfully',
+            'data': serializer.data
+        }, status=201 if created else 200)
     
     @action(detail=True, methods=['POST'])
     def toggle_interest(self, request, pk=None):
@@ -2628,7 +2665,10 @@ class EventInterestViewSet(viewsets.ModelViewSet):
         try:
             member = MemberModel.objects.get(email=request.user.email)
         except MemberModel.DoesNotExist:
-            return Response({'error': 'Member not found'}, status=404)
+            return Response({
+                'status': 'error',
+                'message': 'Member not found'
+            }, status=404)
         
         try:
             interest = EventInterestModel.objects.get(
@@ -2640,28 +2680,32 @@ class EventInterestViewSet(viewsets.ModelViewSet):
             interest.save()
             
             serializer = self.get_serializer(interest)
-            return Response(serializer.data)
+            action = 'registered' if interest.is_interested else 'removed'
+            return Response({
+                'status': 'success',
+                'message': f'Interest {action} successfully',
+                'data': serializer.data
+            })
         except EventInterestModel.DoesNotExist:
-            return Response({'error': 'Interest not found'}, status=404)
+            return Response({
+                'status': 'error',
+                'message': 'Interest not found'
+            }, status=404)
     
     @action(detail=False, methods=['GET'])
     def member_interests(self, request):
         """Get all interests for the authenticated member"""
-        interests = self.get_queryset()
-        serializer = self.get_serializer(interests, many=True)
-        return Response(serializer.data)
-        """Get all active events"""
         try:
-            events = EventModel.objects.filter(hideStatus=0, is_active=True).order_by('-EventEndDate')
-            serializer = self.get_serializer(events, many=True)
+            interests = self.get_queryset()
+            serializer = self.get_serializer(interests, many=True)
             return Response({
                 'status': 'success',
-                'message': 'Active events retrieved successfully',
+                'message': 'Member interests retrieved successfully',
                 'data': serializer.data
             })
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': f'Error retrieving member interests: {str(e)}'
             }, status=500)
 
