@@ -38,7 +38,7 @@ export class ListEventsComponent implements OnInit {
     try {
       this.isLoading = true;
       const response = await this.memberEventsService.listEvent();
-      this.events = response.data || [];
+      this.events = response.data.data || [];
       this.filteredEvents = [...this.events];
       this.calculatePagination();
     } catch (error) {
@@ -149,13 +149,11 @@ export class ListEventsComponent implements OnInit {
 
   getEventStatus(event: any): string {
     if (!event.is_active) return 'Inactive';
-    if (event.is_featured) return 'Featured';
     return 'Active';
   }
 
   getStatusClass(event: any): string {
     if (!event.is_active) return 'text-danger';
-    if (event.is_featured) return 'text-success';
     return 'text-primary';
   }
 }

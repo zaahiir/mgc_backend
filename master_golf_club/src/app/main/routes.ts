@@ -15,6 +15,10 @@ export const mainRoutes: Routes = [
     },
     {
       path: 'events',
+      loadComponent: () => import('./events-list/events-list.component').then(m => m.EventsListComponent)
+    },
+    {
+      path: 'events/:id',
       loadComponent: () => import('./events/events.component').then(m => m.EventsComponent)
     },
     {

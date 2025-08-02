@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgStyle, NgClass, NgForOf, NgIf, CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { EditorModule } from '@tinymce/tinymce-angular';
 import { RowComponent, ColComponent, TextColorDirective, CardComponent, CardHeaderComponent, CardBodyComponent, FormFloatingDirective, FormDirective, FormLabelDirective, FormControlDirective, FormFeedbackComponent, InputGroupComponent, InputGroupTextDirective, FormSelectDirective, ButtonDirective } from '@coreui/angular';
 import Swal from 'sweetalert2';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -16,7 +17,7 @@ import { MemberEventsService } from '../../common-service/member-events/member-e
     CardBodyComponent, ReactiveFormsModule, FormsModule, FormDirective,
     FormLabelDirective, FormControlDirective, FormFeedbackComponent,
     InputGroupComponent, InputGroupTextDirective, FormSelectDirective,
-    ButtonDirective, RouterModule
+    ButtonDirective, RouterModule, EditorModule
   ],
   templateUrl: './update-events.component.html',
   styleUrl: './update-events.component.scss'
@@ -26,8 +27,22 @@ export class UpdateEventsComponent implements OnInit {
   loading = false;
   submitted = false;
   isEditMode = false;
-  eventOptions: Array<{value: string, label: string}> = [];
+
   eventId: string | null = null;
+
+  // Image preview properties
+  mainImagePreview: string | null = null;
+  detailImageOnePreview: string | null = null;
+  detailImageTwoPreview: string | null = null;
+  activitiesImageOnePreview: string | null = null;
+  activitiesImageTwoPreview: string | null = null;
+
+  // Selected files
+  selectedMainImage: File | null = null;
+  selectedDetailImageOne: File | null = null;
+  selectedDetailImageTwo: File | null = null;
+  selectedActivitiesImageOne: File | null = null;
+  selectedActivitiesImageTwo: File | null = null;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -39,7 +54,6 @@ export class UpdateEventsComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForm();
     this.checkEditMode();
-    this.initializeDefaultEventOptions();
   }
 
   private checkEditMode(): void {
@@ -62,31 +76,40 @@ export class UpdateEventsComponent implements OnInit {
       
       if (eventData) {
         this.eventForm.patchValue({
-          title: eventData.title,
-          date: eventData.date,
-          location: eventData.location,
-          time: eventData.time,
-          description: eventData.description,
-          additional_info: eventData.additional_info,
-          organizer: eventData.organizer,
-          cost: eventData.cost,
-          start_date: eventData.start_date,
-          end_date: eventData.end_date,
-          activities_description: eventData.activities_description,
-          additional_activities: eventData.additional_activities,
-          venue: eventData.venue,
-          phone: eventData.phone,
-          email: eventData.email,
-          website: eventData.website,
-          address: eventData.address,
-          meta_description: eventData.meta_description,
-          is_active: eventData.is_active,
-          is_featured: eventData.is_featured
+          EventTitle: eventData.EventTitle || '',
+          EventDate: eventData.EventDate || '',
+          EventVenue: eventData.EventVenue || '',
+          EventEntryPrice: eventData.EventEntryPrice || '',
+          EventDetails: eventData.EventDetails || '',
+          EventActivities: eventData.EventActivities || '',
+          EventDetailOrganizer: eventData.EventDetailOrganizer || '',
+          EventEndDate: eventData.EventEndDate || '',
+          EventTime: eventData.EventTime || '',
+          EventEmail: eventData.EventEmail || '',
+          EventPhone: eventData.EventPhone || '',
+          is_active: eventData.is_active !== undefined ? eventData.is_active : true,
+          hideStatus: eventData.hideStatus || 0
         });
 
-        // Load event options if they exist
-        if (eventData.event_options && Array.isArray(eventData.event_options)) {
-          this.eventOptions = [...eventData.event_options];
+        // Set image previews if they exist - using the correct field names from backend
+        if (eventData.EventImageUrl) {
+          this.mainImagePreview = eventData.EventImageUrl;
+        }
+        
+        // Handle detail images - backend returns an array
+        if (eventData.EventDetailImages && eventData.EventDetailImages.length > 0) {
+          this.detailImageOnePreview = eventData.EventDetailImages[0];
+          if (eventData.EventDetailImages.length > 1) {
+            this.detailImageTwoPreview = eventData.EventDetailImages[1];
+          }
+        }
+        
+        // Handle activities images - backend returns an array
+        if (eventData.EventActivitiesImages && eventData.EventActivitiesImages.length > 0) {
+          this.activitiesImageOnePreview = eventData.EventActivitiesImages[0];
+          if (eventData.EventActivitiesImages.length > 1) {
+            this.activitiesImageTwoPreview = eventData.EventActivitiesImages[1];
+          }
         }
       }
     } catch (error) {
@@ -102,56 +125,237 @@ export class UpdateEventsComponent implements OnInit {
     }
   }
 
-  private initializeDefaultEventOptions(): void {
-    this.eventOptions = [
-      { value: '1', label: 'Courses & Instructors' },
-      { value: '2', label: 'Golf Accommodation' },
-      { value: '3', label: 'Fitness Center' },
-      { value: '4', label: 'Golf Practice' },
-      { value: '5', label: 'Skill Development' },
-      { value: '6', label: 'Basic Foundation' }
-    ];
-  }
-
   private initializeForm(): void {
     this.eventForm = this.formBuilder.group({
-      title: ['', [Validators.required, Validators.minLength(2)]],
-      date: ['', [Validators.required]],
-      location: ['', [Validators.required, Validators.minLength(3)]],
-      time: ['', [Validators.required]],
-      description: ['', [Validators.required, Validators.minLength(10)]],
-      additional_info: [''],
-      organizer: ['', [Validators.required]],
-      cost: ['', [Validators.required]],
-      start_date: ['', [Validators.required]],
-      end_date: ['', [Validators.required]],
-      activities_description: ['', [Validators.required]],
-      additional_activities: [''],
-      venue: ['', [Validators.required]],
-      phone: ['', [Validators.required]],
-      email: ['', [Validators.required, Validators.email]],
-      website: [''],
-      address: ['', [Validators.required]],
-      meta_description: [''],
+      EventTitle: ['', [Validators.required, Validators.maxLength(255)]],
+      EventDate: ['', [Validators.required]],
+      EventVenue: ['', [Validators.required, Validators.maxLength(255)]],
+      EventEntryPrice: ['', [Validators.required, Validators.maxLength(50)]],
+      EventImage: [null], // Will be made required conditionally
+      EventDetails: ['', [Validators.required]],
+      EventDetailimageOne: [null],
+      EventDetailimageTwo: [null],
+      EventActivities: ['', [Validators.required]],
+      EventActivitiesimageOne: [null],
+      EventActivitiesimageTwo: [null],
+      EventDetailOrganizer: ['', [Validators.required, Validators.maxLength(255)]],
+      EventEndDate: ['', [Validators.required]],
+      EventTime: ['', [Validators.required, Validators.maxLength(50)]],
+      EventEmail: ['', [Validators.required, Validators.email]],
+      EventPhone: ['', [Validators.required, Validators.maxLength(50)]],
       is_active: [true],
-      is_featured: [false]
+      hideStatus: [0]
     });
+  }
+
+  // Image change handlers
+  onMainImageChange(event: Event): void {
+    const element = event.target as HTMLInputElement;
+    const file = element.files?.[0];
+
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+          title: 'Error!',
+          text: 'File size should not exceed 5MB',
+          icon: 'error'
+        });
+        return;
+      }
+
+      this.selectedMainImage = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.mainImagePreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Clear preview if no file selected
+      this.selectedMainImage = null;
+      this.mainImagePreview = null;
+    }
+  }
+
+  onDetailImageOneChange(event: Event): void {
+    const element = event.target as HTMLInputElement;
+    const file = element.files?.[0];
+
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+          title: 'Error!',
+          text: 'File size should not exceed 5MB',
+          icon: 'error'
+        });
+        return;
+      }
+
+      this.selectedDetailImageOne = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.detailImageOnePreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Clear preview if no file selected
+      this.selectedDetailImageOne = null;
+      this.detailImageOnePreview = null;
+    }
+  }
+
+  onDetailImageTwoChange(event: Event): void {
+    const element = event.target as HTMLInputElement;
+    const file = element.files?.[0];
+
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+          title: 'Error!',
+          text: 'File size should not exceed 5MB',
+          icon: 'error'
+        });
+        return;
+      }
+
+      this.selectedDetailImageTwo = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.detailImageTwoPreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Clear preview if no file selected
+      this.selectedDetailImageTwo = null;
+      this.detailImageTwoPreview = null;
+    }
+  }
+
+  onActivitiesImageOneChange(event: Event): void {
+    const element = event.target as HTMLInputElement;
+    const file = element.files?.[0];
+
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+          title: 'Error!',
+          text: 'File size should not exceed 5MB',
+          icon: 'error'
+        });
+        return;
+      }
+
+      this.selectedActivitiesImageOne = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.activitiesImageOnePreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Clear preview if no file selected
+      this.selectedActivitiesImageOne = null;
+      this.activitiesImageOnePreview = null;
+    }
+  }
+
+  onActivitiesImageTwoChange(event: Event): void {
+    const element = event.target as HTMLInputElement;
+    const file = element.files?.[0];
+
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+          title: 'Error!',
+          text: 'File size should not exceed 5MB',
+          icon: 'error'
+        });
+        return;
+      }
+
+      this.selectedActivitiesImageTwo = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.activitiesImageTwoPreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Clear preview if no file selected
+      this.selectedActivitiesImageTwo = null;
+      this.activitiesImageTwoPreview = null;
+    }
+  }
+
+  // Clear image methods
+  clearMainImage(): void {
+    this.mainImagePreview = null;
+    this.selectedMainImage = null;
+    // Reset the file input
+    const fileInput = document.getElementById('EventImage') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
+
+  clearDetailImageOne(): void {
+    this.detailImageOnePreview = null;
+    this.selectedDetailImageOne = null;
+    // Reset the file input
+    const fileInput = document.getElementById('EventDetailimageOne') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
+
+  clearDetailImageTwo(): void {
+    this.detailImageTwoPreview = null;
+    this.selectedDetailImageTwo = null;
+    // Reset the file input
+    const fileInput = document.getElementById('EventDetailimageTwo') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
+
+  clearActivitiesImageOne(): void {
+    this.activitiesImageOnePreview = null;
+    this.selectedActivitiesImageOne = null;
+    // Reset the file input
+    const fileInput = document.getElementById('EventActivitiesimageOne') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
+
+  clearActivitiesImageTwo(): void {
+    this.activitiesImageTwoPreview = null;
+    this.selectedActivitiesImageTwo = null;
+    // Reset the file input
+    const fileInput = document.getElementById('EventActivitiesimageTwo') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   }
 
   get f() { 
     return this.eventForm.controls; 
   }
 
-  addEventOption(): void {
-    this.eventOptions.push({ value: '', label: '' });
-  }
-
-  removeEventOption(index: number): void {
-    this.eventOptions.splice(index, 1);
-  }
-
   async onSubmit(): Promise<void> {
     this.submitted = true;
+
+    // Add conditional validation for main image
+    const mainImageControl = this.eventForm.get('EventImage');
+    if (!this.isEditMode) {
+      // In create mode, main image is required
+      mainImageControl?.setValidators([Validators.required]);
+    } else {
+      // In edit mode, main image is only required if no existing image and no new image selected
+      if (!this.mainImagePreview && !this.selectedMainImage) {
+        mainImageControl?.setValidators([Validators.required]);
+      } else {
+        mainImageControl?.clearValidators();
+      }
+    }
+    mainImageControl?.updateValueAndValidity();
 
     if (this.eventForm.invalid) {
       return;
@@ -160,10 +364,31 @@ export class UpdateEventsComponent implements OnInit {
     try {
       this.loading = true;
 
-      const formData = {
-        ...this.eventForm.value,
-        event_options: this.eventOptions
-      };
+      const formData = new FormData();
+
+      // Append form fields to FormData
+      Object.keys(this.eventForm.value).forEach(key => {
+        if (!key.includes('Image')) {
+          formData.append(key, this.eventForm.value[key]);
+        }
+      });
+
+      // Append image files if selected
+      if (this.selectedMainImage) {
+        formData.append('EventImage', this.selectedMainImage);
+      }
+      if (this.selectedDetailImageOne) {
+        formData.append('EventDetailimageOne', this.selectedDetailImageOne);
+      }
+      if (this.selectedDetailImageTwo) {
+        formData.append('EventDetailimageTwo', this.selectedDetailImageTwo);
+      }
+      if (this.selectedActivitiesImageOne) {
+        formData.append('EventActivitiesimageOne', this.selectedActivitiesImageOne);
+      }
+      if (this.selectedActivitiesImageTwo) {
+        formData.append('EventActivitiesimageTwo', this.selectedActivitiesImageTwo);
+      }
 
       let response;
       if (this.isEditMode && this.eventId) {
@@ -196,7 +421,36 @@ export class UpdateEventsComponent implements OnInit {
   onReset(): void {
     this.submitted = false;
     this.eventForm.reset();
-    this.initializeDefaultEventOptions();
+    
+    // Clear all selected files
+    this.selectedMainImage = null;
+    this.selectedDetailImageOne = null;
+    this.selectedDetailImageTwo = null;
+    this.selectedActivitiesImageOne = null;
+    this.selectedActivitiesImageTwo = null;
+    
+    // Clear all image previews
+    this.mainImagePreview = null;
+    this.detailImageOnePreview = null;
+    this.detailImageTwoPreview = null;
+    this.activitiesImageOnePreview = null;
+    this.activitiesImageTwoPreview = null;
+    
+    // Reset all file inputs
+    const fileInputs = [
+      'EventImage',
+      'EventDetailimageOne', 
+      'EventDetailimageTwo',
+      'EventActivitiesimageOne',
+      'EventActivitiesimageTwo'
+    ];
+    
+    fileInputs.forEach(id => {
+      const fileInput = document.getElementById(id) as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    });
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -208,7 +462,12 @@ export class UpdateEventsComponent implements OnInit {
     const control = this.eventForm.get(fieldName);
     if (!control || !control.errors) return '';
 
-    if (control.errors['required']) return 'This field is required';
+    if (control.errors['required']) {
+      if (fieldName === 'EventImage') {
+        return this.isEditMode ? 'Please select a new image or keep the existing one' : 'This field is required';
+      }
+      return 'This field is required';
+    }
     if (control.errors['minlength']) return `Minimum length is ${control.errors['minlength'].requiredLength} characters`;
     if (control.errors['email']) return 'Please enter a valid email address';
 

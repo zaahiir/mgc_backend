@@ -27,6 +27,7 @@ router.register('contactEnquiry', ContactEnquiryViewSet, basename='contactEnquir
 router.register('memberEnquiry', MemberEnquiryViewSet, basename='memberEnquiry')
 router.register('about', AboutViewSet, basename='about')
 router.register('event', EventViewSet, basename='event')
+router.register('eventInterest', EventInterestViewSet, basename='eventInterest')
 
 urlpatterns = [
     path('', include(router.urls)),

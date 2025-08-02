@@ -1241,7 +1241,7 @@ Master Golf Club Management
     def get_last_member_id(self, request, year=None, month=None):
         try:
             # Pattern to match: MGCyymm#### where yy is year and mm is month
-            pattern = f'MGC{year}{month}\d{{4}}$'
+            pattern = rf'MGC{year}{month}\d{{4}}$'
 
             # Query for members with matching golf club IDs for the specified year and month
             members = MemberModel.objects.filter(
@@ -2413,23 +2413,29 @@ class EventViewSet(viewsets.ModelViewSet):
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
         
-        # Filter by featured status if provided
-        is_featured = self.request.query_params.get('is_featured', None)
-        if is_featured is not None:
-            queryset = queryset.filter(is_featured=is_featured.lower() == 'true')
-        
         return queryset.order_by('-EventEndDate', '-createdAt')
     
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
         try:
-            event = self.get_object()
-            serializer = self.get_serializer(event)
-            return Response({
-                'status': 'success',
-                'message': 'Event details retrieved successfully',
-                'data': serializer.data
-            })
+            if pk == '0':
+                # Return all events when pk is '0'
+                events = self.get_queryset()
+                serializer = self.get_serializer(events, many=True)
+                return Response({
+                    'status': 'success',
+                    'message': 'Events retrieved successfully',
+                    'data': serializer.data
+                })
+            else:
+                # Return specific event
+                event = self.get_object()
+                serializer = self.get_serializer(event)
+                return Response({
+                    'status': 'success',
+                    'message': 'Event details retrieved successfully',
+                    'data': serializer.data
+                })
         except EventModel.DoesNotExist:
             return Response({
                 'status': 'error',
@@ -2446,13 +2452,41 @@ class EventViewSet(viewsets.ModelViewSet):
         try:
             event_id = pk if pk != '0' else None
             
+            # Handle data properly without deep copying file objects
+            data = {}
+            files = request.FILES
+            
+            # Extract data from request.data without copying file objects
+            for key, value in request.data.items():
+                if key not in files:
+                    data[key] = value
+            
+            # Add file fields from request.FILES
+            for key, file_obj in files.items():
+                data[key] = file_obj
+            
+            # Remove empty file fields from data
+            file_fields = [
+                'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
+                'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+            ]
+            
+            for field in file_fields:
+                if field in data and (data[field] == '' or data[field] == 'null' or data[field] is None or str(data[field]).strip() == ''):
+                    data.pop(field, None)
+            
+            # Handle boolean field conversion
+            if 'is_active' in data:
+                if isinstance(data['is_active'], str):
+                    data['is_active'] = data['is_active'].lower() == 'true'
+            
             if event_id:
                 # Update existing event
                 event = EventModel.objects.get(id=event_id, hideStatus=0)
-                serializer = self.get_serializer(event, data=request.data, partial=True)
+                serializer = self.get_serializer(event, data=data, partial=True, context={'request': request})
             else:
                 # Create new event
-                serializer = self.get_serializer(data=request.data)
+                serializer = self.get_serializer(data=data, context={'request': request})
             
             if serializer.is_valid():
                 serializer.save()
@@ -2474,9 +2508,12 @@ class EventViewSet(viewsets.ModelViewSet):
                 'message': 'Event not found'
             }, status=404)
         except Exception as e:
+            import traceback
+            print(f"Error in event processing: {str(e)}")
+            print(f"Traceback: {traceback.format_exc()}")
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': f"Error processing event: {str(e)}"
             }, status=500)
     
     @action(detail=True, methods=['GET'])
@@ -2505,7 +2542,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def active_events(self, request):
         """Get all active events"""
         try:
-            events = EventModel.objects.filter(hideStatus=0, is_active=True).order_by('-EventEndDate')
+            events = self.get_queryset().filter(is_active=True)
             serializer = self.get_serializer(events, many=True)
             return Response({
                 'status': 'success',
@@ -2515,31 +2552,14 @@ class EventViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
-            }, status=500)
-    
-    @action(detail=False, methods=['GET'])
-    def featured_events(self, request):
-        """Get featured events"""
-        try:
-            events = EventModel.objects.filter(hideStatus=0, is_featured=True, is_active=True).order_by('-EventEndDate')
-            serializer = self.get_serializer(events, many=True)
-            return Response({
-                'status': 'success',
-                'message': 'Featured events retrieved successfully',
-                'data': serializer.data
-            })
-        except Exception as e:
-            return Response({
-                'status': 'error',
-                'message': str(e)
+                'message': f'Error retrieving events: {str(e)}'
             }, status=500)
     
     @action(detail=True, methods=['GET'])
-    def by_slug(self, request, pk=None):
-        """Get event by slug"""
+    def event_detail(self, request, pk=None):
+        """Get detailed event information"""
         try:
-            event = EventModel.objects.get(slug=pk, hideStatus=0, is_active=True)
+            event = self.get_object()
             serializer = self.get_serializer(event)
             return Response({
                 'status': 'success',
@@ -2554,31 +2574,95 @@ class EventViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': f'Error retrieving event details: {str(e)}'
             }, status=500)
+
+
+class EventInterestViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing event interests"""
+    serializer_class = EventInterestSerializer
+    
+    def get_queryset(self):
+        """Get interests for the authenticated member"""
+        if hasattr(self.request, 'user') and self.request.user.is_authenticated:
+            try:
+                member = MemberModel.objects.get(email=self.request.user.email)
+                return EventInterestModel.objects.filter(member=member, hideStatus=0)
+            except MemberModel.DoesNotExist:
+                return EventInterestModel.objects.none()
+        return EventInterestModel.objects.none()
+    
+    def create(self, request, *args, **kwargs):
+        """Create or update interest for an event"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+        except MemberModel.DoesNotExist:
+            return Response({'error': 'Member not found'}, status=404)
+        
+        event_id = request.data.get('event')
+        if not event_id:
+            return Response({'error': 'Event ID is required'}, status=400)
+        
+        try:
+            event = EventModel.objects.get(id=event_id, hideStatus=0)
+        except EventModel.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=404)
+        
+        # Check if interest already exists
+        interest, created = EventInterestModel.objects.get_or_create(
+            member=member,
+            event=event,
+            defaults={'is_interested': True}
+        )
+        
+        if not created:
+            # Update existing interest
+            interest.is_interested = True
+            interest.save()
+        
+        serializer = self.get_serializer(interest)
+        return Response(serializer.data, status=201 if created else 200)
     
     @action(detail=True, methods=['POST'])
-    def toggle_participant(self, request, pk=None):
-        """Toggle participant button for an event"""
+    def toggle_interest(self, request, pk=None):
+        """Toggle interest status for an event"""
         try:
-            event = EventModel.objects.get(id=pk, hideStatus=0)
-            event.EventParticipantButton = not event.EventParticipantButton
-            event.save()
+            member = MemberModel.objects.get(email=request.user.email)
+        except MemberModel.DoesNotExist:
+            return Response({'error': 'Member not found'}, status=404)
+        
+        try:
+            interest = EventInterestModel.objects.get(
+                id=pk, 
+                member=member, 
+                hideStatus=0
+            )
+            interest.is_interested = not interest.is_interested
+            interest.save()
             
+            serializer = self.get_serializer(interest)
+            return Response(serializer.data)
+        except EventInterestModel.DoesNotExist:
+            return Response({'error': 'Interest not found'}, status=404)
+    
+    @action(detail=False, methods=['GET'])
+    def member_interests(self, request):
+        """Get all interests for the authenticated member"""
+        interests = self.get_queryset()
+        serializer = self.get_serializer(interests, many=True)
+        return Response(serializer.data)
+        """Get all active events"""
+        try:
+            events = EventModel.objects.filter(hideStatus=0, is_active=True).order_by('-EventEndDate')
+            serializer = self.get_serializer(events, many=True)
             return Response({
                 'status': 'success',
-                'message': f'Participant status updated to {"Willing to participate" if event.EventParticipantButton else "Not participating"}',
-                'data': {
-                    'EventParticipantButton': event.EventParticipantButton
-                }
+                'message': 'Active events retrieved successfully',
+                'data': serializer.data
             })
-        except EventModel.DoesNotExist:
-            return Response({
-                'status': 'error',
-                'message': 'Event not found'
-            }, status=404)
         except Exception as e:
             return Response({
                 'status': 'error',
                 'message': str(e)
             }, status=500)
+

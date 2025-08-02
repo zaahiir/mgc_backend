@@ -18,8 +18,8 @@
           </c-col>
 
           <c-col [cFormFloating]="true" md="6">
-            <input cFormControl id="EventDate" formControlName="EventDate" type="text" placeholder="Display Date (e.g., '22 August')" />
-            <label cLabel for="EventDate" class="ms-2">Display Date *</label>
+            <input cFormControl id="EventDate" formControlName="EventDate" type="date" placeholder="Event Date" />
+            <label cLabel for="EventDate" class="ms-2">Event Date *</label>
             <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('EventDate')">
               {{ getErrorMessage('EventDate') }}
             </c-form-feedback>
@@ -53,10 +53,16 @@
             </div>
           </c-col>
 
-          <!-- Event Details Section -->
-          <c-col [cFormFloating]="true" md="12">
+          <!-- Event Details Section with TinyMCE -->
+          <c-col md="12">
             <label cLabel for="EventDetails" class="form-label">Event Details *</label>
-            <textarea cFormControl id="EventDetails" formControlName="EventDetails" placeholder="Event Details with rich text editor" rows="6"></textarea>
+            <editor apiKey="jrj64u0e25jw0n4a9v0jbajhi9iakdkeyta9ryl58xwmqwz7"
+            formControlName="EventDetails"
+              [init]="{
+                plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+              }"
+            ></editor>
             <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('EventDetails')">
               {{ getErrorMessage('EventDetails') }}
             </c-form-feedback>
@@ -87,10 +93,16 @@
             </div>
           </c-col>
 
-          <!-- Event Activities Section -->
-          <c-col [cFormFloating]="true" md="12">
+          <!-- Event Activities Section with TinyMCE -->
+          <c-col md="12">
             <label cLabel for="EventActivities" class="form-label">Event Activities *</label>
-            <textarea cFormControl id="EventActivities" formControlName="EventActivities" placeholder="Event Activities with rich text editor" rows="6"></textarea>
+            <editor apiKey="jrj64u0e25jw0n4a9v0jbajhi9iakdkeyta9ryl58xwmqwz7"
+            formControlName="EventActivities"
+              [init]="{
+                plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+              }"
+            ></editor>
             <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('EventActivities')">
               {{ getErrorMessage('EventActivities') }}
             </c-form-feedback>
@@ -139,7 +151,7 @@
           </c-col>
 
           <c-col [cFormFloating]="true" md="6">
-            <input cFormControl id="EventTime" formControlName="EventTime" type="text" placeholder="Event Time (e.g., '12:00 PM')" />
+            <input cFormControl id="EventTime" formControlName="EventTime" type="time" placeholder="Event Time" />
             <label cLabel for="EventTime" class="ms-2">Event Time *</label>
             <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('EventTime')">
               {{ getErrorMessage('EventTime') }}
@@ -162,16 +174,6 @@
             </c-form-feedback>
           </c-col>
 
-          <!-- Participant Button -->
-          <c-col md="6">
-            <div class="form-check">
-              <input cFormControl id="EventParticipantButton" formControlName="EventParticipantButton" type="checkbox" class="form-check-input" />
-              <label cLabel for="EventParticipantButton" class="form-check-label">
-                Member is willing to participate
-              </label>
-            </div>
-          </c-col>
-
           <!-- Status and Visibility -->
           <c-col md="6">
             <div class="form-check">
@@ -180,24 +182,6 @@
                 Event is active/visible
               </label>
             </div>
-          </c-col>
-
-          <c-col md="6">
-            <div class="form-check">
-              <input cFormControl id="is_featured" formControlName="is_featured" type="checkbox" class="form-check-input" />
-              <label cLabel for="is_featured" class="form-check-label">
-                Event is featured
-              </label>
-            </div>
-          </c-col>
-
-          <!-- SEO and Meta -->
-          <c-col [cFormFloating]="true" md="12">
-            <textarea cFormControl id="meta_description" formControlName="meta_description" placeholder="SEO Meta Description (max 160 characters)" rows="3"></textarea>
-            <label cLabel for="meta_description" class="ms-2">SEO Meta Description</label>
-            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('meta_description')">
-              {{ getErrorMessage('meta_description') }}
-            </c-form-feedback>
           </c-col>
 
           <!-- Action Buttons -->

@@ -606,19 +606,37 @@ class EventModelSerializer(serializers.ModelSerializer):
     EventImageUrl = serializers.SerializerMethodField()
     EventDetailImages = serializers.SerializerMethodField()
     EventActivitiesImages = serializers.SerializerMethodField()
+    memberInterest = serializers.SerializerMethodField()
     
     class Meta:
         model = EventModel
         fields = '__all__'
         extra_kwargs = {
-            'slug': {'required': False},
-            'meta_description': {'required': False},
-            'EventDetailimageOne': {'required': False},
-            'EventDetailimageTwo': {'required': False},
-            'EventActivitiesimageOne': {'required': False},
-            'EventActivitiesimageTwo': {'required': False},
-            'EventParticipantButton': {'required': False},
+            'EventDetailimageOne': {'required': False, 'allow_null': True},
+            'EventDetailimageTwo': {'required': False, 'allow_null': True},
+            'EventActivitiesimageOne': {'required': False, 'allow_null': True},
+            'EventActivitiesimageTwo': {'required': False, 'allow_null': True},
+            'EventImage': {'required': False, 'allow_null': True},
         }
+    
+    def get_memberInterest(self, obj):
+        """Get member interest status if member is authenticated"""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            try:
+                member = MemberModel.objects.get(email=request.user.email)
+                interest = EventInterestModel.objects.filter(
+                    member=member, 
+                    event=obj, 
+                    hideStatus=0
+                ).first()
+                return {
+                    'is_interested': interest.is_interested if interest else False,
+                    'interest_id': interest.id if interest else None
+                }
+            except MemberModel.DoesNotExist:
+                return {'is_interested': False, 'interest_id': None}
+        return {'is_interested': False, 'interest_id': None}
     
     def get_EventImageUrl(self, obj):
         """Return full event image URL"""
@@ -653,9 +671,121 @@ class EventModelSerializer(serializers.ModelSerializer):
                     images.append(img.url)
         return images
     
+    def validate(self, data):
+        """Custom validation to handle empty file fields"""
+        # Handle empty strings for file fields
+        file_fields = [
+            'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
+            'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+        ]
+        
+        for field in file_fields:
+            if field in data:
+                # If the field is an empty string, None, or 'null', remove it from data
+                if data[field] == '' or data[field] is None or data[field] == 'null':
+                    data.pop(field, None)
+        
+        # Handle boolean field conversion
+        if 'is_active' in data and isinstance(data['is_active'], str):
+            data['is_active'] = data['is_active'].lower() == 'true'
+        
+        return data
+    
     def validate_EventEndDate(self, value):
         """Validate end date is not in the past"""
         from django.utils import timezone
         if value < timezone.now().date():
             raise serializers.ValidationError("Event end date cannot be in the past")
         return value
+    
+    def validate_EventTime(self, value):
+        """Validate event time format"""
+        if value:
+            # Allow common time formats
+            import re
+            time_patterns = [
+                r'^\d{1,2}:\d{2}\s?(AM|PM|am|pm)?$',  # 12:00 PM, 12:00pm
+                r'^\d{1,2}:\d{2}$',  # 12:00
+                r'^\d{1,2}\s?(AM|PM|am|pm)$',  # 12 PM
+                r'^\d{1,2}:\d{2}:\d{2}\s?(AM|PM|am|pm)?$',  # 12:00:00 PM
+                r'^\d{1,2}:\d{2}:\d{2}$',  # 12:00:00
+            ]
+            
+            is_valid = any(re.match(pattern, value.strip()) for pattern in time_patterns)
+            if not is_valid:
+                raise serializers.ValidationError(
+                    "Please enter a valid time format (e.g., '12:00 PM', '14:30', '3 PM', '12:00:00')"
+                )
+        
+        return value
+    
+    def create(self, validated_data):
+        """Create event with proper file handling"""
+        # Ensure file fields are handled correctly
+        file_fields = [
+            'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
+            'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+        ]
+        
+        # Remove any None values for file fields
+        for field in file_fields:
+            if field in validated_data and validated_data[field] is None:
+                validated_data.pop(field, None)
+        
+        return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        """Update event with proper file handling"""
+        # Ensure file fields are handled correctly
+        file_fields = [
+            'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
+            'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+        ]
+        
+        # Remove any None values for file fields
+        for field in file_fields:
+            if field in validated_data and validated_data[field] is None:
+                validated_data.pop(field, None)
+        
+        return super().update(instance, validated_data)
+
+
+class EventInterestSerializer(serializers.ModelSerializer):
+    memberName = serializers.CharField(source='member.firstName', read_only=True)
+    memberFullName = serializers.SerializerMethodField(read_only=True)
+    eventTitle = serializers.CharField(source='event.EventTitle', read_only=True)
+    
+    class Meta:
+        model = EventInterestModel
+        fields = [
+            'id', 'member', 'memberName', 'memberFullName', 'event', 'eventTitle',
+            'is_interested', 'interested_date', 'hideStatus'
+        ]
+        extra_kwargs = {
+            'member': {'required': True},
+            'event': {'required': True},
+            'is_interested': {'required': False, 'default': True}
+        }
+    
+    def get_memberFullName(self, obj):
+        return f"{obj.member.firstName} {obj.member.lastName}"
+    
+    def validate(self, data):
+        """Ensure unique member-event combination"""
+        member = data.get('member')
+        event = data.get('event')
+        
+        if member and event:
+            # Check if interest already exists
+            existing_interest = EventInterestModel.objects.filter(
+                member=member, 
+                event=event,
+                hideStatus=0
+            ).first()
+            
+            if existing_interest and self.instance != existing_interest:
+                raise serializers.ValidationError(
+                    "Member has already shown interest in this event"
+                )
+        
+        return data

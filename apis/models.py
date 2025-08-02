@@ -480,12 +480,12 @@ class AboutModel(models.Model):
 class EventModel(models.Model):
     # Basic Information
     EventTitle = models.CharField(max_length=255, help_text="Event title")
-    EventDate = models.CharField(max_length=50, help_text="Display date (e.g., '22 August')")
+    EventDate = models.DateField(help_text="Event date")
     EventVenue = models.CharField(max_length=255, help_text="Event venue", default="TBD")
     EventEntryPrice = models.CharField(max_length=50, help_text="Event entry price (e.g., '$60')", default="$0")
     
     # Main Event Image
-    EventImage = models.ImageField(upload_to='events/main/', help_text="Main event image")
+    EventImage = models.ImageField(upload_to='events/main/', help_text="Main event image", blank=True, null=True)
     
     # Event Details Section
     EventDetails = HTMLField(help_text="Event details with rich text editor", default="")
@@ -504,16 +504,8 @@ class EventModel(models.Model):
     EventEmail = models.EmailField(help_text="Contact email")
     EventPhone = models.CharField(max_length=50, help_text="Contact phone number")
     
-    # Participant Button
-    EventParticipantButton = models.BooleanField(default=False, help_text="When clicked, marks that member is willing to participate")
-    
     # Status and Visibility
     is_active = models.BooleanField(default=True, help_text="Is event active/visible")
-    is_featured = models.BooleanField(default=False, help_text="Is event featured")
-    
-    # SEO and Meta
-    meta_description = models.TextField(blank=True, null=True, max_length=160, help_text="SEO meta description")
-    slug = models.SlugField(unique=True, blank=True, help_text="URL slug for the event")
     
     # Timestamps
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -529,10 +521,6 @@ class EventModel(models.Model):
         return self.EventTitle
     
     def save(self, *args, **kwargs):
-        # Auto-generate slug from title if not provided
-        if not self.slug:
-            from django.utils.text import slugify
-            self.slug = slugify(self.EventTitle)
         super().save(*args, **kwargs)
     
     @property
@@ -555,7 +543,26 @@ class EventModel(models.Model):
             images.append(self.EventActivitiesimageTwo.url)
         return images
     
-    def get_absolute_url(self):
-        """Return absolute URL for the event"""
-        from django.urls import reverse
-        return reverse('event_detail', kwargs={'slug': self.slug})
+
+class EventInterestModel(models.Model):
+    """Model to track member interest in events"""
+    id = models.AutoField(primary_key=True)
+    member = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="event_interests")
+    event = models.ForeignKey(EventModel, on_delete=models.CASCADE, related_name="member_interests")
+    is_interested = models.BooleanField(default=True)
+    interested_date = models.DateTimeField(auto_now_add=True)
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('member', 'event')
+        verbose_name = "Event Interest"
+        verbose_name_plural = "Event Interests"
+        ordering = ['-interested_date']
+
+    def __str__(self):
+        return f"{self.member.firstName} - {self.event.EventTitle}"
+
+
+

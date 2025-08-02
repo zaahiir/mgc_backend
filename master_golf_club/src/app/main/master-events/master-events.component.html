@@ -25,71 +25,55 @@
         <h2>Get Ready for These Upcoming <br>Golf Events</h2>
       </div>
 
-      <div class="row">
-        <div class="col-12">
+      <!-- Loading State -->
+      <div *ngIf="loading" class="row">
+        <div class="col-12 text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3">Loading events...</p>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="error && !loading" class="row">
+        <div class="col-12 text-center">
+          <div class="alert alert-danger" role="alert">
+            {{ error }}
+          </div>
+          <button class="btn btn-primary" (click)="loadEvents()">Try Again</button>
+        </div>
+      </div>
+
+      <!-- Events List -->
+      <div *ngIf="!loading && !error" class="row">
+        <div *ngFor="let event of events" class="col-12 mb-4">
           <div class="event-block">
             <div class="event-inner">
               <figure class="event-image">
-                <img src="assets/images/resource/event-4.jpg" alt="Golf Event">
+                <img [src]="getEventImageUrl(event)" [alt]="event.EventTitle">
               </figure>
               <div class="event-content">
                 <ul class="event-info">
-                  <li><i class="fas fa-calendar-alt"></i>22 August</li>
-                  <li><i class="fas fa-map-marker-alt"></i>6391 Elgin St. Celina</li>
+                  <li><i class="fas fa-calendar-alt"></i>{{ formatDate(event.EventDate) }}</li>
+                  <li><i class="fas fa-map-marker-alt"></i>{{ event.EventVenue }}</li>
                 </ul>
-                <h3><a href="#event-details">The Sponsorship Meetup is Returning</a></h3>
+                <h3><a [routerLink]="['/events', event.id]">{{ event.EventTitle }}</a></h3>
               </div>
-              <span class="price-box">$70</span>
+              <span class="price-box">{{ event.EventEntryPrice }}</span>
               <div class="btn-box">
-                <a [routerLink]="['/events']" class="theme-btn">View Details</a>
+                <a [routerLink]="['/events', event.id]" class="theme-btn">View Details</a>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="row">
-        <div class="col-12">
-          <div class="event-block">
-            <div class="event-inner">
-              <figure class="event-image">
-                <img src="assets/images/resource/event-5.jpg" alt="Golf Clinic">
-              </figure>
-              <div class="event-content">
-                <ul class="event-info">
-                  <li><i class="fas fa-calendar-alt"></i>21 August</li>
-                  <li><i class="fas fa-map-marker-alt"></i>6391 Elgin St. Celina</li>
-                </ul>
-                <h3><a href="#event-details">Starter Golf Clinic and Casual Contest</a></h3>
-              </div>
-              <span class="price-box">$50</span>
-              <div class="btn-box">
-                <a [routerLink]="['/events']" class="theme-btn">View Details</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-12">
-          <div class="event-block">
-            <div class="event-inner">
-              <figure class="event-image">
-                <img src="assets/images/resource/event-6.jpg" alt="Interactive Golf">
-              </figure>
-              <div class="event-content">
-                <ul class="event-info">
-                  <li><i class="fas fa-calendar-alt"></i>20 August</li>
-                  <li><i class="fas fa-map-marker-alt"></i>6391 Elgin St. Celina</li>
-                </ul>
-                <h3><a href="#event-details">Interactive Golf Play for Beginners & Experts</a></h3>
-              </div>
-              <span class="price-box">$90</span>
-              <div class="btn-box">
-                <a [routerLink]="['/events']" class="theme-btn">View Details</a>
-              </div>
-            </div>
+      <!-- No Events State -->
+      <div *ngIf="!loading && !error && events.length === 0" class="row">
+        <div class="col-12 text-center">
+          <div class="alert alert-info" role="alert">
+            No upcoming events at the moment. Check back later!
           </div>
         </div>
       </div>

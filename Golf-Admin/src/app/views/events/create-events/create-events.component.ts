@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgStyle, NgClass, NgForOf, NgIf, CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { EditorModule } from '@tinymce/tinymce-angular';
 import {
   RowComponent,
   ColComponent,
@@ -30,7 +31,7 @@ interface EventOption {
 interface EventData {
   id?: number;
   EventTitle: string;
-  EventDate: string;
+  EventDate: string | Date;
   EventVenue: string;
   EventEntryPrice: string;
   EventImage?: string;
@@ -45,11 +46,7 @@ interface EventData {
   EventTime: string;
   EventEmail: string;
   EventPhone: string;
-  EventParticipantButton: boolean;
   is_active: boolean;
-  is_featured: boolean;
-  meta_description?: string;
-  slug?: string;
   hideStatus: number;
   EventImageUrl?: string;
   EventDetailImages?: string[];
@@ -78,7 +75,8 @@ interface EventData {
     FormFeedbackComponent,
     FormSelectDirective,
     ButtonDirective,
-    ButtonModule
+    ButtonModule,
+    EditorModule
   ],
   templateUrl: './create-events.component.html',
   styleUrl: './create-events.component.scss'
@@ -94,15 +92,7 @@ export class CreateEventsComponent implements OnInit {
   isEditMode = false;
   eventId: string | null = null;
   hasExistingData = false;
-  eventOptions: Array<{value: string, label: string}> = [];
-  defaultEventOptions: Array<{value: string, label: string}> = [
-    { value: '1', label: 'Courses & Instructors' },
-    { value: '2', label: 'Golf Accommodation' },
-    { value: '3', label: 'Fitness Center' },
-    { value: '4', label: 'Golf Practice' },
-    { value: '5', label: 'Skill Development' },
-    { value: '6', label: 'Basic Foundation' }
-  ];
+
 
   constructor(
     private formBuilder: FormBuilder,
@@ -115,13 +105,12 @@ export class CreateEventsComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForm();
     this.checkEditMode();
-    this.initializeDefaultEventOptions();
   }
 
   private initializeForm(): void {
     this.eventForm = this.formBuilder.group({
       EventTitle: ['', [Validators.required, Validators.maxLength(255)]],
-      EventDate: ['', [Validators.required, Validators.maxLength(50)]],
+      EventDate: ['', [Validators.required]],
       EventVenue: ['', [Validators.required, Validators.maxLength(255)]],
       EventEntryPrice: ['', [Validators.required, Validators.maxLength(50)]],
       EventImage: [null],
@@ -136,11 +125,7 @@ export class CreateEventsComponent implements OnInit {
       EventTime: ['', [Validators.required, Validators.maxLength(50)]],
       EventEmail: ['', [Validators.required, Validators.email]],
       EventPhone: ['', [Validators.required, Validators.maxLength(50)]],
-      EventParticipantButton: [false],
       is_active: [true],
-      is_featured: [false],
-      meta_description: ['', [Validators.maxLength(160)]],
-      slug: [''],
       hideStatus: [0]
     });
   }
@@ -175,11 +160,7 @@ export class CreateEventsComponent implements OnInit {
           EventTime: eventData.EventTime || '',
           EventEmail: eventData.EventEmail || '',
           EventPhone: eventData.EventPhone || '',
-          EventParticipantButton: eventData.EventParticipantButton !== undefined ? eventData.EventParticipantButton : false,
           is_active: eventData.is_active !== undefined ? eventData.is_active : true,
-          is_featured: eventData.is_featured !== undefined ? eventData.is_featured : false,
-          meta_description: eventData.meta_description || '',
-          slug: eventData.slug || '',
           hideStatus: eventData.hideStatus || 0
         });
 
@@ -277,7 +258,7 @@ export class CreateEventsComponent implements OnInit {
 
       // Add all form fields to FormData
       Object.keys(formValue).forEach(key => {
-        if (key === 'is_active' || key === 'is_featured' || key === 'EventParticipantButton') {
+        if (key === 'is_active') {
           formData.append(key, formValue[key] ? 'true' : 'false');
         } else if (formValue[key] !== null && formValue[key] !== undefined && formValue[key] !== '') {
           formData.append(key, formValue[key]);
@@ -305,7 +286,7 @@ export class CreateEventsComponent implements OnInit {
           title: 'Success',
           text: this.isEditMode ? 'Event updated successfully!' : 'Event created successfully!'
         }).then(() => {
-          this.router.navigate(['/member-events']);
+          this.router.navigate(['/events']);
         });
       } else {
         throw new Error(response.data?.message || 'Unknown error occurred');
@@ -382,10 +363,8 @@ export class CreateEventsComponent implements OnInit {
     this.selectedAdditionalFiles = {};
     this.eventForm.reset({
       is_active: true,
-      is_featured: false,
       hideStatus: 0
     });
-    this.initializeDefaultEventOptions();
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -417,15 +396,5 @@ export class CreateEventsComponent implements OnInit {
     this.router.navigate(['/events']);
   }
 
-  private initializeDefaultEventOptions(): void {
-    this.eventOptions = [...this.defaultEventOptions];
-  }
 
-  addEventOption(): void {
-    this.eventOptions.push({ value: '', label: '' });
-  }
-
-  removeEventOption(index: number): void {
-    this.eventOptions.splice(index, 1);
-  }
 }
