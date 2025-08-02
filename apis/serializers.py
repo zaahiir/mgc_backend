@@ -756,23 +756,73 @@ class EventInterestSerializer(serializers.ModelSerializer):
     
     def get_memberFullName(self, obj):
         return f"{obj.member.firstName} {obj.member.lastName}"
-    
+
     def validate(self, data):
-        """Ensure unique member-event combination"""
+        # Ensure member can only have one interest per event
         member = data.get('member')
         event = data.get('event')
         
         if member and event:
-            # Check if interest already exists
             existing_interest = EventInterestModel.objects.filter(
-                member=member, 
+                member=member,
                 event=event,
                 hideStatus=0
-            ).first()
+            ).exclude(id=self.instance.id if self.instance else None)
             
-            if existing_interest and self.instance != existing_interest:
-                raise serializers.ValidationError(
-                    "Member has already shown interest in this event"
-                )
+            if existing_interest.exists():
+                raise serializers.ValidationError("Member already has interest in this event")
         
         return data
+
+
+class ProtocolModelSerializer(serializers.ModelSerializer):
+    """Serializer for Protocol model"""
+    
+    class Meta:
+        model = ProtocolModel
+        fields = '__all__'
+        extra_kwargs = {
+            'createdAt': {'read_only': True},
+            'updatedAt': {'read_only': True}
+        }
+
+    def validate_protocolTitle(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Protocol title is required")
+        return value
+
+    def validate_protocolDescription(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Protocol description is required")
+        return value
+
+
+class InstructorModelSerializer(serializers.ModelSerializer):
+    """Serializer for Instructor model"""
+    instructorPhotoUrl = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = InstructorModel
+        fields = '__all__'
+        extra_kwargs = {
+            'createdAt': {'read_only': True},
+            'updatedAt': {'read_only': True}
+        }
+
+    def get_instructorPhotoUrl(self, obj):
+        if obj.instructorPhoto:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.instructorPhoto.url)
+            return obj.instructorPhoto.url
+        return None
+
+    def validate_instructorName(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Instructor name is required")
+        return value
+
+    def validate_instructorPosition(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Instructor position is required")
+        return value

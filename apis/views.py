@@ -2709,3 +2709,235 @@ class EventInterestViewSet(viewsets.ModelViewSet):
                 'message': f'Error retrieving member interests: {str(e)}'
             }, status=500)
 
+    def get_memberFullName(self, obj):
+        return f"{obj.member.firstName} {obj.member.lastName}"
+
+    def validate(self, data):
+        # Ensure member can only have one interest per event
+        member = data.get('member')
+        event = data.get('event')
+        
+        if member and event:
+            existing_interest = EventInterestModel.objects.filter(
+                member=member,
+                event=event,
+                hideStatus=0
+            ).exclude(id=self.instance.id if self.instance else None)
+            
+            if existing_interest.exists():
+                raise serializers.ValidationError("Member already has interest in this event")
+        
+        return data
+
+
+class ProtocolViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing protocols"""
+    queryset = ProtocolModel.objects.filter(hideStatus=0)
+    serializer_class = ProtocolModelSerializer
+
+    def get_queryset(self):
+        return ProtocolModel.objects.filter(hideStatus=0)
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        try:
+            if pk == '0':
+                protocols = self.get_queryset()
+                serializer = self.get_serializer(protocols, many=True)
+                return Response({
+                    'status': 'success',
+                    'data': serializer.data
+                })
+            else:
+                protocol = self.get_object()
+                serializer = self.get_serializer(protocol)
+                return Response({
+                    'status': 'success',
+                    'data': serializer.data
+                })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        try:
+            if pk == '0':
+                # Create new protocol
+                serializer = self.get_serializer(data=request.data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        'status': 'success',
+                        'message': 'Protocol created successfully',
+                        'data': serializer.data
+                    })
+                else:
+                    return Response({
+                        'status': 'error',
+                        'message': 'Validation error',
+                        'errors': serializer.errors
+                    }, status=400)
+            else:
+                # Update existing protocol
+                protocol = self.get_object()
+                serializer = self.get_serializer(protocol, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        'status': 'success',
+                        'message': 'Protocol updated successfully',
+                        'data': serializer.data
+                    })
+                else:
+                    return Response({
+                        'status': 'error',
+                        'message': 'Validation error',
+                        'errors': serializer.errors
+                    }, status=400)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        try:
+            protocol = self.get_object()
+            protocol.hideStatus = 1
+            protocol.save()
+            return Response({
+                'status': 'success',
+                'message': 'Protocol deleted successfully'
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+    @action(detail=False, methods=['GET'])
+    def active_protocols(self, request):
+        """Get all active protocols"""
+        try:
+            protocols = self.get_queryset()
+            serializer = self.get_serializer(protocols, many=True)
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+
+class InstructorViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing instructors"""
+    queryset = InstructorModel.objects.filter(hideStatus=0)
+    serializer_class = InstructorModelSerializer
+
+    def get_queryset(self):
+        return InstructorModel.objects.filter(hideStatus=0)
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        try:
+            if pk == '0':
+                instructors = self.get_queryset()
+                serializer = self.get_serializer(instructors, many=True)
+                return Response({
+                    'status': 'success',
+                    'data': serializer.data
+                })
+            else:
+                instructor = self.get_object()
+                serializer = self.get_serializer(instructor)
+                return Response({
+                    'status': 'success',
+                    'data': serializer.data
+                })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        try:
+            if pk == '0':
+                # Create new instructor
+                serializer = self.get_serializer(data=request.data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        'status': 'success',
+                        'message': 'Instructor created successfully',
+                        'data': serializer.data
+                    })
+                else:
+                    return Response({
+                        'status': 'error',
+                        'message': 'Validation error',
+                        'errors': serializer.errors
+                    }, status=400)
+            else:
+                # Update existing instructor
+                instructor = self.get_object()
+                serializer = self.get_serializer(instructor, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        'status': 'success',
+                        'message': 'Instructor updated successfully',
+                        'data': serializer.data
+                    })
+                else:
+                    return Response({
+                        'status': 'error',
+                        'message': 'Validation error',
+                        'errors': serializer.errors
+                    }, status=400)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        try:
+            instructor = self.get_object()
+            instructor.hideStatus = 1
+            instructor.save()
+            return Response({
+                'status': 'success',
+                'message': 'Instructor deleted successfully'
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+    @action(detail=False, methods=['GET'])
+    def active_instructors(self, request):
+        """Get all active instructors"""
+        try:
+            instructors = self.get_queryset()
+            serializer = self.get_serializer(instructors, many=True)
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+

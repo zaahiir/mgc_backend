@@ -558,4 +558,41 @@ class EventInterestModel(models.Model):
         return f"{self.member.firstName} - {self.event.EventTitle}"
 
 
+class ProtocolModel(models.Model):
+    """Model for managing golf club protocols"""
+    id = models.AutoField(primary_key=True)
+    protocolTitle = models.CharField(max_length=255, help_text="Protocol title")
+    protocolDescription = models.TextField(help_text="Protocol description")
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-createdAt']
+        verbose_name = "Protocol"
+        verbose_name_plural = "Protocols"
+    
+    def __str__(self):
+        return self.protocolTitle
+
+
+class InstructorModel(models.Model):
+    """Model for managing golf club instructors"""
+    id = models.AutoField(primary_key=True)
+    instructorName = models.CharField(max_length=255, help_text="Instructor name")
+    instructorPosition = models.CharField(max_length=255, help_text="Instructor position/role")
+    instructorPhoto = models.ImageField(upload_to='instructor_photos/', help_text="Instructor photo", blank=True, null=True)
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['instructorName']
+        verbose_name = "Instructor"
+        verbose_name_plural = "Instructors"
+    
+    def __str__(self):
+        return f"{self.instructorName} - {self.instructorPosition}"
+
+
 
