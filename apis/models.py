@@ -598,4 +598,59 @@ class InstructorModel(models.Model):
         return f"{self.instructorName} - {self.instructorPosition}"
 
 
+class MessageModel(models.Model):
+    """Model for storing messages from contact forms"""
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('read', 'Read'),
+        ('replied', 'Replied'),
+        ('closed', 'Closed')
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255, help_text="Name of the message sender")
+    email = models.EmailField(help_text="Email address of the sender")
+    phone = models.CharField(max_length=20, null=True, blank=True, help_text="Phone number of the sender")
+    subject = models.CharField(max_length=255, help_text="Message subject")
+    description = models.TextField(help_text="Message description/content")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', help_text="Message status")
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-createdAt']
+        verbose_name = "Message"
+        verbose_name_plural = "Messages"
+    
+    def __str__(self):
+        return f"{self.name} - {self.subject} ({self.status})"
+    
+    @property
+    def is_read(self):
+        """Check if message has been read"""
+        return self.status in ['read', 'replied', 'closed']
+    
+    @property
+    def is_new(self):
+        """Check if message is new"""
+        return self.status == 'new'
+    
+    def mark_as_read(self):
+        """Mark message as read"""
+        if self.status == 'new':
+            self.status = 'read'
+            self.save(update_fields=['status', 'updatedAt'])
+    
+    def mark_as_replied(self):
+        """Mark message as replied"""
+        self.status = 'replied'
+        self.save(update_fields=['status', 'updatedAt'])
+    
+    def mark_as_closed(self):
+        """Mark message as closed"""
+        self.status = 'closed'
+        self.save(update_fields=['status', 'updatedAt'])
+
+
 

@@ -844,3 +844,42 @@ class InstructorModelSerializer(serializers.ModelSerializer):
         if value and not value.startswith(('http://', 'https://')):
             raise serializers.ValidationError("Twitter URL must start with http:// or https://")
         return value
+
+
+class MessageModelSerializer(serializers.ModelSerializer):
+    """Serializer for Message model"""
+    
+    class Meta:
+        model = MessageModel
+        fields = '__all__'
+        extra_kwargs = {
+            'createdAt': {'read_only': True},
+            'updatedAt': {'read_only': True},
+            'status': {'read_only': True},
+            'hideStatus': {'read_only': True}
+        }
+
+    def validate_name(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Name is required")
+        return value.strip()
+
+    def validate_email(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Email is required")
+        return value.strip()
+
+    def validate_subject(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Subject is required")
+        return value.strip()
+
+    def validate_description(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("Description is required")
+        return value.strip()
+
+    def validate_phone(self, value):
+        if value:
+            return value.strip()
+        return value

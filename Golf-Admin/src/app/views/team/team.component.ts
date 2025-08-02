@@ -51,6 +51,7 @@ import { TeamService } from '../common-service/team/team.service';
   styleUrl: './team.component.scss'
 })
 export class TeamComponent implements OnInit {
+
   protocolForm!: FormGroup;
   instructorForm!: FormGroup;
   loading = false;

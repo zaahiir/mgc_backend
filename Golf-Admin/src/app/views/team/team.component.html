@@ -155,19 +155,19 @@
                       </td>
                       <td>{{ instructor.instructorName }}</td>
                       <td>{{ instructor.instructorPosition }}</td>
-                      <td>
-                        <div class="d-flex gap-1">
-                          <a *ngIf="instructor.facebookUrl" [href]="instructor.facebookUrl" target="_blank" class="btn btn-sm btn-outline-primary">
-                            <i class="fab fa-facebook"></i>
-                          </a>
-                          <a *ngIf="instructor.instagramUrl" [href]="instructor.instagramUrl" target="_blank" class="btn btn-sm btn-outline-danger">
-                            <i class="fab fa-instagram"></i>
-                          </a>
-                          <a *ngIf="instructor.twitterUrl" [href]="instructor.twitterUrl" target="_blank" class="btn btn-sm btn-outline-info">
-                            <i class="fab fa-twitter"></i>
-                          </a>
-                        </div>
-                      </td>
+                                             <td>
+                         <div class="d-flex gap-1">
+                           <a *ngIf="instructor.facebookUrl" [href]="instructor.facebookUrl" target="_blank" class="btn btn-sm btn-outline-primary" title="Facebook">
+                             <i class="fab fa-facebook"></i>
+                           </a>
+                           <a *ngIf="instructor.instagramUrl" [href]="instructor.instagramUrl" target="_blank" class="btn btn-sm btn-outline-danger" title="Instagram">
+                             <i class="fab fa-instagram"></i>
+                           </a>
+                                                       <a *ngIf="instructor.twitterUrl" [href]="instructor.twitterUrl" target="_blank" class="btn btn-sm btn-outline-info" title="X (Twitter)">
+                              <i class="fab fa-x-twitter"></i>
+                            </a>
+                         </div>
+                       </td>
                       <td>
                         <span class="badge" [class.bg-success]="instructor.hideStatus === 0" [class.bg-danger]="instructor.hideStatus === 1">
                           {{ instructor.hideStatus === 0 ? 'Active' : 'Inactive' }}

@@ -2929,15 +2929,138 @@ class InstructorViewSet(viewsets.ModelViewSet):
     def active_instructors(self, request):
         """Get all active instructors"""
         try:
-            instructors = self.get_queryset()
-            serializer = self.get_serializer(instructors, many=True)
-            return Response({
-                'status': 'success',
-                'data': serializer.data
-            })
+            instructors = InstructorModel.objects.filter(hideStatus=0).order_by('instructorName')
+            serializer = InstructorModelSerializer(instructors, many=True, context={'request': request})
+            response = {'code': 1, 'data': serializer.data, 'message': "Active instructors retrieved successfully"}
+            return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({
-                'status': 'error',
-                'message': str(e)
-            }, status=400)
+            logger.error(f"Error retrieving active instructors: {str(e)}")
+            response = {'code': 0, 'message': f"Error retrieving instructors: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing messages"""
+    queryset = MessageModel.objects.filter(hideStatus=0)
+    serializer_class = MessageModelSerializer
+
+    def get_queryset(self):
+        """Get messages with proper filtering"""
+        return MessageModel.objects.filter(hideStatus=0).order_by('-createdAt')
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        """List messages"""
+        try:
+            if pk == "0":
+                messages = MessageModel.objects.filter(hideStatus=0).order_by('-createdAt')
+                serializer = MessageModelSerializer(messages, many=True)
+            else:
+                messages = MessageModel.objects.filter(hideStatus=0, id=pk).order_by('-createdAt')
+                serializer = MessageModelSerializer(messages, many=True)
+            
+            response = {'code': 1, 'data': serializer.data, 'message': "Messages retrieved successfully"}
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error in listing messages: {str(e)}")
+            response = {'code': 0, 'message': f"Error retrieving messages: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        """Process message (create or update)"""
+        try:
+            data = request.data.copy()
+            
+            if pk == "0":
+                # Creating new message
+                serializer = MessageModelSerializer(data=data)
+            else:
+                # Updating existing message
+                instance = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+                serializer = MessageModelSerializer(instance, data=data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                response = {'code': 1, 'message': "Message processed successfully"}
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                response = {'code': 0, 'message': "Validation error", 'errors': serializer.errors}
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            logger.error(f"Error in processing message: {str(e)}")
+            response = {'code': 0, 'message': f"Error processing message: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        """Soft delete message"""
+        try:
+            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message.hideStatus = 1
+            message.save(update_fields=['hideStatus', 'updatedAt'])
+            
+            response = {'code': 1, 'message': "Message deleted successfully"}
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error in deleting message: {str(e)}")
+            response = {'code': 0, 'message': f"Error deleting message: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['POST'])
+    def mark_as_read(self, request, pk=None):
+        """Mark message as read"""
+        try:
+            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message.mark_as_read()
+            
+            response = {'code': 1, 'message': "Message marked as read"}
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error marking message as read: {str(e)}")
+            response = {'code': 0, 'message': f"Error marking message as read: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['POST'])
+    def mark_as_replied(self, request, pk=None):
+        """Mark message as replied"""
+        try:
+            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message.mark_as_replied()
+            
+            response = {'code': 1, 'message': "Message marked as replied"}
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error marking message as replied: {str(e)}")
+            response = {'code': 0, 'message': f"Error marking message as replied: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['POST'])
+    def mark_as_closed(self, request, pk=None):
+        """Mark message as closed"""
+        try:
+            message = get_object_or_404(MessageModel, id=pk, hideStatus=0)
+            message.mark_as_closed()
+            
+            response = {'code': 1, 'message': "Message marked as closed"}
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error marking message as closed: {str(e)}")
+            response = {'code': 0, 'message': f"Error marking message as closed: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['GET'])
+    def new_messages(self, request):
+        """Get all new messages"""
+        try:
+            messages = MessageModel.objects.filter(hideStatus=0, status='new').order_by('-createdAt')
+            serializer = MessageModelSerializer(messages, many=True)
+            
+            response = {'code': 1, 'data': serializer.data, 'message': "New messages retrieved successfully"}
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error retrieving new messages: {str(e)}")
+            response = {'code': 0, 'message': f"Error retrieving new messages: {str(e)}"}
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

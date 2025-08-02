@@ -30,7 +30,7 @@
           <div class="info-block">
             <div class="info-box">
               <div class="icon-box">
-                <i [class]="info.icon"></i>
+                <fa-icon [icon]="info.icon"></fa-icon>
               </div>
               <h3>{{ info.title }}</h3>
               <p [innerHTML]="info.description"></p>
@@ -128,7 +128,7 @@
                          (click)="toggleAccordion(faq)">
                       <h3>{{ faq.question }}</h3>
                       <div class="icon-box">
-                        <i class="fas fa-chevron-down"></i>
+                        <fa-icon [icon]="chevronDownIcon"></fa-icon>
                       </div>
                     </div>
                     <div class="acc-content" [class.current]="faq.isActive">
