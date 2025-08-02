@@ -104,14 +104,14 @@ export class TeamComponent implements OnInit {
       
       // Load protocols
       const protocolResponse = await this.teamService.getAllProtocols().toPromise();
-      if (protocolResponse && (protocolResponse as any).data?.status === 'success') {
-        this.protocols = (protocolResponse as any).data.data || [];
+      if (protocolResponse && (protocolResponse as any).status === 'success') {
+        this.protocols = (protocolResponse as any).data || [];
       }
 
       // Load instructors
       const instructorResponse = await this.teamService.getAllInstructors().toPromise();
-      if (instructorResponse && (instructorResponse as any).data?.status === 'success') {
-        this.instructors = (instructorResponse as any).data.data || [];
+      if (instructorResponse && (instructorResponse as any).status === 'success') {
+        this.instructors = (instructorResponse as any).data || [];
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -135,8 +135,8 @@ export class TeamComponent implements OnInit {
       
       if (this.activeTab === 'protocol') {
         const response = await this.teamService.listProtocol(this.itemId!).toPromise();
-        if (response && (response as any).data?.status === 'success' && (response as any).data?.data) {
-          const protocolData = (response as any).data.data;
+        if (response && (response as any).status === 'success' && (response as any).data) {
+          const protocolData = (response as any).data;
           this.protocolForm.patchValue({
             protocolTitle: protocolData.protocolTitle || '',
             protocolDescription: protocolData.protocolDescription || '',
@@ -145,8 +145,8 @@ export class TeamComponent implements OnInit {
         }
       } else {
         const response = await this.teamService.listInstructor(this.itemId!).toPromise();
-        if (response && (response as any).data?.status === 'success' && (response as any).data?.data) {
-          const instructorData = (response as any).data.data;
+        if (response && (response as any).status === 'success' && (response as any).data) {
+          const instructorData = (response as any).data;
           this.instructorForm.patchValue({
             instructorName: instructorData.instructorName || '',
             instructorPosition: instructorData.instructorPosition || '',
@@ -344,33 +344,18 @@ export class TeamComponent implements OnInit {
     this.selectedFile = null;
   }
 
-  editProtocol(protocol: any): void {
+  async editProtocol(protocol: any): Promise<void> {
     this.showForm = true;
     this.isEditMode = true;
     this.itemId = protocol.id.toString();
-    this.protocolForm.patchValue({
-      protocolTitle: protocol.protocolTitle || '',
-      protocolDescription: protocol.protocolDescription || '',
-      hideStatus: protocol.hideStatus || 0
-    });
+    await this.loadItemData();
   }
 
-  editInstructor(instructor: any): void {
+  async editInstructor(instructor: any): Promise<void> {
     this.showForm = true;
     this.isEditMode = true;
     this.itemId = instructor.id.toString();
-    this.instructorForm.patchValue({
-      instructorName: instructor.instructorName || '',
-      instructorPosition: instructor.instructorPosition || '',
-      facebookUrl: instructor.facebookUrl || '',
-      instagramUrl: instructor.instagramUrl || '',
-      twitterUrl: instructor.twitterUrl || '',
-      hideStatus: instructor.hideStatus || 0
-    });
-
-    if (instructor.instructorPhotoUrl) {
-      this.imagePreview = instructor.instructorPhotoUrl;
-    }
+    await this.loadItemData();
   }
 
   async deleteProtocol(id: number): Promise<void> {
@@ -389,7 +374,7 @@ export class TeamComponent implements OnInit {
         this.loading = true;
         const response = await this.teamService.deleteProtocol(id.toString()).toPromise();
 
-        if (response && (response as any).data?.status === 'success') {
+        if (response && (response as any).status === 'success') {
           Swal.fire({
             icon: 'success',
             title: 'Deleted!',
@@ -397,7 +382,7 @@ export class TeamComponent implements OnInit {
           });
           await this.loadData();
         } else {
-          throw new Error((response as any)?.data?.message || 'Unknown error occurred');
+          throw new Error((response as any)?.message || 'Unknown error occurred');
         }
       } catch (error: any) {
         console.error('Error deleting protocol:', error);
@@ -428,7 +413,7 @@ export class TeamComponent implements OnInit {
         this.loading = true;
         const response = await this.teamService.deleteInstructor(id.toString()).toPromise();
 
-        if (response && (response as any).data?.status === 'success') {
+        if (response && (response as any).status === 'success') {
           Swal.fire({
             icon: 'success',
             title: 'Deleted!',
@@ -436,7 +421,7 @@ export class TeamComponent implements OnInit {
           });
           await this.loadData();
         } else {
-          throw new Error((response as any)?.data?.message || 'Unknown error occurred');
+          throw new Error((response as any)?.message || 'Unknown error occurred');
         }
       } catch (error: any) {
         console.error('Error deleting instructor:', error);

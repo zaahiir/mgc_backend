@@ -61,7 +61,7 @@ export class TeamService {
   }
 
   getAllProtocols(): Observable<any> {
-    return this.http.get(`${this.apiUrl}protocol/`);
+    return this.http.get(`${this.apiUrl}protocol/0${this.lists}`);
   }
 
   // Instructor methods
@@ -82,7 +82,7 @@ export class TeamService {
   }
 
   getAllInstructors(): Observable<any> {
-    return this.http.get(`${this.apiUrl}instructor/`);
+    return this.http.get(`${this.apiUrl}instructor/0${this.lists}`);
   }
 }
 
