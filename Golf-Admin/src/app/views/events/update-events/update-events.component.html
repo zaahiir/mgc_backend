@@ -97,66 +97,7 @@
             </c-form-feedback>
           </c-col>
 
-          <!-- Event Detail Images -->
-          <c-col md="6">
-            <div class="mb-3">
-              <label cLabel for="EventDetailimageOne">Event Detail Image 1 (Optional)</label>
-              <input
-                cFormControl
-                id="EventDetailimageOne"
-                type="file"
-                accept="image/*"
-                (change)="onDetailImageOneChange($event)"
-              />
-              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('EventDetailimageOne')">
-                {{ getErrorMessage('EventDetailimageOne') }}
-              </c-form-feedback>
-            </div>
-            <!-- Image Preview -->
-            <div *ngIf="detailImageOnePreview" class="mb-3">
-              <img [src]="detailImageOnePreview" class="img-thumbnail" style="max-width: 150px" alt="Detail Image 1 Preview">
-              <button 
-                *ngIf="isEditMode" 
-                type="button" 
-                cButton 
-                color="danger" 
-                size="sm" 
-                class="mt-2"
-                (click)="clearDetailImageOne()">
-                Remove Image
-              </button>
-            </div>
-          </c-col>
 
-          <c-col md="6">
-            <div class="mb-3">
-              <label cLabel for="EventDetailimageTwo">Event Detail Image 2 (Optional)</label>
-              <input
-                cFormControl
-                id="EventDetailimageTwo"
-                type="file"
-                accept="image/*"
-                (change)="onDetailImageTwoChange($event)"
-              />
-              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('EventDetailimageTwo')">
-                {{ getErrorMessage('EventDetailimageTwo') }}
-              </c-form-feedback>
-            </div>
-            <!-- Image Preview -->
-            <div *ngIf="detailImageTwoPreview" class="mb-3">
-              <img [src]="detailImageTwoPreview" class="img-thumbnail" style="max-width: 150px" alt="Detail Image 2 Preview">
-              <button 
-                *ngIf="isEditMode" 
-                type="button" 
-                cButton 
-                color="danger" 
-                size="sm" 
-                class="mt-2"
-                (click)="clearDetailImageTwo()">
-                Remove Image
-              </button>
-            </div>
-          </c-col>
 
           <!-- Event Activities with TinyMCE -->
           <c-col md="12">

@@ -612,8 +612,6 @@ class EventModelSerializer(serializers.ModelSerializer):
         model = EventModel
         fields = '__all__'
         extra_kwargs = {
-            'EventDetailimageOne': {'required': False, 'allow_null': True},
-            'EventDetailimageTwo': {'required': False, 'allow_null': True},
             'EventActivitiesimageOne': {'required': False, 'allow_null': True},
             'EventActivitiesimageTwo': {'required': False, 'allow_null': True},
             'EventImage': {'required': False, 'allow_null': True},
@@ -648,16 +646,8 @@ class EventModelSerializer(serializers.ModelSerializer):
         return None
     
     def get_EventDetailImages(self, obj):
-        """Return list of event detail image URLs"""
-        images = []
-        for img in [obj.EventDetailimageOne, obj.EventDetailimageTwo]:
-            if img:
-                request = self.context.get('request')
-                if request:
-                    images.append(request.build_absolute_uri(img.url))
-                else:
-                    images.append(img.url)
-        return images
+        """Return empty list since detail images are removed"""
+        return []
     
     def get_EventActivitiesImages(self, obj):
         """Return list of event activities image URLs"""
@@ -675,8 +665,7 @@ class EventModelSerializer(serializers.ModelSerializer):
         """Custom validation to handle empty file fields"""
         # Handle empty strings for file fields
         file_fields = [
-            'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
-            'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+            'EventImage', 'EventActivitiesimageOne', 'EventActivitiesimageTwo'
         ]
         
         for field in file_fields:
@@ -723,8 +712,7 @@ class EventModelSerializer(serializers.ModelSerializer):
         """Create event with proper file handling"""
         # Ensure file fields are handled correctly
         file_fields = [
-            'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
-            'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+            'EventImage', 'EventActivitiesimageOne', 'EventActivitiesimageTwo'
         ]
         
         # Remove any None values for file fields
@@ -738,8 +726,7 @@ class EventModelSerializer(serializers.ModelSerializer):
         """Update event with proper file handling"""
         # Ensure file fields are handled correctly
         file_fields = [
-            'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
-            'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+            'EventImage', 'EventActivitiesimageOne', 'EventActivitiesimageTwo'
         ]
         
         # Remove any None values for file fields

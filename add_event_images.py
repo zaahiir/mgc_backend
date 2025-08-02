@@ -32,21 +32,6 @@ def add_images_to_events():
                     save=True
                 )
             
-            # Create and save detail images
-            if not event.EventDetailimageOne:
-                event.EventDetailimageOne.save(
-                    f"event_{event.id}_detail1.jpg",
-                    create_sample_image(f"event_{event.id}_detail1.jpg", f"Detail image 1 for {event.EventTitle}"),
-                    save=True
-                )
-            
-            if not event.EventDetailimageTwo:
-                event.EventDetailimageTwo.save(
-                    f"event_{event.id}_detail2.jpg",
-                    create_sample_image(f"event_{event.id}_detail2.jpg", f"Detail image 2 for {event.EventTitle}"),
-                    save=True
-                )
-            
             # Create and save activities images
             if not event.EventActivitiesimageOne:
                 event.EventActivitiesimageOne.save(

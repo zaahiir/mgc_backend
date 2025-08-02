@@ -68,30 +68,7 @@
             </c-form-feedback>
           </c-col>
 
-          <!-- Event Detail Images -->
-          <c-col md="12">
-            <label cLabel class="form-label">Event Detail Images</label>
-            <div class="row">
-              <c-col md="6">
-                <div class="mb-3">
-                  <input cFormControl id="EventDetailimageOne" type="file" accept="image/*" (change)="onAdditionalImageChange($event, 'EventDetailimageOne')" class="form-control" />
-                  <div *ngIf="additionalImagePreviews['EventDetailimageOne']" class="mt-2">
-                    <img [src]="additionalImagePreviews['EventDetailimageOne']" alt="Detail Image 1 Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;" />
-                    <button type="button" cButton color="danger" size="sm" class="ms-1" (click)="removeAdditionalImage('EventDetailimageOne')">Remove</button>
-                  </div>
-                </div>
-              </c-col>
-              <c-col md="6">
-                <div class="mb-3">
-                  <input cFormControl id="EventDetailimageTwo" type="file" accept="image/*" (change)="onAdditionalImageChange($event, 'EventDetailimageTwo')" class="form-control" />
-                  <div *ngIf="additionalImagePreviews['EventDetailimageTwo']" class="mt-2">
-                    <img [src]="additionalImagePreviews['EventDetailimageTwo']" alt="Detail Image 2 Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;" />
-                    <button type="button" cButton color="danger" size="sm" class="ms-1" (click)="removeAdditionalImage('EventDetailimageTwo')">Remove</button>
-                  </div>
-                </div>
-              </c-col>
-            </div>
-          </c-col>
+
 
           <!-- Event Activities Section with TinyMCE -->
           <c-col md="12">

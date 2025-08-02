@@ -2467,8 +2467,7 @@ class EventViewSet(viewsets.ModelViewSet):
             
             # Remove empty file fields from data
             file_fields = [
-                'EventImage', 'EventDetailimageOne', 'EventDetailimageTwo',
-                'EventActivitiesimageOne', 'EventActivitiesimageTwo'
+                'EventImage', 'EventActivitiesimageOne', 'EventActivitiesimageTwo'
             ]
             
             for field in file_fields:

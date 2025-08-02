@@ -489,8 +489,6 @@ class EventModel(models.Model):
     
     # Event Details Section
     EventDetails = HTMLField(help_text="Event details with rich text editor", default="")
-    EventDetailimageOne = models.ImageField(upload_to='events/details/', blank=True, null=True, help_text="Event detail image 1")
-    EventDetailimageTwo = models.ImageField(upload_to='events/details/', blank=True, null=True, help_text="Event detail image 2")
     
     # Event Activities Section
     EventActivities = HTMLField(help_text="Event activities with rich text editor", default="")
@@ -525,13 +523,8 @@ class EventModel(models.Model):
     
     @property
     def detail_images(self):
-        """Return list of detail images that are not None"""
-        images = []
-        if self.EventDetailimageOne:
-            images.append(self.EventDetailimageOne.url)
-        if self.EventDetailimageTwo:
-            images.append(self.EventDetailimageTwo.url)
-        return images
+        """Return empty list since detail images are removed"""
+        return []
     
     @property
     def activities_images(self):
@@ -542,7 +535,7 @@ class EventModel(models.Model):
         if self.EventActivitiesimageTwo:
             images.append(self.EventActivitiesimageTwo.url)
         return images
-    
+
 
 class EventInterestModel(models.Model):
     """Model to track member interest in events"""

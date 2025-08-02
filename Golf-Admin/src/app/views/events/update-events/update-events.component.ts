@@ -32,15 +32,11 @@ export class UpdateEventsComponent implements OnInit {
 
   // Image preview properties
   mainImagePreview: string | null = null;
-  detailImageOnePreview: string | null = null;
-  detailImageTwoPreview: string | null = null;
   activitiesImageOnePreview: string | null = null;
   activitiesImageTwoPreview: string | null = null;
 
   // Selected files
   selectedMainImage: File | null = null;
-  selectedDetailImageOne: File | null = null;
-  selectedDetailImageTwo: File | null = null;
   selectedActivitiesImageOne: File | null = null;
   selectedActivitiesImageTwo: File | null = null;
 
@@ -96,14 +92,6 @@ export class UpdateEventsComponent implements OnInit {
           this.mainImagePreview = eventData.EventImageUrl;
         }
         
-        // Handle detail images - backend returns an array
-        if (eventData.EventDetailImages && eventData.EventDetailImages.length > 0) {
-          this.detailImageOnePreview = eventData.EventDetailImages[0];
-          if (eventData.EventDetailImages.length > 1) {
-            this.detailImageTwoPreview = eventData.EventDetailImages[1];
-          }
-        }
-        
         // Handle activities images - backend returns an array
         if (eventData.EventActivitiesImages && eventData.EventActivitiesImages.length > 0) {
           this.activitiesImageOnePreview = eventData.EventActivitiesImages[0];
@@ -133,8 +121,6 @@ export class UpdateEventsComponent implements OnInit {
       EventEntryPrice: ['', [Validators.required, Validators.maxLength(50)]],
       EventImage: [null], // Will be made required conditionally
       EventDetails: ['', [Validators.required]],
-      EventDetailimageOne: [null],
-      EventDetailimageTwo: [null],
       EventActivities: ['', [Validators.required]],
       EventActivitiesimageOne: [null],
       EventActivitiesimageTwo: [null],
@@ -173,60 +159,6 @@ export class UpdateEventsComponent implements OnInit {
       // Clear preview if no file selected
       this.selectedMainImage = null;
       this.mainImagePreview = null;
-    }
-  }
-
-  onDetailImageOneChange(event: Event): void {
-    const element = event.target as HTMLInputElement;
-    const file = element.files?.[0];
-
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        Swal.fire({
-          title: 'Error!',
-          text: 'File size should not exceed 5MB',
-          icon: 'error'
-        });
-        return;
-      }
-
-      this.selectedDetailImageOne = file;
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.detailImageOnePreview = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-    } else {
-      // Clear preview if no file selected
-      this.selectedDetailImageOne = null;
-      this.detailImageOnePreview = null;
-    }
-  }
-
-  onDetailImageTwoChange(event: Event): void {
-    const element = event.target as HTMLInputElement;
-    const file = element.files?.[0];
-
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        Swal.fire({
-          title: 'Error!',
-          text: 'File size should not exceed 5MB',
-          icon: 'error'
-        });
-        return;
-      }
-
-      this.selectedDetailImageTwo = file;
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.detailImageTwoPreview = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-    } else {
-      // Clear preview if no file selected
-      this.selectedDetailImageTwo = null;
-      this.detailImageTwoPreview = null;
     }
   }
 
@@ -295,26 +227,6 @@ export class UpdateEventsComponent implements OnInit {
     }
   }
 
-  clearDetailImageOne(): void {
-    this.detailImageOnePreview = null;
-    this.selectedDetailImageOne = null;
-    // Reset the file input
-    const fileInput = document.getElementById('EventDetailimageOne') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
-  }
-
-  clearDetailImageTwo(): void {
-    this.detailImageTwoPreview = null;
-    this.selectedDetailImageTwo = null;
-    // Reset the file input
-    const fileInput = document.getElementById('EventDetailimageTwo') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
-  }
-
   clearActivitiesImageOne(): void {
     this.activitiesImageOnePreview = null;
     this.selectedActivitiesImageOne = null;
@@ -377,12 +289,6 @@ export class UpdateEventsComponent implements OnInit {
       if (this.selectedMainImage) {
         formData.append('EventImage', this.selectedMainImage);
       }
-      if (this.selectedDetailImageOne) {
-        formData.append('EventDetailimageOne', this.selectedDetailImageOne);
-      }
-      if (this.selectedDetailImageTwo) {
-        formData.append('EventDetailimageTwo', this.selectedDetailImageTwo);
-      }
       if (this.selectedActivitiesImageOne) {
         formData.append('EventActivitiesimageOne', this.selectedActivitiesImageOne);
       }
@@ -424,23 +330,17 @@ export class UpdateEventsComponent implements OnInit {
     
     // Clear all selected files
     this.selectedMainImage = null;
-    this.selectedDetailImageOne = null;
-    this.selectedDetailImageTwo = null;
     this.selectedActivitiesImageOne = null;
     this.selectedActivitiesImageTwo = null;
     
     // Clear all image previews
     this.mainImagePreview = null;
-    this.detailImageOnePreview = null;
-    this.detailImageTwoPreview = null;
     this.activitiesImageOnePreview = null;
     this.activitiesImageTwoPreview = null;
     
     // Reset all file inputs
     const fileInputs = [
       'EventImage',
-      'EventDetailimageOne', 
-      'EventDetailimageTwo',
       'EventActivitiesimageOne',
       'EventActivitiesimageTwo'
     ];

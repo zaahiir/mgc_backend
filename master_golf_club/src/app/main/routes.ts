@@ -14,10 +14,6 @@ export const mainRoutes: Routes = [
       loadComponent: () => import('./collection-plus/collection-plus.component').then(m => m.CollectionPlusComponent)
     },
     {
-      path: 'events',
-      loadComponent: () => import('./events-list/events-list.component').then(m => m.EventsListComponent)
-    },
-    {
       path: 'events/:id',
       loadComponent: () => import('./events/events.component').then(m => m.EventsComponent)
     },

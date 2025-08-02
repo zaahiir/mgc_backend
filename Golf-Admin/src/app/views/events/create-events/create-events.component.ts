@@ -36,8 +36,6 @@ interface EventData {
   EventEntryPrice: string;
   EventImage?: string;
   EventDetails: string;
-  EventDetailimageOne?: string;
-  EventDetailimageTwo?: string;
   EventActivities: string;
   EventActivitiesimageOne?: string;
   EventActivitiesimageTwo?: string;
@@ -115,8 +113,6 @@ export class CreateEventsComponent implements OnInit {
       EventEntryPrice: ['', [Validators.required, Validators.maxLength(50)]],
       EventImage: [null],
       EventDetails: ['', [Validators.required]],
-      EventDetailimageOne: [null],
-      EventDetailimageTwo: [null],
       EventActivities: ['', [Validators.required]],
       EventActivitiesimageOne: [null],
       EventActivitiesimageTwo: [null],
@@ -169,12 +165,7 @@ export class CreateEventsComponent implements OnInit {
           this.imagePreview = eventData.EventImageUrl;
         }
 
-        // Set detail image previews
-        if (eventData.EventDetailImages) {
-          eventData.EventDetailImages.forEach((url: string, index: number) => {
-            this.additionalImagePreviews[`EventDetailimage${index === 0 ? 'One' : 'Two'}`] = url;
-          });
-        }
+
 
         // Set activities image previews
         if (eventData.EventActivitiesImages) {
