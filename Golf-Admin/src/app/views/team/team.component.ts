@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgStyle, NgClass, NgForOf, NgIf, CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { EditorModule } from '@tinymce/tinymce-angular';
+
 import {
   RowComponent,
   ColComponent,
@@ -45,8 +45,7 @@ import { TeamService } from '../common-service/team/team.service';
     FormFeedbackComponent,
     FormSelectDirective,
     ButtonDirective,
-    ButtonModule,
-    EditorModule
+    ButtonModule
   ],
   templateUrl: './team.component.html',
   styleUrl: './team.component.scss'
@@ -63,6 +62,7 @@ export class TeamComponent implements OnInit {
   activeTab: 'protocol' | 'instructor' = 'protocol';
   protocols: any[] = [];
   instructors: any[] = [];
+  showForm = false;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -91,6 +91,9 @@ export class TeamComponent implements OnInit {
       instructorName: ['', [Validators.required, Validators.maxLength(255)]],
       instructorPosition: ['', [Validators.required, Validators.maxLength(255)]],
       instructorPhoto: [null],
+      facebookUrl: [''],
+      instagramUrl: [''],
+      twitterUrl: [''],
       hideStatus: [0]
     });
   }
@@ -100,13 +103,13 @@ export class TeamComponent implements OnInit {
       this.loading = true;
       
       // Load protocols
-      const protocolResponse = await this.teamService.getActiveProtocols().toPromise();
+      const protocolResponse = await this.teamService.getAllProtocols().toPromise();
       if (protocolResponse && (protocolResponse as any).data?.status === 'success') {
         this.protocols = (protocolResponse as any).data.data || [];
       }
 
       // Load instructors
-      const instructorResponse = await this.teamService.getActiveInstructors().toPromise();
+      const instructorResponse = await this.teamService.getAllInstructors().toPromise();
       if (instructorResponse && (instructorResponse as any).data?.status === 'success') {
         this.instructors = (instructorResponse as any).data.data || [];
       }
@@ -121,6 +124,7 @@ export class TeamComponent implements OnInit {
     this.itemId = this.route.snapshot.paramMap.get('id');
     if (this.itemId && this.itemId !== '0') {
       this.isEditMode = true;
+      this.showForm = true;
       await this.loadItemData();
     }
   }
@@ -146,6 +150,9 @@ export class TeamComponent implements OnInit {
           this.instructorForm.patchValue({
             instructorName: instructorData.instructorName || '',
             instructorPosition: instructorData.instructorPosition || '',
+            facebookUrl: instructorData.facebookUrl || '',
+            instagramUrl: instructorData.instagramUrl || '',
+            twitterUrl: instructorData.twitterUrl || '',
             hideStatus: instructorData.hideStatus || 0
           });
 
@@ -227,23 +234,24 @@ export class TeamComponent implements OnInit {
         response = await this.teamService.processInstructor(formData as any, this.itemId || '0').toPromise();
       }
 
-      if (response && (response as any).data?.status === 'success') {
+      if (response && (response as any).status === 'success') {
         Swal.fire({
           icon: 'success',
           title: 'Success',
           text: this.isEditMode ? `${this.activeTab} updated successfully!` : `${this.activeTab} created successfully!`
-        }).then(() => {
-          this.router.navigate(['/team']);
+        }).then(async () => {
+          await this.loadData();
+          this.cancelForm();
         });
       } else {
-        throw new Error((response as any)?.data?.message || 'Unknown error occurred');
+        throw new Error((response as any)?.message || 'Unknown error occurred');
       }
     } catch (error: any) {
       console.error('Error saving item:', error);
       let errorMessage = `Failed to save ${this.activeTab}`;
       
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
+      if (error.response?.message) {
+        errorMessage = error.response.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -258,55 +266,7 @@ export class TeamComponent implements OnInit {
     }
   }
 
-  async onDelete(): Promise<void> {
-    if (!this.itemId || this.itemId === '0') {
-      return;
-    }
 
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: 'Are you sure?',
-      text: 'This action cannot be undone!',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!'
-    });
-
-    if (result.isConfirmed) {
-      try {
-        this.loading = true;
-        let response;
-        
-        if (this.activeTab === 'protocol') {
-          response = await this.teamService.deleteProtocol(this.itemId).toPromise();
-        } else {
-          response = await this.teamService.deleteInstructor(this.itemId).toPromise();
-        }
-
-        if (response && (response as any).data?.status === 'success') {
-          Swal.fire({
-            icon: 'success',
-            title: 'Deleted!',
-            text: `${this.activeTab} has been deleted successfully.`
-          }).then(() => {
-            this.router.navigate(['/team']);
-          });
-        } else {
-          throw new Error((response as any)?.data?.message || 'Unknown error occurred');
-        }
-      } catch (error: any) {
-        console.error('Error deleting item:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: `Failed to delete ${this.activeTab}`
-        });
-      } finally {
-        this.loading = false;
-      }
-    }
-  }
 
 
 
@@ -344,16 +304,151 @@ export class TeamComponent implements OnInit {
     this.selectedFile = null;
     this.isEditMode = false;
     this.itemId = null;
+    this.showForm = false;
     
     // Reset forms
     this.protocolForm.reset({
-      is_active: true,
       hideStatus: 0
     });
     this.instructorForm.reset({
-      is_active: true,
       hideStatus: 0
     });
+  }
+
+  showProtocolForm(): void {
+    this.showForm = true;
+    this.isEditMode = false;
+    this.itemId = null;
+    this.protocolForm.reset({
+      hideStatus: 0
+    });
+  }
+
+  showInstructorForm(): void {
+    this.showForm = true;
+    this.isEditMode = false;
+    this.itemId = null;
+    this.selectedFile = null;
+    this.imagePreview = null;
+    this.instructorForm.reset({
+      hideStatus: 0
+    });
+  }
+
+  cancelForm(): void {
+    this.showForm = false;
+    this.isEditMode = false;
+    this.itemId = null;
+    this.submitted = false;
+    this.imagePreview = null;
+    this.selectedFile = null;
+  }
+
+  editProtocol(protocol: any): void {
+    this.showForm = true;
+    this.isEditMode = true;
+    this.itemId = protocol.id.toString();
+    this.protocolForm.patchValue({
+      protocolTitle: protocol.protocolTitle || '',
+      protocolDescription: protocol.protocolDescription || '',
+      hideStatus: protocol.hideStatus || 0
+    });
+  }
+
+  editInstructor(instructor: any): void {
+    this.showForm = true;
+    this.isEditMode = true;
+    this.itemId = instructor.id.toString();
+    this.instructorForm.patchValue({
+      instructorName: instructor.instructorName || '',
+      instructorPosition: instructor.instructorPosition || '',
+      facebookUrl: instructor.facebookUrl || '',
+      instagramUrl: instructor.instagramUrl || '',
+      twitterUrl: instructor.twitterUrl || '',
+      hideStatus: instructor.hideStatus || 0
+    });
+
+    if (instructor.instructorPhotoUrl) {
+      this.imagePreview = instructor.instructorPhotoUrl;
+    }
+  }
+
+  async deleteProtocol(id: number): Promise<void> {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Are you sure?',
+      text: 'This will delete the protocol. This action cannot be undone!',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        this.loading = true;
+        const response = await this.teamService.deleteProtocol(id.toString()).toPromise();
+
+        if (response && (response as any).data?.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: 'Protocol has been deleted successfully.'
+          });
+          await this.loadData();
+        } else {
+          throw new Error((response as any)?.data?.message || 'Unknown error occurred');
+        }
+      } catch (error: any) {
+        console.error('Error deleting protocol:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to delete protocol'
+        });
+      } finally {
+        this.loading = false;
+      }
+    }
+  }
+
+  async deleteInstructor(id: number): Promise<void> {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Are you sure?',
+      text: 'This action cannot be undone!',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        this.loading = true;
+        const response = await this.teamService.deleteInstructor(id.toString()).toPromise();
+
+        if (response && (response as any).data?.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: 'Instructor has been deleted successfully.'
+          });
+          await this.loadData();
+        } else {
+          throw new Error((response as any)?.data?.message || 'Unknown error occurred');
+        }
+      } catch (error: any) {
+        console.error('Error deleting instructor:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to delete instructor'
+        });
+      } finally {
+        this.loading = false;
+      }
+    }
   }
 
 

@@ -18,6 +18,9 @@ export interface InstructorData {
   instructorName: string;
   instructorPosition: string;
   instructorPhoto?: File | null;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  twitterUrl?: string;
   hideStatus?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -57,6 +60,10 @@ export class TeamService {
     return this.http.get(`${this.apiUrl}protocol/active_protocols/`);
   }
 
+  getAllProtocols(): Observable<any> {
+    return this.http.get(`${this.apiUrl}protocol/`);
+  }
+
   // Instructor methods
   listInstructor(id: string = '0'): Observable<any> {
     return this.http.get(`${this.apiUrl}instructor/${id}${this.lists}`);
@@ -72,6 +79,10 @@ export class TeamService {
 
   getActiveInstructors(): Observable<any> {
     return this.http.get(`${this.apiUrl}instructor/active_instructors/`);
+  }
+
+  getAllInstructors(): Observable<any> {
+    return this.http.get(`${this.apiUrl}instructor/`);
   }
 }
 

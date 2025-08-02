@@ -806,7 +806,10 @@ class InstructorModelSerializer(serializers.ModelSerializer):
         fields = '__all__'
         extra_kwargs = {
             'createdAt': {'read_only': True},
-            'updatedAt': {'read_only': True}
+            'updatedAt': {'read_only': True},
+            'facebookUrl': {'required': False},
+            'instagramUrl': {'required': False},
+            'twitterUrl': {'required': False}
         }
 
     def get_instructorPhotoUrl(self, obj):
@@ -825,4 +828,19 @@ class InstructorModelSerializer(serializers.ModelSerializer):
     def validate_instructorPosition(self, value):
         if not value or value.strip() == '':
             raise serializers.ValidationError("Instructor position is required")
+        return value
+
+    def validate_facebookUrl(self, value):
+        if value and not value.startswith(('http://', 'https://')):
+            raise serializers.ValidationError("Facebook URL must start with http:// or https://")
+        return value
+
+    def validate_instagramUrl(self, value):
+        if value and not value.startswith(('http://', 'https://')):
+            raise serializers.ValidationError("Instagram URL must start with http:// or https://")
+        return value
+
+    def validate_twitterUrl(self, value):
+        if value and not value.startswith(('http://', 'https://')):
+            raise serializers.ValidationError("Twitter URL must start with http:// or https://")
         return value
