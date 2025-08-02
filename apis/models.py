@@ -653,4 +653,27 @@ class MessageModel(models.Model):
         self.save(update_fields=['status', 'updatedAt'])
 
 
+class FAQModel(models.Model):
+    """Model for managing FAQ entries"""
+    id = models.AutoField(primary_key=True)
+    faqQuestion = models.CharField(max_length=500, help_text="FAQ question")
+    faqAnswer = models.TextField(help_text="FAQ answer")
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-createdAt']
+        verbose_name = "FAQ"
+        verbose_name_plural = "FAQs"
+    
+    def __str__(self):
+        return f"{self.faqQuestion[:50]}..."
+    
+    @property
+    def short_question(self):
+        """Return shortened question for display"""
+        return self.faqQuestion[:100] + "..." if len(self.faqQuestion) > 100 else self.faqQuestion
+
+
 

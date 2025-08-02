@@ -31,6 +31,7 @@ router.register('eventInterest', EventInterestViewSet, basename='eventInterest')
 router.register('protocol', ProtocolViewSet, basename='protocol')
 router.register('instructor', InstructorViewSet, basename='instructor')
 router.register('message', MessageViewSet, basename='message')
+router.register('faq', FAQViewSet, basename='faq')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -56,6 +56,10 @@ export const routes: Routes = [
         loadChildren: () => import('./views/team/routes').then((m) => m.teamRoutes)
       },
       {
+        path: 'faq',
+        loadChildren: () => import('./views/faq/routes').then((m) => m.faqRoutes)
+      },
+      {
         path: 'scoreBoard',
         loadChildren: () => import('./views/scoreboard/routes').then((m) => m.scoreBoardRoutes)
       },

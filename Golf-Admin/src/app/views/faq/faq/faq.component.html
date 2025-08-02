@@ -1,1 +1,150 @@
-<p>faq works!</p>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title mb-0">FAQ Management</h4>
+        </div>
+        <div class="card-body">
+          <!-- Info Section -->
+          <div class="mt-3 mb-3" *ngIf="!showForm">
+            <div class="alert alert-info">
+              <h5><i class="fas fa-info-circle"></i> FAQ Management</h5>
+              <p class="mb-0">Manage frequently asked questions. You can create, edit, and delete FAQs below.</p>
+            </div>
+          </div>
+
+          <!-- FAQ List -->
+          <div *ngIf="!showForm">
+            <!-- Loading Spinner -->
+            <div class="text-center" *ngIf="loading">
+              <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+
+            <!-- Add New FAQ Button -->
+            <div class="mt-3 mb-3" *ngIf="!loading">
+              <button type="button" class="btn btn-primary" (click)="showFAQForm()">
+                <i class="fas fa-plus"></i> Add New FAQ
+              </button>
+            </div>
+
+            <!-- FAQ List Table -->
+            <div class="table-responsive" *ngIf="!loading && faqs.length > 0">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Question</th>
+                    <th>Answer</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let faq of faqs">
+                    <td>
+                      <strong>{{ faq.faqQuestion }}</strong>
+                    </td>
+                    <td>
+                      <div class="text-truncate" style="max-width: 300px;" title="{{ faq.faqAnswer }}">
+                        {{ faq.faqAnswer }}
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge" [class.bg-success]="faq.hideStatus === 0" [class.bg-danger]="faq.hideStatus === 1">
+                        {{ faq.hideStatus === 0 ? 'Active' : 'Inactive' }}
+                      </span>
+                    </td>
+                    <td>
+                      <small class="text-muted">
+                        {{ faq.createdAt | date:'short' }}
+                      </small>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-primary me-2" (click)="editFAQ(faq)">
+                        <i class="fas fa-edit"></i> Edit
+                      </button>
+                      <button type="button" class="btn btn-sm btn-danger" (click)="deleteFAQ(faq.id)">
+                        <i class="fas fa-trash"></i> Delete
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- No FAQs Message -->
+            <div class="alert alert-warning" *ngIf="!loading && faqs.length === 0">
+              <h5><i class="fas fa-exclamation-triangle"></i> No FAQs Found</h5>
+              <p class="mb-0">No FAQs have been created yet. Click the button above to create one.</p>
+            </div>
+          </div>
+
+          <!-- FAQ Form -->
+          <form [formGroup]="faqForm" (ngSubmit)="onSubmit()" *ngIf="showForm">
+            <div class="row">
+              <div class="col-md-12">
+                <div class="mb-3">
+                  <label for="faqQuestion" class="form-label">FAQ Question *</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="faqQuestion" 
+                    formControlName="faqQuestion"
+                    [class.is-invalid]="isFieldInvalid('faqQuestion')"
+                    placeholder="Enter FAQ question">
+                  <div class="invalid-feedback" *ngIf="isFieldInvalid('faqQuestion')">
+                    {{ getErrorMessage('faqQuestion') }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12">
+                <div class="mb-3">
+                  <label for="faqAnswer" class="form-label">FAQ Answer *</label>
+                  <textarea 
+                    class="form-control" 
+                    id="faqAnswer" 
+                    formControlName="faqAnswer"
+                    [class.is-invalid]="isFieldInvalid('faqAnswer')"
+                    rows="5"
+                    placeholder="Enter FAQ answer"></textarea>
+                  <div class="invalid-feedback" *ngIf="isFieldInvalid('faqAnswer')">
+                    {{ getErrorMessage('faqAnswer') }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-12">
+                <div class="d-flex gap-2">
+                  <button 
+                    type="submit" 
+                    class="btn btn-primary" 
+                    [disabled]="loading">
+                    <span class="spinner-border spinner-border-sm me-2" *ngIf="loading"></span>
+                    <i class="fas fa-save me-2" *ngIf="!loading"></i>
+                    {{ isEditMode ? 'Update FAQ' : 'Create FAQ' }}
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-secondary" 
+                    (click)="cancelForm()"
+                    [disabled]="loading">
+                    <i class="fas fa-times me-2"></i>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -883,3 +883,25 @@ class MessageModelSerializer(serializers.ModelSerializer):
         if value:
             return value.strip()
         return value
+
+
+class FAQModelSerializer(serializers.ModelSerializer):
+    """Serializer for FAQ model"""
+    
+    class Meta:
+        model = FAQModel
+        fields = '__all__'
+        extra_kwargs = {
+            'createdAt': {'read_only': True},
+            'updatedAt': {'read_only': True}
+        }
+
+    def validate_faqQuestion(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("FAQ question is required")
+        return value.strip()
+
+    def validate_faqAnswer(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError("FAQ answer is required")
+        return value.strip()

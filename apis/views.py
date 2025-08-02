@@ -2945,122 +2945,252 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageModelSerializer
 
     def get_queryset(self):
-        """Get messages with proper filtering"""
         return MessageModel.objects.filter(hideStatus=0).order_by('-createdAt')
 
     @action(detail=False, methods=['GET'], url_path='listing/(?P<message_id>[^/.]+)')
     def listing(self, request, message_id=None):
-        """List messages"""
         try:
-            if message_id == "0":
-                messages = MessageModel.objects.filter(hideStatus=0).order_by('-createdAt')
-                serializer = MessageModelSerializer(messages, many=True)
-            else:
-                messages = MessageModel.objects.filter(hideStatus=0, id=message_id).order_by('-createdAt')
-                serializer = MessageModelSerializer(messages, many=True)
-            
-            response = {'code': 1, 'data': serializer.data, 'message': "Messages retrieved successfully"}
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error in listing messages: {str(e)}")
-            response = {'code': 0, 'message': f"Error retrieving messages: {str(e)}"}
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            message = MessageModel.objects.get(id=message_id, hideStatus=0)
+            serializer = self.get_serializer(message)
+            return Response({
+                'status': 'success',
+                'message': 'Message retrieved successfully',
+                'data': serializer.data
+            })
+        except MessageModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Message not found'
+            }, status=404)
 
     @action(detail=False, methods=['POST'], url_path='processing/(?P<message_id>[^/.]+)')
     def processing(self, request, message_id=None):
-        """Process message (create or update)"""
         try:
-            data = request.data.copy()
-            
-            if message_id == "0":
-                # Creating new message
-                serializer = MessageModelSerializer(data=data)
-            else:
-                # Updating existing message
-                instance = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
-                serializer = MessageModelSerializer(instance, data=data, partial=True)
+            message = MessageModel.objects.get(id=message_id, hideStatus=0)
+            serializer = self.get_serializer(message, data=request.data, partial=True)
             
             if serializer.is_valid():
                 serializer.save()
-                response = {'code': 1, 'message': "Message processed successfully"}
-                return Response(response, status=status.HTTP_200_OK)
+                return Response({
+                    'status': 'success',
+                    'message': 'Message updated successfully',
+                    'data': serializer.data
+                })
             else:
-                response = {'code': 0, 'message': "Validation error", 'errors': serializer.errors}
-                return Response(response, status=status.HTTP_400_BAD_REQUEST)
-                
-        except Exception as e:
-            logger.error(f"Error in processing message: {str(e)}")
-            response = {'code': 0, 'message': f"Error processing message: {str(e)}"}
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({
+                    'status': 'error',
+                    'message': 'Validation error',
+                    'errors': serializer.errors
+                }, status=400)
+        except MessageModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Message not found'
+            }, status=404)
 
     @action(detail=False, methods=['GET'], url_path='deletion/(?P<message_id>[^/.]+)')
     def deletion(self, request, message_id=None):
-        """Soft delete message"""
         try:
-            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
+            message = MessageModel.objects.get(id=message_id, hideStatus=0)
             message.hideStatus = 1
-            message.save(update_fields=['hideStatus', 'updatedAt'])
-            
-            response = {'code': 1, 'message': "Message deleted successfully"}
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error in deleting message: {str(e)}")
-            response = {'code': 0, 'message': f"Error deleting message: {str(e)}"}
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            message.save()
+            return Response({
+                'status': 'success',
+                'message': 'Message deleted successfully'
+            })
+        except MessageModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Message not found'
+            }, status=404)
 
     @action(detail=False, methods=['POST'], url_path='mark_as_read/(?P<message_id>[^/.]+)')
     def mark_as_read(self, request, message_id=None):
-        """Mark message as read"""
         try:
-            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
+            message = MessageModel.objects.get(id=message_id, hideStatus=0)
             message.mark_as_read()
-            
-            response = {'code': 1, 'message': "Message marked as read"}
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error marking message as read: {str(e)}")
-            response = {'code': 0, 'message': f"Error marking message as read: {str(e)}"}
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                'status': 'success',
+                'message': 'Message marked as read'
+            })
+        except MessageModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Message not found'
+            }, status=404)
 
     @action(detail=False, methods=['POST'], url_path='mark_as_replied/(?P<message_id>[^/.]+)')
     def mark_as_replied(self, request, message_id=None):
-        """Mark message as replied"""
         try:
-            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
+            message = MessageModel.objects.get(id=message_id, hideStatus=0)
             message.mark_as_replied()
-            
-            response = {'code': 1, 'message': "Message marked as replied"}
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error marking message as replied: {str(e)}")
-            response = {'code': 0, 'message': f"Error marking message as replied: {str(e)}"}
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                'status': 'success',
+                'message': 'Message marked as replied'
+            })
+        except MessageModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Message not found'
+            }, status=404)
 
     @action(detail=False, methods=['POST'], url_path='mark_as_closed/(?P<message_id>[^/.]+)')
     def mark_as_closed(self, request, message_id=None):
-        """Mark message as closed"""
         try:
-            message = get_object_or_404(MessageModel, id=message_id, hideStatus=0)
+            message = MessageModel.objects.get(id=message_id, hideStatus=0)
             message.mark_as_closed()
-            
-            response = {'code': 1, 'message': "Message marked as closed"}
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error marking message as closed: {str(e)}")
-            response = {'code': 0, 'message': f"Error marking message as closed: {str(e)}"}
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                'status': 'success',
+                'message': 'Message marked as closed'
+            })
+        except MessageModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Message not found'
+            }, status=404)
 
     @action(detail=False, methods=['GET'])
     def new_messages(self, request):
-        """Get all new messages"""
+        new_messages = MessageModel.objects.filter(hideStatus=0, status='new')
+        serializer = self.get_serializer(new_messages, many=True)
+        return Response({
+            'status': 'success',
+            'message': 'New messages retrieved successfully',
+            'data': serializer.data
+        })
+
+    @action(detail=False, methods=['GET'], url_path='listing/0')
+    def list_all_messages(self, request):
+        """List all messages (when called with id=0)"""
+        messages = MessageModel.objects.filter(hideStatus=0).order_by('-createdAt')
+        serializer = self.get_serializer(messages, many=True)
+        return Response({
+            'status': 'success',
+            'message': 'Messages retrieved successfully',
+            'data': serializer.data
+        })
+
+    @action(detail=False, methods=['POST'], url_path='processing/0')
+    def create_message(self, request):
+        """Create a new message (when called with id=0)"""
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'status': 'success',
+                'message': 'Message created successfully',
+                'data': serializer.data
+            })
+        else:
+            return Response({
+                'status': 'error',
+                'message': 'Validation error',
+                'errors': serializer.errors
+            }, status=400)
+
+
+class FAQViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing FAQs"""
+    queryset = FAQModel.objects.filter(hideStatus=0)
+    serializer_class = FAQModelSerializer
+
+    def get_queryset(self):
+        return FAQModel.objects.filter(hideStatus=0).order_by('-createdAt')
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
         try:
-            messages = MessageModel.objects.filter(hideStatus=0, status='new').order_by('-createdAt')
-            serializer = MessageModelSerializer(messages, many=True)
-            
-            response = {'code': 1, 'data': serializer.data, 'message': "New messages retrieved successfully"}
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error retrieving new messages: {str(e)}")
-            response = {'code': 0, 'message': f"Error retrieving new messages: {str(e)}"}
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            if pk == '0':
+                # Return all FAQs
+                faqs = FAQModel.objects.filter(hideStatus=0).order_by('-createdAt')
+                serializer = self.get_serializer(faqs, many=True)
+                return Response({
+                    'status': 'success',
+                    'message': 'FAQs retrieved successfully',
+                    'data': serializer.data
+                })
+            else:
+                # Return specific FAQ
+                faq = FAQModel.objects.get(id=pk, hideStatus=0)
+                serializer = self.get_serializer(faq)
+                return Response({
+                    'status': 'success',
+                    'message': 'FAQ retrieved successfully',
+                    'data': serializer.data
+                })
+        except FAQModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'FAQ not found'
+            }, status=404)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        try:
+            if pk == '0':
+                # Create new FAQ
+                serializer = self.get_serializer(data=request.data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        'status': 'success',
+                        'message': 'FAQ created successfully',
+                        'data': serializer.data
+                    })
+                else:
+                    return Response({
+                        'status': 'error',
+                        'message': 'Validation error',
+                        'errors': serializer.errors
+                    }, status=400)
+            else:
+                # Update existing FAQ
+                faq = FAQModel.objects.get(id=pk, hideStatus=0)
+                serializer = self.get_serializer(faq, data=request.data, partial=True)
+                
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        'status': 'success',
+                        'message': 'FAQ updated successfully',
+                        'data': serializer.data
+                    })
+                else:
+                    return Response({
+                        'status': 'error',
+                        'message': 'Validation error',
+                        'errors': serializer.errors
+                    }, status=400)
+        except FAQModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'FAQ not found'
+            }, status=404)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        try:
+            faq = FAQModel.objects.get(id=pk, hideStatus=0)
+            faq.hideStatus = 1
+            faq.save()
+            return Response({
+                'status': 'success',
+                'message': 'FAQ deleted successfully'
+            })
+        except FAQModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'FAQ not found'
+            }, status=404)
+
+    @action(detail=False, methods=['GET'])
+    def active_faqs(self, request):
+        """Get all active FAQs"""
+        faqs = FAQModel.objects.filter(hideStatus=0).order_by('-createdAt')
+        serializer = self.get_serializer(faqs, many=True)
+        return Response({
+            'status': 'success',
+            'message': 'Active FAQs retrieved successfully',
+            'data': serializer.data
+        })
 
