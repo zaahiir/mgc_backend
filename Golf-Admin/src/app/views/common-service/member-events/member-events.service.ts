@@ -12,6 +12,7 @@ export class MemberEventsService {
   private deletion: string;
   private activeEvents: string;
   private featuredEvents: string;
+  private toggleParticipant: string;
 
   constructor() {
     this.apiUrl = new BaseAPIUrl().getUrl(baseURLType);
@@ -20,6 +21,7 @@ export class MemberEventsService {
     this.deletion = this.apiUrl + "event/0/deletion/";
     this.activeEvents = this.apiUrl + "event/active_events/";
     this.featuredEvents = this.apiUrl + "event/featured_events/";
+    this.toggleParticipant = this.apiUrl + "event/0/toggle_participant/";
   }
 
   listEvent(id: string = '0') {
@@ -44,5 +46,9 @@ export class MemberEventsService {
 
   getEventBySlug(slug: string) {
     return axios.get(`${this.apiUrl}event/${slug}/by_slug/`);
+  }
+
+  toggleParticipantStatus(id: string) {
+    return axios.post(this.toggleParticipant.replace('0', id));
   }
 }

@@ -29,36 +29,31 @@ interface EventOption {
 
 interface EventData {
   id?: number;
-  title: string;
-  date: string;
-  location: string;
-  main_image?: string;
-  image_1?: string;
-  image_2?: string;
-  image_3?: string;
-  image_4?: string;
-  description: string;
-  additional_info?: string;
-  activities_description: string;
-  additional_activities?: string;
-  organizer: string;
-  start_date: string;
-  end_date: string;
-  time: string;
-  cost: string;
-  venue: string;
-  address: string;
-  email: string;
-  phone: string;
-  website?: string;
-  event_options: EventOption[];
+  EventTitle: string;
+  EventDate: string;
+  EventVenue: string;
+  EventEntryPrice: string;
+  EventImage?: string;
+  EventDetails: string;
+  EventDetailimageOne?: string;
+  EventDetailimageTwo?: string;
+  EventActivities: string;
+  EventActivitiesimageOne?: string;
+  EventActivitiesimageTwo?: string;
+  EventDetailOrganizer: string;
+  EventEndDate: string;
+  EventTime: string;
+  EventEmail: string;
+  EventPhone: string;
+  EventParticipantButton: boolean;
   is_active: boolean;
   is_featured: boolean;
   meta_description?: string;
   slug?: string;
   hideStatus: number;
-  mainImageUrl?: string;
-  additionalImages?: string[];
+  EventImageUrl?: string;
+  EventDetailImages?: string[];
+  EventActivitiesImages?: string[];
 }
 
 @Component({
@@ -99,7 +94,8 @@ export class CreateEventsComponent implements OnInit {
   isEditMode = false;
   eventId: string | null = null;
   hasExistingData = false;
-  defaultEventOptions: EventOption[] = [
+  eventOptions: Array<{value: string, label: string}> = [];
+  defaultEventOptions: Array<{value: string, label: string}> = [
     { value: '1', label: 'Courses & Instructors' },
     { value: '2', label: 'Golf Accommodation' },
     { value: '3', label: 'Fitness Center' },
@@ -119,33 +115,28 @@ export class CreateEventsComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForm();
     this.checkEditMode();
+    this.initializeDefaultEventOptions();
   }
 
   private initializeForm(): void {
     this.eventForm = this.formBuilder.group({
-      title: ['', [Validators.required, Validators.maxLength(255)]],
-      date: ['', [Validators.required, Validators.maxLength(50)]],
-      location: ['', [Validators.required, Validators.maxLength(255)]],
-      main_image: [null],
-      image_1: [null],
-      image_2: [null],
-      image_3: [null],
-      image_4: [null],
-      description: ['', [Validators.required]],
-      additional_info: [''],
-      activities_description: ['', [Validators.required]],
-      additional_activities: [''],
-      organizer: ['', [Validators.required, Validators.maxLength(255)]],
-      start_date: ['', [Validators.required]],
-      end_date: ['', [Validators.required]],
-      time: ['', [Validators.required, Validators.maxLength(50)]],
-      cost: ['', [Validators.required, Validators.maxLength(50)]],
-      venue: ['', [Validators.required, Validators.maxLength(255)]],
-      address: ['', [Validators.required]],
-      email: ['', [Validators.required, Validators.email]],
-      phone: ['', [Validators.required, Validators.maxLength(50)]],
-      website: [''],
-      event_options: [this.defaultEventOptions],
+      EventTitle: ['', [Validators.required, Validators.maxLength(255)]],
+      EventDate: ['', [Validators.required, Validators.maxLength(50)]],
+      EventVenue: ['', [Validators.required, Validators.maxLength(255)]],
+      EventEntryPrice: ['', [Validators.required, Validators.maxLength(50)]],
+      EventImage: [null],
+      EventDetails: ['', [Validators.required]],
+      EventDetailimageOne: [null],
+      EventDetailimageTwo: [null],
+      EventActivities: ['', [Validators.required]],
+      EventActivitiesimageOne: [null],
+      EventActivitiesimageTwo: [null],
+      EventDetailOrganizer: ['', [Validators.required, Validators.maxLength(255)]],
+      EventEndDate: ['', [Validators.required]],
+      EventTime: ['', [Validators.required, Validators.maxLength(50)]],
+      EventEmail: ['', [Validators.required, Validators.email]],
+      EventPhone: ['', [Validators.required, Validators.maxLength(50)]],
+      EventParticipantButton: [false],
       is_active: [true],
       is_featured: [false],
       meta_description: ['', [Validators.maxLength(160)]],
@@ -173,24 +164,18 @@ export class CreateEventsComponent implements OnInit {
         
         // Update form with existing data
         this.eventForm.patchValue({
-          title: eventData.title || '',
-          date: eventData.date || '',
-          location: eventData.location || '',
-          description: eventData.description || '',
-          additional_info: eventData.additional_info || '',
-          activities_description: eventData.activities_description || '',
-          additional_activities: eventData.additional_activities || '',
-          organizer: eventData.organizer || '',
-          start_date: eventData.start_date || '',
-          end_date: eventData.end_date || '',
-          time: eventData.time || '',
-          cost: eventData.cost || '',
-          venue: eventData.venue || '',
-          address: eventData.address || '',
-          email: eventData.email || '',
-          phone: eventData.phone || '',
-          website: eventData.website || '',
-          event_options: eventData.event_options || this.defaultEventOptions,
+          EventTitle: eventData.EventTitle || '',
+          EventDate: eventData.EventDate || '',
+          EventVenue: eventData.EventVenue || '',
+          EventEntryPrice: eventData.EventEntryPrice || '',
+          EventDetails: eventData.EventDetails || '',
+          EventActivities: eventData.EventActivities || '',
+          EventDetailOrganizer: eventData.EventDetailOrganizer || '',
+          EventEndDate: eventData.EventEndDate || '',
+          EventTime: eventData.EventTime || '',
+          EventEmail: eventData.EventEmail || '',
+          EventPhone: eventData.EventPhone || '',
+          EventParticipantButton: eventData.EventParticipantButton !== undefined ? eventData.EventParticipantButton : false,
           is_active: eventData.is_active !== undefined ? eventData.is_active : true,
           is_featured: eventData.is_featured !== undefined ? eventData.is_featured : false,
           meta_description: eventData.meta_description || '',
@@ -199,14 +184,21 @@ export class CreateEventsComponent implements OnInit {
         });
 
         // Set image previews
-        if (eventData.mainImageUrl) {
-          this.imagePreview = eventData.mainImageUrl;
+        if (eventData.EventImageUrl) {
+          this.imagePreview = eventData.EventImageUrl;
         }
 
-        // Set additional image previews
-        if (eventData.additionalImages) {
-          eventData.additionalImages.forEach((url: string, index: number) => {
-            this.additionalImagePreviews[`image_${index + 1}`] = url;
+        // Set detail image previews
+        if (eventData.EventDetailImages) {
+          eventData.EventDetailImages.forEach((url: string, index: number) => {
+            this.additionalImagePreviews[`EventDetailimage${index === 0 ? 'One' : 'Two'}`] = url;
+          });
+        }
+
+        // Set activities image previews
+        if (eventData.EventActivitiesImages) {
+          eventData.EventActivitiesImages.forEach((url: string, index: number) => {
+            this.additionalImagePreviews[`EventActivitiesimage${index === 0 ? 'One' : 'Two'}`] = url;
           });
         }
       }
@@ -226,7 +218,7 @@ export class CreateEventsComponent implements OnInit {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files[0]) {
       this.selectedFile = target.files[0];
-      this.eventForm.patchValue({ main_image: this.selectedFile });
+      this.eventForm.patchValue({ EventImage: this.selectedFile });
       
       // Create preview
       const reader = new FileReader();
@@ -255,7 +247,7 @@ export class CreateEventsComponent implements OnInit {
   removeMainImage(): void {
     this.selectedFile = null;
     this.imagePreview = null;
-    this.eventForm.patchValue({ main_image: null });
+    this.eventForm.patchValue({ EventImage: null });
   }
 
   removeAdditionalImage(imageField: string): void {
@@ -264,21 +256,7 @@ export class CreateEventsComponent implements OnInit {
     this.eventForm.patchValue({ [imageField]: null });
   }
 
-  addEventOption(): void {
-    const currentOptions = this.eventForm.get('event_options')?.value || [];
-    const newOption = { value: '', label: '' };
-    this.eventForm.patchValue({
-      event_options: [...currentOptions, newOption]
-    });
-  }
 
-  removeEventOption(index: number): void {
-    const currentOptions = this.eventForm.get('event_options')?.value || [];
-    currentOptions.splice(index, 1);
-    this.eventForm.patchValue({
-      event_options: currentOptions
-    });
-  }
 
   get f() {
     return this.eventForm.controls;
@@ -299,9 +277,7 @@ export class CreateEventsComponent implements OnInit {
 
       // Add all form fields to FormData
       Object.keys(formValue).forEach(key => {
-        if (key === 'event_options') {
-          formData.append(key, JSON.stringify(formValue[key]));
-        } else if (key === 'is_active' || key === 'is_featured') {
+        if (key === 'is_active' || key === 'is_featured' || key === 'EventParticipantButton') {
           formData.append(key, formValue[key] ? 'true' : 'false');
         } else if (formValue[key] !== null && formValue[key] !== undefined && formValue[key] !== '') {
           formData.append(key, formValue[key]);
@@ -310,7 +286,7 @@ export class CreateEventsComponent implements OnInit {
 
       // Add main image if selected
       if (this.selectedFile) {
-        formData.append('main_image', this.selectedFile);
+        formData.append('EventImage', this.selectedFile);
       }
 
       // Add additional images if selected
@@ -405,11 +381,11 @@ export class CreateEventsComponent implements OnInit {
     this.additionalImagePreviews = {};
     this.selectedAdditionalFiles = {};
     this.eventForm.reset({
-      event_options: this.defaultEventOptions,
       is_active: true,
       is_featured: false,
       hideStatus: 0
     });
+    this.initializeDefaultEventOptions();
   }
 
   isFieldInvalid(fieldName: string): boolean {
@@ -435,5 +411,21 @@ export class CreateEventsComponent implements OnInit {
 
   getSafeHtml(html: string): SafeHtml {
     return this.domSanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  navigateToEvents(): void {
+    this.router.navigate(['/events']);
+  }
+
+  private initializeDefaultEventOptions(): void {
+    this.eventOptions = [...this.defaultEventOptions];
+  }
+
+  addEventOption(): void {
+    this.eventOptions.push({ value: '', label: '' });
+  }
+
+  removeEventOption(index: number): void {
+    this.eventOptions.splice(index, 1);
   }
 }

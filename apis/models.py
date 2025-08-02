@@ -479,45 +479,33 @@ class AboutModel(models.Model):
 
 class EventModel(models.Model):
     # Basic Information
-    title = models.CharField(max_length=255, help_text="Event title")
-    date = models.CharField(max_length=50, help_text="Display date (e.g., '22 August')")
-    location = models.CharField(max_length=255, help_text="Event location")
+    EventTitle = models.CharField(max_length=255, help_text="Event title")
+    EventDate = models.CharField(max_length=50, help_text="Display date (e.g., '22 August')")
+    EventVenue = models.CharField(max_length=255, help_text="Event venue", default="TBD")
+    EventEntryPrice = models.CharField(max_length=50, help_text="Event entry price (e.g., '$60')", default="$0")
     
-    # Images
-    main_image = models.ImageField(upload_to='events/main/', help_text="Main event image")
-    image_1 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 1")
-    image_2 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 2")
-    image_3 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 3")
-    image_4 = models.ImageField(upload_to='events/gallery/', blank=True, null=True, help_text="Additional image 4")
+    # Main Event Image
+    EventImage = models.ImageField(upload_to='events/main/', help_text="Main event image")
     
-    # Event Content
-    description = models.TextField(help_text="Main event description")
-    additional_info = models.TextField(blank=True, null=True, help_text="Additional information about the event")
+    # Event Details Section
+    EventDetails = HTMLField(help_text="Event details with rich text editor", default="")
+    EventDetailimageOne = models.ImageField(upload_to='events/details/', blank=True, null=True, help_text="Event detail image 1")
+    EventDetailimageTwo = models.ImageField(upload_to='events/details/', blank=True, null=True, help_text="Event detail image 2")
     
-    # Activities Section
-    activities_description = models.TextField(help_text="Description of activities and features")
-    additional_activities = models.TextField(blank=True, null=True, help_text="Additional activities information")
+    # Event Activities Section
+    EventActivities = HTMLField(help_text="Event activities with rich text editor", default="")
+    EventActivitiesimageOne = models.ImageField(upload_to='events/activities/', blank=True, null=True, help_text="Event activities image 1")
+    EventActivitiesimageTwo = models.ImageField(upload_to='events/activities/', blank=True, null=True, help_text="Event activities image 2")
     
     # Event Details
-    organizer = models.CharField(max_length=255, help_text="Event organizer name")
-    start_date = models.DateField(help_text="Event start date")
-    end_date = models.DateField(help_text="Event end date")
-    time = models.CharField(max_length=50, help_text="Event time (e.g., '12:00 PM')")
-    cost = models.CharField(max_length=50, help_text="Event cost (e.g., '$60')")
+    EventDetailOrganizer = models.CharField(max_length=255, help_text="Event organizer name")
+    EventEndDate = models.DateField(help_text="Event end date")
+    EventTime = models.CharField(max_length=50, help_text="Event time (e.g., '12:00 PM')")
+    EventEmail = models.EmailField(help_text="Contact email")
+    EventPhone = models.CharField(max_length=50, help_text="Contact phone number")
     
-    # Venue Information
-    venue = models.CharField(max_length=255, help_text="Venue name")
-    address = models.TextField(help_text="Venue address")
-    email = models.EmailField(help_text="Contact email")
-    phone = models.CharField(max_length=50, help_text="Contact phone number")
-    website = models.URLField(blank=True, null=True, help_text="Venue website")
-    
-    # Event Options (stored as JSON for the dropdown)
-    event_options = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="Event options for contact form dropdown as JSON array"
-    )
+    # Participant Button
+    EventParticipantButton = models.BooleanField(default=False, help_text="When clicked, marks that member is willing to participate")
     
     # Status and Visibility
     is_active = models.BooleanField(default=True, help_text="Is event active/visible")
@@ -533,43 +521,39 @@ class EventModel(models.Model):
     hideStatus = models.IntegerField(default=0)
     
     class Meta:
-        ordering = ['-start_date', '-createdAt']
+        ordering = ['-EventEndDate', '-createdAt']
         verbose_name = "Event"
         verbose_name_plural = "Events"
     
     def __str__(self):
-        return self.title
+        return self.EventTitle
     
     def save(self, *args, **kwargs):
         # Auto-generate slug from title if not provided
         if not self.slug:
             from django.utils.text import slugify
-            self.slug = slugify(self.title)
+            self.slug = slugify(self.EventTitle)
         super().save(*args, **kwargs)
     
     @property
-    def additional_images(self):
-        """Return list of additional images that are not None"""
+    def detail_images(self):
+        """Return list of detail images that are not None"""
         images = []
-        for i in range(1, 5):  # image_1 to image_4
-            img = getattr(self, f'image_{i}')
-            if img:
-                images.append(img.url)
+        if self.EventDetailimageOne:
+            images.append(self.EventDetailimageOne.url)
+        if self.EventDetailimageTwo:
+            images.append(self.EventDetailimageTwo.url)
         return images
     
     @property
-    def formatted_event_options(self):
-        """Return formatted event options for frontend"""
-        if not self.event_options:
-            return [
-                {'value': '1', 'label': 'Courses & Instructors'},
-                {'value': '2', 'label': 'Golf Accommodation'},
-                {'value': '3', 'label': 'Fitness Center'},
-                {'value': '4', 'label': 'Golf Practice'},
-                {'value': '5', 'label': 'Skill Development'},
-                {'value': '6', 'label': 'Basic Foundation'}
-            ]
-        return self.event_options
+    def activities_images(self):
+        """Return list of activities images that are not None"""
+        images = []
+        if self.EventActivitiesimageOne:
+            images.append(self.EventActivitiesimageOne.url)
+        if self.EventActivitiesimageTwo:
+            images.append(self.EventActivitiesimageTwo.url)
+        return images
     
     def get_absolute_url(self):
         """Return absolute URL for the event"""

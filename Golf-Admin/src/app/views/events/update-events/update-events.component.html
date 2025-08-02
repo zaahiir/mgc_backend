@@ -1,61 +1,234 @@
-<c-row ngPreserveWhitespaces>
-    <c-col xs="12">
-      <c-card class="mb-4">
-        <c-card-header>
-          <strong>Update New Event</strong>
-        </c-card-header>
-        <c-card-body>
-          <form [formGroup]="eventForm" (ngSubmit)="onSubmit()" cForm class="row g-3 needs-validation">
-            <c-col [cFormFloating]="true" md="6">
-              <input cFormControl id="eventName" formControlName="eventName" required type="text" placeholder="Event Name" />
-              <label cLabel for="eventName" class="ms-2">Event Name</label>
-              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('eventName')">
-                {{ getErrorMessage('eventName') }}
-              </c-form-feedback>
-            </c-col>
-  
-            <c-col [cFormFloating]="true" md="6">
-              <input cFormControl id="eventDate" formControlName="eventDate" required type="date" placeholder="Event Date" />
-              <label cLabel for="eventDate" class="ms-2">Event Date</label>
-              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('eventDate')">
-                {{ getErrorMessage('eventDate') }}
-              </c-form-feedback>
-            </c-col>
-  
-            <c-col [cFormFloating]="true" md="6">
-              <input cFormControl id="eventTime" formControlName="eventTime" required type="time" placeholder="Event Time" />
-              <label cLabel for="eventTime" class="ms-2">Event Time</label>
-              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('eventTime')">
-                {{ getErrorMessage('eventTime') }}
-              </c-form-feedback>
-            </c-col>
-  
-            <c-col [cFormFloating]="true" md="6">
-              <input cFormControl id="eventLocation" formControlName="eventLocation" required type="text" placeholder="Event Location" />
-              <label cLabel for="eventLocation" class="ms-2">Event Location</label>
-              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('eventLocation')">
-                {{ getErrorMessage('eventLocation') }}
-              </c-form-feedback>
-            </c-col>
-  
-            <c-col [cFormFloating]="true" md="12">
-              <textarea cFormControl id="eventDescription" formControlName="eventDescription" required rows="3" placeholder="Event Description"></textarea>
-              <label cLabel for="eventDescription" class="ms-2">Event Description</label>
-              <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('eventDescription')">
-                {{ getErrorMessage('eventDescription') }}
-              </c-form-feedback>
-            </c-col>
-  
-            <c-col xs="12">
-              <button cButton class="me-1" color="primary" type="submit" [disabled]="loading">
-                {{ loading ? 'Saving...' : 'Save Event' }}
+<!-- Loading Spinner -->
+<div *ngIf="loading" class="text-center py-4">
+  <div class="spinner-border" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+</div>
+
+<c-row ngPreserveWhitespaces *ngIf="!loading">
+  <c-col xs="12">
+    <c-card class="mb-4">
+      <c-card-header>
+        <strong>{{ isEditMode ? 'Update Event' : 'Create New Event' }}</strong>
+      </c-card-header>
+      <c-card-body>
+        <form [formGroup]="eventForm" (ngSubmit)="onSubmit()" cForm class="row g-3 needs-validation">
+          
+          <!-- Basic Information -->
+          <c-col xs="12">
+            <h5>Basic Information</h5>
+          </c-col>
+          
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="title" formControlName="title" required type="text" placeholder="Event Title" />
+            <label cLabel for="title" class="ms-2">Event Title *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('title')">
+              {{ getErrorMessage('title') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="date" formControlName="date" required type="text" placeholder="Display Date (e.g., 22 August)" />
+            <label cLabel for="date" class="ms-2">Display Date *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('date')">
+              {{ getErrorMessage('date') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="location" formControlName="location" required type="text" placeholder="Event Location" />
+            <label cLabel for="location" class="ms-2">Event Location *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('location')">
+              {{ getErrorMessage('location') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="time" formControlName="time" required type="text" placeholder="Event Time (e.g., 12:00 PM)" />
+            <label cLabel for="time" class="ms-2">Event Time *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('time')">
+              {{ getErrorMessage('time') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="description" formControlName="description" required rows="3" placeholder="Event Description"></textarea>
+            <label cLabel for="description" class="ms-2">Event Description *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('description')">
+              {{ getErrorMessage('description') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="additional_info" formControlName="additional_info" rows="3" placeholder="Additional Information"></textarea>
+            <label cLabel for="additional_info" class="ms-2">Additional Information</label>
+          </c-col>
+
+          <!-- Event Details -->
+          <c-col xs="12">
+            <h5>Event Details</h5>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="organizer" formControlName="organizer" required type="text" placeholder="Event Organizer" />
+            <label cLabel for="organizer" class="ms-2">Event Organizer *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('organizer')">
+              {{ getErrorMessage('organizer') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="cost" formControlName="cost" required type="text" placeholder="Event Cost (e.g., $60)" />
+            <label cLabel for="cost" class="ms-2">Event Cost *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('cost')">
+              {{ getErrorMessage('cost') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="start_date" formControlName="start_date" required type="date" placeholder="Start Date" />
+            <label cLabel for="start_date" class="ms-2">Start Date *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('start_date')">
+              {{ getErrorMessage('start_date') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="end_date" formControlName="end_date" required type="date" placeholder="End Date" />
+            <label cLabel for="end_date" class="ms-2">End Date *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('end_date')">
+              {{ getErrorMessage('end_date') }}
+            </c-form-feedback>
+          </c-col>
+
+          <!-- Activities Section -->
+          <c-col xs="12">
+            <h5>Activities & Features</h5>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="activities_description" formControlName="activities_description" required rows="3" placeholder="Activities Description"></textarea>
+            <label cLabel for="activities_description" class="ms-2">Activities Description *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('activities_description')">
+              {{ getErrorMessage('activities_description') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="additional_activities" formControlName="additional_activities" rows="3" placeholder="Additional Activities"></textarea>
+            <label cLabel for="additional_activities" class="ms-2">Additional Activities</label>
+          </c-col>
+
+          <!-- Venue Information -->
+          <c-col xs="12">
+            <h5>Venue Information</h5>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="venue" formControlName="venue" required type="text" placeholder="Venue Name" />
+            <label cLabel for="venue" class="ms-2">Venue Name *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('venue')">
+              {{ getErrorMessage('venue') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="phone" formControlName="phone" required type="text" placeholder="Contact Phone" />
+            <label cLabel for="phone" class="ms-2">Contact Phone *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('phone')">
+              {{ getErrorMessage('phone') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="email" formControlName="email" required type="email" placeholder="Contact Email" />
+            <label cLabel for="email" class="ms-2">Contact Email *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('email')">
+              {{ getErrorMessage('email') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="website" formControlName="website" type="url" placeholder="Venue Website" />
+            <label cLabel for="website" class="ms-2">Venue Website</label>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="address" formControlName="address" required rows="3" placeholder="Venue Address"></textarea>
+            <label cLabel for="address" class="ms-2">Venue Address *</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('address')">
+              {{ getErrorMessage('address') }}
+            </c-form-feedback>
+          </c-col>
+
+          <!-- Event Options -->
+          <c-col xs="12">
+            <h5>Event Options</h5>
+            <p class="text-muted">Add options for the contact form dropdown</p>
+          </c-col>
+
+          <c-col xs="12">
+            <div class="mb-3">
+              <button type="button" cButton color="info" size="sm" (click)="addEventOption()">
+                Add Option
               </button>
-              <button (click)="onReset()" cButton color="secondary" type="button" [disabled]="loading">
-                Reset Form
-              </button>
-            </c-col>
-          </form>
-        </c-card-body>
-      </c-card>
-    </c-col>
-  </c-row>
+            </div>
+            
+            <div *ngFor="let option of eventOptions; let i = index" class="row g-2 mb-2">
+              <c-col md="4">
+                <input cFormControl [id]="'option_value_' + i" type="text" placeholder="Value" 
+                       [(ngModel)]="option.value" [ngModelOptions]="{standalone: true}" />
+              </c-col>
+              <c-col md="6">
+                <input cFormControl [id]="'option_label_' + i" type="text" placeholder="Label" 
+                       [(ngModel)]="option.label" [ngModelOptions]="{standalone: true}" />
+              </c-col>
+              <c-col md="2">
+                <button type="button" cButton color="danger" size="sm" (click)="removeEventOption(i)">
+                  Remove
+                </button>
+              </c-col>
+            </div>
+          </c-col>
+
+          <!-- SEO & Settings -->
+          <c-col xs="12">
+            <h5>SEO & Settings</h5>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="12">
+            <textarea cFormControl id="meta_description" formControlName="meta_description" rows="2" placeholder="SEO Meta Description (max 160 characters)"></textarea>
+            <label cLabel for="meta_description" class="ms-2">SEO Meta Description</label>
+          </c-col>
+
+          <c-col md="6">
+            <div class="form-check">
+              <input cFormControl id="is_active" formControlName="is_active" type="checkbox" class="form-check-input" />
+              <label cLabel for="is_active" class="form-check-label">Active Event</label>
+            </div>
+          </c-col>
+
+          <c-col md="6">
+            <div class="form-check">
+              <input cFormControl id="is_featured" formControlName="is_featured" type="checkbox" class="form-check-input" />
+              <label cLabel for="is_featured" class="form-check-label">Featured Event</label>
+            </div>
+          </c-col>
+
+          <!-- Submit Buttons -->
+          <c-col xs="12">
+            <button cButton class="me-1" color="primary" type="submit" [disabled]="loading">
+              {{ loading ? 'Saving...' : (isEditMode ? 'Update Event' : 'Create Event') }}
+            </button>
+            <button (click)="onReset()" cButton color="secondary" type="button" [disabled]="loading">
+              Reset Form
+            </button>
+            <a cButton color="info" [routerLink]="['/events']" class="ms-1">
+              Back to Events
+            </a>
+          </c-col>
+        </form>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>

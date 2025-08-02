@@ -2418,7 +2418,7 @@ class EventViewSet(viewsets.ModelViewSet):
         if is_featured is not None:
             queryset = queryset.filter(is_featured=is_featured.lower() == 'true')
         
-        return queryset.order_by('-start_date', '-createdAt')
+        return queryset.order_by('-EventEndDate', '-createdAt')
     
     @action(detail=True, methods=['GET'])
     def listing(self, request, pk=None):
@@ -2505,7 +2505,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def active_events(self, request):
         """Get all active events"""
         try:
-            events = EventModel.objects.filter(hideStatus=0, is_active=True).order_by('-start_date')
+            events = EventModel.objects.filter(hideStatus=0, is_active=True).order_by('-EventEndDate')
             serializer = self.get_serializer(events, many=True)
             return Response({
                 'status': 'success',
@@ -2522,7 +2522,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def featured_events(self, request):
         """Get featured events"""
         try:
-            events = EventModel.objects.filter(hideStatus=0, is_featured=True, is_active=True).order_by('-start_date')
+            events = EventModel.objects.filter(hideStatus=0, is_featured=True, is_active=True).order_by('-EventEndDate')
             serializer = self.get_serializer(events, many=True)
             return Response({
                 'status': 'success',
@@ -2545,6 +2545,32 @@ class EventViewSet(viewsets.ModelViewSet):
                 'status': 'success',
                 'message': 'Event details retrieved successfully',
                 'data': serializer.data
+            })
+        except EventModel.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Event not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+    
+    @action(detail=True, methods=['POST'])
+    def toggle_participant(self, request, pk=None):
+        """Toggle participant button for an event"""
+        try:
+            event = EventModel.objects.get(id=pk, hideStatus=0)
+            event.EventParticipantButton = not event.EventParticipantButton
+            event.save()
+            
+            return Response({
+                'status': 'success',
+                'message': f'Participant status updated to {"Willing to participate" if event.EventParticipantButton else "Not participating"}',
+                'data': {
+                    'EventParticipantButton': event.EventParticipantButton
+                }
             })
         except EventModel.DoesNotExist:
             return Response({

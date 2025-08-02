@@ -22,7 +22,7 @@ export const eventsRoutes: Routes = [
         },
       },
       {
-        path: 'update',
+        path: 'update/:id',
         loadComponent: () => import('./update-events/update-events.component').then(m => m.UpdateEventsComponent),
         data: {
           title: 'Update Events'
