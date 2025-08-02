@@ -4,6 +4,9 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { 
   faShare, faHashtag, faImage, faGlobe, faLink
 } from '@fortawesome/free-solid-svg-icons';
+import { 
+  faFacebookF, faInstagram, faXTwitter 
+} from '@fortawesome/free-brands-svg-icons';
 import { MemberTeamService } from '../common-service/member-team/member-team.service';
 
 interface Instructor {
@@ -30,11 +33,11 @@ interface Protocol {
   styleUrl: './members-team.component.css'
 })
 export class MembersTeamComponent implements OnInit {
-  // Social media icons using solid icons as placeholders
-  facebookIcon = faGlobe;
-  twitterIcon = faHashtag;
-  xTwitterIcon = faHashtag;
-  instagramIcon = faImage;
+  // Social media icons using brand icons
+  facebookIcon = faFacebookF;
+  twitterIcon = faXTwitter;
+  xTwitterIcon = faXTwitter;
+  instagramIcon = faInstagram;
 
   teamMembers: Instructor[] = [];
   protocols: Protocol[] = [];
