@@ -620,14 +620,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(119, 169, 106, 0.1);
+  padding: 8px 0;
   font-size: 14px;
   line-height: 1.5;
-}
-
-.info-list li:last-child {
-  border-bottom: none;
 }
 
 .info-list li span {
@@ -653,8 +648,7 @@
   background: #fff;
   border-radius: 15px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-  padding: 25px;
-  margin-bottom: 25px;
+  padding: 15px;
   border: 1px solid rgba(119, 169, 106, 0.1);
 }
 
@@ -664,9 +658,7 @@
   font-size: 20px;
   font-weight: 700;
   color: var(--title-color);
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid rgba(119, 169, 106, 0.2);
+  margin-bottom: 15px;
 }
 
 /* Enhanced Button Styles */

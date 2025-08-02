@@ -25,13 +25,13 @@ export class HomeComponent implements OnInit {
     {
       title: 'Golf Events',
       description: 'Join our professional golf training programs',
-      route: '/events',
+      route: '/membersEvents',
       imageSrc: 'assets/images/service/service-2.jpg'
     },
     {
-      title: 'collection Plus',
+      title: 'Golf News',
       description: 'Professional golf equipment for enthusiasts',
-      route: '/collectionPlus',
+      route: '/membersNews',
       imageSrc: 'assets/images/service/service-4.jpg'
     }
   ];

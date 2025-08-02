@@ -62,15 +62,15 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-calendar' }
   },
   {
+    name: 'Team',
+    url: '/team',
+    iconComponent: { name: 'cil-star' }
+  },
+  {
     name: 'Contact',
     url: '/contact',
     iconComponent: { name: 'cil-credit-card' }
   },
-  // {
-  //   name: 'Tournament',
-  //   url: '/tournament',
-  //   iconComponent: { name: 'cil-star' }
-  // },
   // {
   //   name: 'Coupon',
   //   url: '/coupon',
