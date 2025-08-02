@@ -88,10 +88,9 @@
                   <h3><a href="#">{{ member.instructorName }}</a></h3>
                   <span class="team-designation">{{ member.instructorPosition }}</span>
                   <ul class="social-links">
-                    <li><a [href]="getSocialLinks(member).facebook" target="_blank"><i class="fab fa-facebook-f"></i></a></li>
-                    <li><a [href]="getSocialLinks(member).twitter" target="_blank"><i class="fab fa-twitter"></i></a></li>
-                    <li><a [href]="getSocialLinks(member).instagram" target="_blank"><i class="fab fa-instagram"></i></a></li>
-                    <li><a [href]="getSocialLinks(member).linkedin" target="_blank"><i class="fab fa-linkedin-in"></i></a></li>
+                    <li><a [href]="getSocialLinks(member).facebook" target="_blank" title="Facebook"><fa-icon [icon]="facebookIcon"></fa-icon></a></li>
+                    <li><a [href]="getSocialLinks(member).twitter" target="_blank" title="X (Twitter)"><fa-icon [icon]="xTwitterIcon"></fa-icon></a></li>
+                    <li><a [href]="getSocialLinks(member).instagram" target="_blank" title="Instagram"><fa-icon [icon]="instagramIcon"></fa-icon></a></li>
                   </ul>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 /* CSS Custom Properties */
 :root {
-  --theme-color: #1e7e34;
-  --secondary-color: #28a745;
+  --theme-color: #77A96A;
+  --secondary-color: #1C403D;
   --title-color: #2c3e50;
   --text-color: #6c757d;
   --font-sans: 'Playfair Display', serif;
@@ -568,7 +568,7 @@
   width: 44px;
   height: 44px;
   font-size: 16px;
-  color: #8D9E9F;
+  color: var(--theme-color);
   border-radius: 50%;
   border: 1px solid #E5E5E5;
   transition: all 0.3s ease;

@@ -1,5 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { 
+  faShare, faHashtag, faImage, faGlobe, faLink
+} from '@fortawesome/free-solid-svg-icons';
 import { MemberTeamService } from '../common-service/member-team/member-team.service';
 
 interface Instructor {
@@ -21,11 +25,17 @@ interface Protocol {
 @Component({
   selector: 'app-members-team',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FontAwesomeModule],
   templateUrl: './members-team.component.html',
   styleUrl: './members-team.component.css'
 })
 export class MembersTeamComponent implements OnInit {
+  // Social media icons using solid icons as placeholders
+  facebookIcon = faGlobe;
+  twitterIcon = faHashtag;
+  xTwitterIcon = faHashtag;
+  instagramIcon = faImage;
+
   teamMembers: Instructor[] = [];
   protocols: Protocol[] = [];
   loading: boolean = true;
