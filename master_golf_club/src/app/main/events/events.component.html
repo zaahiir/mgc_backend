@@ -1,133 +1,148 @@
 <!-- Master Event Component Template -->
 <section class="event-details pt_150 pb_150">
   <div class="auto-container">
-    <!-- Main Event Image -->
-    <figure class="big-image mb_70">
-      <img [src]="eventData.mainImage" [alt]="eventData.title">
-    </figure>
+    <!-- Loading State -->
+    <div *ngIf="loading" class="text-center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-3">Loading event details...</p>
+    </div>
 
-    <!-- Main Content Row -->
-    <div class="row">
-      <!-- Left Column - Event Details Content -->
-      <div class="col-lg-8 col-md-12 col-sm-12">
-        <div class="event-details-content mr_20">
-          <div class="content-one">
-            <!-- Event Info -->
-            <ul class="post-info">
-              <li><i class="icon-17"></i>{{ eventData.date }}</li>
-              <li><i class="icon-3"></i>{{ eventData.location }}</li>
-            </ul>
+    <!-- Error State -->
+    <div *ngIf="error && !loading" class="text-center">
+      <div class="alert alert-danger" role="alert">
+        {{ error }}
+      </div>
+      <button class="btn btn-primary" (click)="loadEventData()">Try Again</button>
+    </div>
 
-            <!-- Event Title -->
-            <h2>{{ eventData.title }}</h2>
+    <!-- Event Content -->
+    <div *ngIf="!loading && !error && eventData">
+      <!-- Main Event Image -->
+      <figure class="big-image mb_70">
+        <img [src]="getEventImageUrl(eventData)" [alt]="eventData.EventTitle">
+      </figure>
 
-            <!-- Event Description -->
-            <div class="text-box mb_60">
-              <p>{{ eventData.description }}</p>
-              <p>{{ eventData.additionalInfo }}</p>
-            </div>
+      <!-- Main Content Row -->
+      <div class="row">
+        <!-- Left Column - Event Details Content -->
+        <div class="col-lg-8 col-md-12 col-sm-12">
+          <div class="event-details-content mr_20">
+            <div class="content-one">
+              <!-- Event Info -->
+              <ul class="post-info">
+                <li><i class="icon-17"></i>{{ formatDate(eventData.EventDate) }}</li>
+                <li><i class="icon-3"></i>{{ eventData.EventVenue }}</li>
+              </ul>
 
-            <!-- Event Images -->
-            <div class="image-box">
-              <div class="row">
-                <div class="col-lg-6 col-md-6 col-sm-12" *ngFor="let image of eventData.images">
-                  <figure class="image mb_60">
-                    <img [src]="image" [alt]="eventData.title">
-                  </figure>
+              <!-- Event Title -->
+              <h2>{{ eventData.EventTitle }}</h2>
+
+              <!-- Event Description -->
+              <div class="text-box mb_60" *ngIf="eventData.EventDetails">
+                <div [innerHTML]="eventData.EventDetails"></div>
+              </div>
+
+              <!-- Event Activities Images -->
+              <div class="image-box" *ngIf="eventData.EventActivitiesImages && eventData.EventActivitiesImages.length > 0">
+                <div class="row">
+                  <div class="col-lg-6 col-md-6 col-sm-12" *ngFor="let image of eventData.EventActivitiesImages">
+                    <figure class="image mb_60">
+                      <img [src]="image" [alt]="eventData.EventTitle">
+                    </figure>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Activities Section -->
-          <div class="content-two">
-            <div class="text-box mb_60">
-              <h3>Activities and Features:</h3>
-              <p>{{ eventData.activitiesDescription }}</p>
-              <p>{{ eventData.additionalActivities }}</p>
+            <!-- Activities Section -->
+            <div class="content-two" *ngIf="eventData.EventActivities">
+              <div class="text-box mb_60">
+                <h3>Activities and Features:</h3>
+                <div [innerHTML]="eventData.EventActivities"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Right Column - Sidebar -->
-      <div class="col-lg-4 col-md-12 col-sm-12">
-        <div class="event-sidebar">
-          <!-- Event Details Widget -->
-          <div class="event-info sidebar-widget">
-            <div class="widget-title">
-              <h3>Event Details</h3>
+        <!-- Right Column - Sidebar -->
+        <div class="col-lg-4 col-md-12 col-sm-12">
+          <div class="event-sidebar">
+            <!-- Event Details Widget -->
+            <div class="event-info sidebar-widget">
+              <div class="widget-title">
+                <h3>Event Details</h3>
+              </div>
+              <ul class="info-list">
+                <li><span>Organizer :</span>{{ eventData.EventDetailOrganizer }}</li>
+                <li><span>Start Date :</span>{{ formatDate(eventData.EventDate) }}</li>
+                <li><span>End Date :</span>{{ formatDate(eventData.EventEndDate) }}</li>
+                <li><span>Time :</span>{{ eventData.EventTime }}</li>
+                <li><span>Cost :</span>{{ eventData.EventEntryPrice }}</li>
+              </ul>
             </div>
-            <ul class="info-list">
-              <li><span>Organizer :</span>{{ eventDetails.organizer }}</li>
-              <li><span>Start Date :</span>{{ eventDetails.startDate }}</li>
-              <li><span>End Date :</span>{{ eventDetails.endDate }}</li>
-              <li><span>Time :</span>{{ eventDetails.time }}</li>
-              <li><span>Cost :</span>{{ eventDetails.cost }}</li>
-            </ul>
-          </div>
 
-          <!-- Event Venue Widget -->
-          <div class="event-venue sidebar-widget">
-            <div class="widget-title">
-              <h3>Event Venue</h3>
+            <!-- Event Venue Widget -->
+            <div class="event-venue sidebar-widget">
+              <div class="widget-title">
+                <h3>Event Venue</h3>
+              </div>
+              <ul class="info-list">
+                <li><span>Venue :</span>{{ eventData.EventVenue }}</li>
+                <li><span>E-mail :</span><a [href]="'mailto:' + eventData.EventEmail">{{ eventData.EventEmail }}</a></li>
+                <li><span>Phone :</span><a [href]="'tel:' + eventData.EventPhone">{{ eventData.EventPhone }}</a></li>
+              </ul>
             </div>
-            <ul class="info-list">
-              <li><span>Venue :</span>{{ venueInfo.venue }}</li>
-              <li><span>Address :</span>{{ venueInfo.address }}</li>
-              <li><span>E-mail :</span><a [href]="'mailto:' + venueInfo.email">{{ venueInfo.email }}</a></li>
-              <li><span>Phone :</span><a [href]="'tel:' + venueInfo.phone">{{ venueInfo.phone }}</a></li>
-              <li><span>Website :</span><a [href]="venueInfo.website" target="_blank">{{ venueInfo.website }}</a></li>
-            </ul>
-          </div>
 
-          <!-- Contact Form Widget -->
-          <div class="form-inner">
-            <div class="widget-title">
-              <h3>Contact</h3>
-            </div>
-            <form (ngSubmit)="onSubmit()" #contactFormRef="ngForm">
-              <div class="form-group">
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Name"
-                  [(ngModel)]="contactForm.name"
-                  required
-                  #nameField="ngModel">
+            <!-- Interest Button Widget (for members) -->
+            <div class="form-inner" *ngIf="canShowInterestButton()">
+              <div class="widget-title">
+                <h3>Show Interest</h3>
               </div>
-              <div class="form-group">
-                <input
-                  type="text"
-                  name="phone"
-                  placeholder="Phone"
-                  [(ngModel)]="contactForm.phone"
-                  required
-                  #phoneField="ngModel">
-              </div>
-              <div class="form-group">
-                <select
-                  name="event"
-                  [(ngModel)]="contactForm.event"
-                  required
-                  #eventField="ngModel">
-                  <option value="">Select Event</option>
-                  <option
-                    *ngFor="let option of eventOptions"
-                    [value]="option.value">
-                    {{ option.label }}
-                  </option>
-                </select>
-              </div>
-              <div class="form-group pt_20">
-                <button
-                  type="submit"
-                  class="theme-btn btn-one"
-                  [disabled]="!contactFormRef.valid">
-                  Send now
+              <div class="text-center">
+                <p class="mb-3">Are you interested in this event?</p>
+                
+                <!-- Show Interest Button -->
+                <button 
+                  *ngIf="!isInterested()"
+                  type="button"
+                  class="theme-btn btn-one w-100"
+                  (click)="showInterest()"
+                  [disabled]="interestLoading">
+                  <span *ngIf="!interestLoading">Show Interest</span>
+                  <span *ngIf="interestLoading">Registering...</span>
                 </button>
+
+                <!-- Toggle Interest Button -->
+                <button 
+                  *ngIf="isInterested()"
+                  type="button"
+                  class="theme-btn btn-two w-100"
+                  (click)="toggleInterest()"
+                  [disabled]="interestLoading">
+                  <span *ngIf="!interestLoading">Remove Interest</span>
+                  <span *ngIf="interestLoading">Updating...</span>
+                </button>
+
+                <div *ngIf="isInterested()" class="mt-3">
+                  <small class="text-success">
+                    <i class="fas fa-check-circle"></i> You're interested in this event
+                  </small>
+                </div>
               </div>
-            </form>
+            </div>
+
+            <!-- Contact Form Widget (for non-members) -->
+            <div class="form-inner" *ngIf="!isMember">
+              <div class="widget-title">
+                <h3>Contact</h3>
+              </div>
+              <div class="text-center">
+                <p class="mb-3">Please log in as a member to show interest in this event.</p>
+                <a href="/login" class="theme-btn btn-one">Login</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

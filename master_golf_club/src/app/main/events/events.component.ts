@@ -1,6 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { EventsService, Event } from '../common-service/events/events.service';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-events',
@@ -9,77 +12,159 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './events.component.html',
   styleUrl: './events.component.css'
 })
-export class EventsComponent {
+export class EventsComponent implements OnInit {
+  eventId: number | null = null;
+  eventData: Event | null = null;
+  loading = true;
+  error = '';
+  isMember = false;
+  memberId: number | null = null;
+  interestLoading = false;
 
-  // Event data
-  eventData = {
-    title: 'Golf for Beginners Practice and Learning',
-    date: '22 August',
-    location: '6391 Elgin St. Celina',
-    mainImage: '../../../assets/images/resource/event-12.jpg',
-    images: [
-      '../../../assets/images/resource/event-13.jpg',
-      '../../../assets/images/resource/event-14.jpg'
-    ],
-    description: `Welcome to our vibrant and welcoming golf club, where every member is part of our close-knit community. Whether you're a seasoned golfer or just starting out, our club is the perfect place to hone your skills, enjoy the game, and connect with fellow golf enthusiasts.`,
-    additionalInfo: `At our club, we believe in creating a friendly and supportive environment that fosters camaraderie and sportsmanship. Our beautifully maintained course offers challenging yet enjoyable play for golfers of all levels, with stunning landscapes and well-designed fairways that make every round a delight.`,
-    activitiesDescription: `There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form, by injected humour, or randomised words which don't look even slightly believable. If you are going to use a passage of Lorem Ipsum, you need to be sure there isn't anything embarrassing hidden in the middle of text.`,
-    additionalActivities: `All the Lorem Ipsum generators on the Internet tend to repeat predefined chunks as necessary, making this the first true generator on the Internet. It uses a dictionary of over 200 Latin words, combined with a handful of model sentence structures, to generate Lorem Ipsum which looks reasonable. The generated Lorem Ipsum is therefore always free from repetition, injected humour.`
-  };
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private eventsService: EventsService,
+    private authService: AuthService
+  ) { }
 
-  // Event details
-  eventDetails = {
-    organizer: 'Devid Rock',
-    startDate: 'July 23, 2024',
-    endDate: 'July 25, 2024',
-    time: '12:00 PM',
-    cost: '$60'
-  };
+  ngOnInit(): void {
+    this.checkMemberStatus();
+    
+    // Subscribe to route parameters
+    this.route.params.subscribe(params => {
+      this.eventId = params['id'] ? parseInt(params['id']) : null;
+      
+      if (this.eventId) {
+        this.fetchEventData();
+      } else {
+        this.error = 'Event ID not found';
+        this.loading = false;
+      }
+    });
+  }
 
-  // Venue information
-  venueInfo = {
-    venue: 'Colf Club',
-    address: '12, Victoria St, Australia',
-    email: 'colfexample@.com',
-    phone: '+(1425) 8547-7592',
-    website: 'https://example.com'
-  };
+  private checkMemberStatus(): void {
+    const userType = this.authService.getUserType();
+    const userId = this.authService.getUserId();
+    
+    this.isMember = userType === 'member';
+    this.memberId = userId;
+  }
 
-  // Contact form data
-  contactForm = {
-    name: '',
-    phone: '',
-    event: ''
-  };
-
-  // Event options for dropdown
-  eventOptions = [
-    { value: '1', label: 'Courses & Instructors' },
-    { value: '2', label: 'Golf Accommodation' },
-    { value: '3', label: 'Fitness Center' },
-    { value: '4', label: 'Golf Practice' },
-    { value: '5', label: 'Skill Development' },
-    { value: '6', label: 'Basic Foundation' }
-  ];
-
-  // Form submission
-  onSubmit() {
-    if (this.contactForm.name && this.contactForm.phone && this.contactForm.event) {
-      console.log('Form submitted:', this.contactForm);
-      // Handle form submission logic here
-      alert('Contact form submitted successfully!');
-      this.resetForm();
+  async loadEventData(): Promise<void> {
+    this.loading = true;
+    this.error = '';
+    
+    if (this.eventId) {
+      await this.fetchEventData();
     } else {
-      alert('Please fill in all required fields.');
+      this.error = 'Event ID not found';
+      this.loading = false;
     }
   }
 
-  // Reset form
-  resetForm() {
-    this.contactForm = {
-      name: '',
-      phone: '',
-      event: ''
-    };
+  private async fetchEventData(): Promise<void> {
+    if (!this.eventId) return;
+
+    try {
+      // Fetch event details
+      const response = await this.eventsService.getEventDetails(this.eventId);
+      
+      if (response.data && response.data.status === 'success') {
+        this.eventData = response.data.data;
+      } else if (response.data) {
+        this.eventData = response.data;
+      } else {
+        this.error = 'Failed to load event data';
+      }
+
+      this.loading = false;
+    } catch (error: any) {
+      console.error('Error loading event:', error);
+      this.error = 'Failed to load event details';
+      this.loading = false;
+    }
+  }
+
+  async showInterest(): Promise<void> {
+    if (!this.isMember || !this.eventId) {
+      return;
+    }
+
+    this.interestLoading = true;
+
+    try {
+      const response = await this.eventsService.showInterest(this.eventId);
+      
+      if (response.data && response.data.status === 'success') {
+        // Update the event data to reflect the new interest status
+        if (this.eventData) {
+          this.eventData.memberInterest = {
+            is_interested: true,
+            interest_id: response.data.data?.id || null
+          };
+        }
+        alert('Interest registered successfully!');
+      } else {
+        alert('Failed to register interest. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error showing interest:', error);
+      alert('Failed to register interest. Please try again.');
+    } finally {
+      this.interestLoading = false;
+    }
+  }
+
+  async toggleInterest(): Promise<void> {
+    if (!this.isMember || !this.eventData?.memberInterest?.interest_id) {
+      return;
+    }
+
+    this.interestLoading = true;
+
+    try {
+      const response = await this.eventsService.toggleInterest(this.eventData.memberInterest.interest_id);
+      
+      if (response.data && response.data.status === 'success') {
+        // Update the event data to reflect the new interest status
+        if (this.eventData && this.eventData.memberInterest) {
+          this.eventData.memberInterest.is_interested = !this.eventData.memberInterest.is_interested;
+        }
+        
+        const action = this.eventData?.memberInterest?.is_interested ? 'registered' : 'removed';
+        alert(`Interest ${action} successfully!`);
+      } else {
+        alert('Failed to update interest. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error toggling interest:', error);
+      alert('Failed to update interest. Please try again.');
+    } finally {
+      this.interestLoading = false;
+    }
+  }
+
+  formatDate(dateString: string | undefined): string {
+    if (!dateString) return 'TBD';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  getEventImageUrl(event: Event): string {
+    return event.EventImageUrl || 'assets/images/resource/event-default.jpg';
+  }
+
+  isInterested(): boolean {
+    return this.eventData?.memberInterest?.is_interested || false;
+  }
+
+  canShowInterestButton(): boolean {
+    return this.isMember && this.eventData !== null;
   }
 }
