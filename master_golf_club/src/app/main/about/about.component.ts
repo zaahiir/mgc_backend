@@ -5,7 +5,7 @@ import {
   faMapMarkerAlt, faEnvelope, faPhone, faChevronDown,
   faHome, faUser, faGlobe
 } from '@fortawesome/free-solid-svg-icons';
-import { ContactService, ContactMessage } from '../common-service/contact/contact.service';
+import { ContactService, ContactMessage, FAQResponse, FAQItem } from '../common-service/contact/contact.service';
 
 @Component({
   selector: 'app-about',
@@ -58,30 +58,31 @@ export class AboutComponent implements OnInit {
     }
   ];
 
-  faqItems = [
-    {
-      id: 1,
-      question: 'How To Purchase The Tickets For Groups?',
-      answer: 'Sodales posuere facilisi metus elementum ipsum egestas amet amet mattis commodo Nunc tempor amet massa diam mauris Risus sodales interdum.',
-      isActive: true
-    },
-    {
-      id: 2,
-      question: 'What Equipment Do I Need For Golfing?',
-      answer: 'Sodales posuere facilisi metus elementum ipsum egestas amet amet mattis commodo Nunc tempor amet massa diam mauris Risus sodales interdum.',
-      isActive: false
-    },
-    {
-      id: 3,
-      question: 'Does Practicing Golf At Home Actually Work?',
-      answer: 'Sodales posuere facilisi metus elementum ipsum egestas amet amet mattis commodo Nunc tempor amet massa diam mauris Risus sodales interdum.',
-      isActive: false
-    }
-  ];
+  faqItems: FAQItem[] = [];
 
   constructor(private contactService: ContactService) { }
 
   ngOnInit(): void {
+    this.loadFAQs();
+  }
+
+  loadFAQs(): void {
+    this.contactService.getActiveFAQs().subscribe({
+      next: (faqs: FAQResponse[]) => {
+        // Transform FAQ responses to FAQ items with accordion state
+        this.faqItems = faqs.map((faq, index) => ({
+          id: faq.id,
+          question: faq.faqQuestion,
+          answer: faq.faqAnswer,
+          isActive: index === 0 // First FAQ is active by default
+        }));
+      },
+      error: (error) => {
+        console.error('Error loading FAQs:', error);
+        // Fallback to empty array if API fails
+        this.faqItems = [];
+      }
+    });
   }
 
   onSubmit(event: Event) {

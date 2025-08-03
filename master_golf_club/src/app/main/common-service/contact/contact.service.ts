@@ -25,6 +25,24 @@ export interface ContactMessage {
   description: string;
 }
 
+// Interface for FAQ response
+export interface FAQResponse {
+  id: number;
+  faqQuestion: string;
+  faqAnswer: string;
+  hideStatus: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Interface for FAQ item with accordion state
+export interface FAQItem {
+  id: number;
+  question: string;
+  answer: string;
+  isActive: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -33,6 +51,7 @@ export class ContactService {
   private baseUrl: string;
   private getAbout: string;
   private sendContactMessage: string;
+  private activeFAQsUrl: string;
 
   constructor() {
     const baseAPIUrl = new BaseAPIUrl();
@@ -41,6 +60,7 @@ export class ContactService {
     this.baseUrl = this.apiUrl.replace(/\/api[s]?\/?$/, '');
     this.getAbout = `${this.apiUrl}about/get_about/`;
     this.sendContactMessage = `${this.apiUrl}message/`;
+    this.activeFAQsUrl = `${this.apiUrl}faq/active_faqs/`;
   }
 
   getBaseUrl(): string {
@@ -56,6 +76,12 @@ export class ContactService {
   sendMessage(message: ContactMessage): Observable<any> {
     return from(axios.post(this.sendContactMessage, message)).pipe(
       map(response => response.data)
+    );
+  }
+
+  getActiveFAQs(): Observable<FAQResponse[]> {
+    return from(axios.get(this.activeFAQsUrl)).pipe(
+      map(response => response.data.data || [])
     );
   }
 
