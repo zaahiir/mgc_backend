@@ -5,6 +5,11 @@
         <div class="col-auto">
           <a cButton [routerLink]="['/members/add']" color="primary" role="button">Create New Members</a>
         </div>
+        <div class="col-auto">
+          <button cButton color="success" (click)="createSampleMembers()" [disabled]="isLoading">
+            {{ isLoading ? 'Creating...' : 'Create Sample Members' }}
+          </button>
+        </div>
       </form>
     </c-card-body>
   </c-card>

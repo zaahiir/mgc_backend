@@ -1,20 +1,29 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
 import { DefaultLayoutComponent } from './layout';
+import { AdminAuthGuard } from './auth/auth.guard';
+import { AdminAuthRedirectResolver } from './auth/auth-redirect.resolver';
 
 export const routes: Routes = [
   {
     path: '',
     redirectTo: 'login',
-    pathMatch: 'full'
+    pathMatch: 'full',
+    resolve: {
+      auth: AdminAuthRedirectResolver
+    }
   },
   {
     path: 'login',
-    component: LoginComponent
+    component: LoginComponent,
+    resolve: {
+      auth: AdminAuthRedirectResolver
+    }
   },
   {
     path: '',
     component: DefaultLayoutComponent,
+    canActivate: [AdminAuthGuard],
     data: {
       title: 'Home'
     },

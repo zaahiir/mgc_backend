@@ -74,6 +74,7 @@ export class CreateMemberComponent implements OnInit {
   enquiryId: string | null = null;
   isFromEnquiry = false;
   pageTitle = 'New Member Profile';
+  createdMemberCredentials: any = null;
 
   constructor(
     private fb: FormBuilder,
@@ -458,12 +459,19 @@ export class CreateMemberComponent implements OnInit {
     const response = await this.memberService.processMember(formData);
 
     if (response?.data?.code === 1) {
-      let successMessage = `Member has been created successfully with Golf Club ID: ${generatedMemberId}. Login credentials have been sent to their email.`;
+      // Store credentials for display
+      this.createdMemberCredentials = response?.data?.data || {
+        member_id: generatedMemberId,
+        email: formValues.email,
+        password: generatedPassword
+      };
+
+      let successMessage = `Member has been created successfully with Golf Club ID: ${generatedMemberId}. Check the credentials below.`;
 
       if (this.isFromEnquiry && this.enquiryId) {
         try {
           await this.markEnquiryAsConverted(this.enquiryId, generatedMemberId);
-          successMessage = `Enquiry has been successfully converted to member with Golf Club ID: ${generatedMemberId}. Login credentials have been sent to their email.`;
+          successMessage = `Enquiry has been successfully converted to member with Golf Club ID: ${generatedMemberId}. Check the credentials below.`;
         } catch (error) {
           await Swal.fire({
             title: 'Warning',
@@ -471,7 +479,7 @@ export class CreateMemberComponent implements OnInit {
             icon: 'warning',
             confirmButtonText: 'Ok'
           });
-          this.router.navigate([this.isFromEnquiry ? '/memberEnquiry' : '/members']);
+          // Don't navigate, show credentials instead
           return;
         }
       }
@@ -480,14 +488,11 @@ export class CreateMemberComponent implements OnInit {
         title: 'Success!',
         text: successMessage,
         icon: 'success',
-        confirmButtonText: 'Ok'
+        confirmButtonText: 'View Credentials'
       });
 
-      if (this.isFromEnquiry) {
-        this.router.navigate(['/memberEnquiry']);
-      } else {
-        this.router.navigate(['/members']);
-      }
+      // Don't navigate immediately, let user see credentials
+      // this.router.navigate([this.isFromEnquiry ? '/memberEnquiry' : '/members']);
     } else {
       const errorMessage = response?.data?.message || 'Failed to create member';
       const errors = response?.data?.errors;
@@ -591,5 +596,23 @@ export class CreateMemberComponent implements OnInit {
 
   private async showError(message: string): Promise<void> {
     await Swal.fire('Error', message, 'error');
+  }
+
+  clearCredentialsAndNavigate(): void {
+    this.createdMemberCredentials = null;
+    if (this.isFromEnquiry) {
+      this.router.navigate(['/memberEnquiry']);
+    } else {
+      this.router.navigate(['/members']);
+    }
+  }
+
+  createAnotherMember(): void {
+    this.createdMemberCredentials = null;
+    this.memberForm.reset();
+    this.submitted = false;
+    this.selectedProfileFile = null;
+    this.selectedIdProofFile = null;
+    this.previewUrl = null;
   }
 }

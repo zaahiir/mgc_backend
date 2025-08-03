@@ -4,6 +4,7 @@ import { Observable, throwError, Subject, timer, Subscription } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
+import { BaseAPIUrl, baseURLType } from '../main/common-service/commom-api-url';
 
 export interface LoginResponse {
   access: string;
@@ -34,7 +35,7 @@ export interface SetNewPasswordRequest {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'https://mastergolfclub.com/apis/user/';
+  private apiUrl: string;
   private isBrowser: boolean;
 
   // Auto-logout related properties
@@ -58,6 +59,9 @@ export class AuthService {
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
+    
+    // Initialize API URL using the common configuration
+    this.apiUrl = new BaseAPIUrl().getUrl(baseURLType);
 
     // Start session monitoring if user is already authenticated
     if (this.isAuthenticated()) {

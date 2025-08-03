@@ -53,7 +53,22 @@ export class AuthService {
   private initializeAuthState(): void {
     const token = this.getStorageItem('access_token');
     const userType = this.getUserType();
-    const isAuth = !!token && userType === 'superuser';
+    const loginTimestamp = this.getStorageItem('login_timestamp');
+    
+    // Check if token exists, user is superuser, and session hasn't expired
+    const hasValidToken = !!token && userType === 'superuser';
+    let sessionValid = true;
+    
+    if (loginTimestamp) {
+      const loginTime = parseInt(loginTimestamp, 10);
+      const currentTime = Date.now();
+      const sessionAge = currentTime - loginTime;
+      sessionValid = sessionAge < this.SESSION_DURATION;
+    } else {
+      sessionValid = false;
+    }
+    
+    const isAuth = hasValidToken && sessionValid;
     this.authenticationState.next(isAuth);
   }
 
@@ -80,7 +95,9 @@ export class AuthService {
           this.startAutoLogoutTimer();
           this.startSessionMonitoring();
         }),
-        catchError((error) => this.handleError(error))
+        catchError((error) => {
+          return this.handleError(error);
+        })
       );
   }
 

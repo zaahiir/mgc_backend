@@ -930,30 +930,27 @@ Master Golf Club Management
                 member = serializer.save()
                 logger.info(f"Member saved with ID: {member.id}, QR Token: {member.qr_token}")
 
-                # For new member, send credentials email with QR code
+                # For new member, log credentials instead of sending email (for localhost development)
                 if pk == "0" and member.email and plain_password:
-                    logger.info(f"Sending email to new member: {member.email}")
+                    logger.info(f"=== NEW MEMBER CREATED ===")
+                    logger.info(f"Email: {member.email}")
+                    logger.info(f"Password: {plain_password}")
+                    logger.info(f"Member ID: {member.golfClubId}")
+                    logger.info(f"QR Token: {member.qr_token}")
+                    logger.info(f"Full Name: {member.firstName} {member.lastName}")
+                    logger.info(f"Phone: {member.phoneNumber}")
+                    logger.info("==========================")
                     
-                    # Send email with credentials and QR code
-                    email_sent = self.send_credentials_with_qr_email(
-                        member.email,
-                        member.golfClubId,
-                        plain_password,  # Use the original plain password
-                        member.qr_token
-                    )
-
-                    if email_sent:
-                        logger.info("Email sent successfully")
-                        response = {
-                            'code': 1,
-                            'message': "Member created successfully, credentials and QR code sent"
+                    response = {
+                        'code': 1,
+                        'message': "Member created successfully. Check terminal for credentials.",
+                        'data': {
+                            'member_id': member.golfClubId,
+                            'email': member.email,
+                            'password': plain_password,
+                            'qr_token': member.qr_token
                         }
-                    else:
-                        logger.warning("Email sending failed, but member was created")
-                        response = {
-                            'code': 1,
-                            'message': "Member created successfully, but email sending failed"
-                        }
+                    }
                 else:
                     response = {
                         'code': 1,
@@ -1258,6 +1255,122 @@ Master Golf Club Management
                 'code': 0,
                 'message': f'Error verifying QR code: {str(e)}'
             }, status=500)
+
+    @action(detail=False, methods=['POST'], url_path='create-sample-members')
+    def create_sample_members(self, request):
+        """
+        Create 10 sample members for testing purposes
+        """
+        try:
+            from datetime import date, timedelta
+            import random
+            
+            # Sample data for creating members
+            sample_names = [
+                {"firstName": "John", "lastName": "Smith", "email": "john.smith@example.com"},
+                {"firstName": "Sarah", "lastName": "Johnson", "email": "sarah.johnson@example.com"},
+                {"firstName": "Michael", "lastName": "Brown", "email": "michael.brown@example.com"},
+                {"firstName": "Emily", "lastName": "Davis", "email": "emily.davis@example.com"},
+                {"firstName": "David", "lastName": "Wilson", "email": "david.wilson@example.com"},
+                {"firstName": "Lisa", "lastName": "Anderson", "email": "lisa.anderson@example.com"},
+                {"firstName": "Robert", "lastName": "Taylor", "email": "robert.taylor@example.com"},
+                {"firstName": "Jennifer", "lastName": "Martinez", "email": "jennifer.martinez@example.com"},
+                {"firstName": "William", "lastName": "Garcia", "email": "william.garcia@example.com"},
+                {"firstName": "Amanda", "lastName": "Rodriguez", "email": "amanda.rodriguez@example.com"}
+            ]
+            
+            # Get required data
+            plan = PlanModel.objects.filter(hideStatus=0).first()
+            gender = GenderModel.objects.filter(hideStatus=0).first()
+            nationality = CountryModel.objects.filter(hideStatus=0).first()
+            payment_status = PaymentStatusModel.objects.filter(hideStatus=0).first()
+            payment_method = PaymentMethodModel.objects.filter(hideStatus=0).first()
+            
+            if not plan:
+                return Response({
+                    'code': 0,
+                    'message': "No plan available. Please create a plan first."
+                })
+            
+            created_members = []
+            password_manager = PasswordManager()
+            
+            for i, name_data in enumerate(sample_names, 1):
+                # Generate unique email if needed
+                base_email = name_data['email']
+                base_email = name_data['email']
+                if MemberModel.objects.filter(email=base_email).exists():
+                    base_email = "member{}.{}".format(i, name_data['email'])
+
+                member_data = {
+                    'firstName': name_data['firstName'],
+                    'lastName': name_data['lastName'],
+                    'email': base_email,
+                    'phoneNumber': f"+1-555-{1000 + i:04d}",
+                    'password': f"password{i}",
+                    'plan': plan.id,
+                    'gender': gender.id if gender else None,
+                    'nationality': nationality.id if nationality else None,
+                    'paymentStatus': payment_status.id if payment_status else None,
+                    'paymentMethod': payment_method.id if payment_method else None,
+                    'address': f"{100 + i} Sample Street, Test City, TC {10000 + i}",
+                    'dateOfBirth': date(1980 + i, (i % 12) + 1, (i % 28) + 1),
+                    'membershipStartDate': date.today(),
+                    'membershipEndDate': date.today() + timedelta(days=365),
+                    'emergencyContactName': f"Emergency Contact {i}",
+                    'emergencyContactPhone': f"+1-555-{2000 + i:04d}",
+                    'emergencyContactRelation': "Spouse",
+                    'referredBy': "Sample Referral",
+                    'handicap': random.choice([True, False])
+                }
+                
+                # Encrypt password
+                encrypted_pwd, hashed_pwd = password_manager.encrypt_password(member_data['password'])
+                member_data['encrypted_password'] = encrypted_pwd
+                member_data['hashed_password'] = hashed_pwd
+                member_data.pop('password', None)
+                
+                # Create member
+                serializer = MemberModelSerializers(data=member_data)
+                if serializer.is_valid():
+                    member = serializer.save()
+                    
+                    # Log credentials
+                    logger.info(f"=== SAMPLE MEMBER {i} CREATED ===")
+                    logger.info(f"Email: {member.email}")
+                    logger.info(f"Password: password{i}")
+                    logger.info(f"Member ID: {member.golfClubId}")
+                    logger.info(f"Full Name: {member.firstName} {member.lastName}")
+                    logger.info(f"Phone: {member.phoneNumber}")
+                    logger.info("================================")
+                    
+                    created_members.append({
+                        'id': member.id,
+                        'golfClubId': member.golfClubId,
+                        'email': member.email,
+                        'password': f"password{i}",
+                        'fullName': f"{member.firstName} {member.lastName}",
+                        'phone': member.phoneNumber
+                    })
+                else:
+                    logger.error(f"Failed to create sample member {i}: {serializer.errors}")
+            
+            logger.info(f"=== SAMPLE MEMBERS SUMMARY ===")
+            logger.info(f"Total created: {len(created_members)}")
+            logger.info("===============================")
+            
+            return Response({
+                'code': 1,
+                'message': f"Successfully created {len(created_members)} sample members",
+                'data': created_members
+            })
+            
+        except Exception as e:
+            logger.error(f"Error creating sample members: {str(e)}")
+            return Response({
+                'code': 0,
+                'message': f"Error creating sample members: {str(e)}"
+            })
 
     @action(detail=False, methods=['GET'], url_path='last-member-id/(?P<year>[^/.]+)/(?P<month>[^/.]+)')
     def get_last_member_id(self, request, year=None, month=None):

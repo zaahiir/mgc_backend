@@ -69,4 +69,14 @@ export class MemberService {
       return null;
     }
   }
+
+  async createSampleMembers(): Promise<any> {
+    try {
+      const response = await axios.post(`${this.apiUrl}member/create-sample-members/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating sample members:', error);
+      throw error;
+    }
+  }
 }

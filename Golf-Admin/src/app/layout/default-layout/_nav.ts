@@ -72,11 +72,6 @@ export const navItems: INavData[] = [
     iconComponent: { name: 'cil-star' }
   },
   {
-    name: 'Contact',
-    url: '/contact',
-    iconComponent: { name: 'cil-credit-card' }
-  },
-  {
     name: 'FAQ',
     url: '/faq',
     iconComponent: { name: 'cil-credit-card' }

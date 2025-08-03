@@ -204,4 +204,47 @@ export class ListMembersComponent implements OnInit {
   getFullName(member: Member): string {
     return `${member.firstName || ''} ${member.lastName || ''}`.trim();
   }
+
+  async createSampleMembers() {
+    const result = await Swal.fire({
+      title: 'Create Sample Members?',
+      text: "This will create 10 sample members for testing. Continue?",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, create them!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        this.isLoading = true;
+        const response = await this.memberService.createSampleMembers();
+        if (response?.code === 1) {
+          await Swal.fire({
+            title: 'Success!',
+            text: response.message,
+            icon: 'success',
+            confirmButtonText: 'Ok'
+          });
+          this.loadMembers();
+        } else {
+          await Swal.fire(
+            'Error!',
+            response?.message || 'Failed to create sample members',
+            'error'
+          );
+        }
+      } catch (error) {
+        console.error('Create sample members error:', error);
+        await Swal.fire(
+          'Error!',
+          'Failed to create sample members',
+          'error'
+        );
+      } finally {
+        this.isLoading = false;
+      }
+    }
+  }
 }

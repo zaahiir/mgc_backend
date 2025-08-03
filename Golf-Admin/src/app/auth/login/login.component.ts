@@ -60,8 +60,6 @@ export class LoginComponent implements OnInit {
     this.showPassword = !this.showPassword;
   }
 
-  // OLDER VERSION - COMMENTED OUT
-  /*
   onSubmit(): void {
     if (this.loginForm.valid) {
       this.isLoading = true;
@@ -71,41 +69,22 @@ export class LoginComponent implements OnInit {
 
       this.authService.login(username, password).subscribe({
         next: (response) => {
-          localStorage.setItem('access_token', response.access);
-          localStorage.setItem('refresh_token', response.refresh);
-          localStorage.setItem('user_type', response.user_type);
-
           this.isLoading = false;
-          this.router.navigate(['/dashboard']);
+          
+          // Check if user is superuser
+          if (response.user_type === 'superuser') {
+            this.router.navigate(['/dashboard']);
+          } else {
+            // Clear any stored data and show error
+            this.authService.forceLogout();
+            this.errorMessage = 'Access denied. Only superuser accounts are allowed.';
+          }
         },
         error: (err) => {
           this.isLoading = false;
-          this.errorMessage = err.error.detail || 'Login failed. Please check your credentials and try again.';
+          this.errorMessage = err.error?.detail || 'Login failed. Please check your credentials and try again.';
         }
       });
-    }
-  }
-  */
-
-  // UPDATED VERSION - LOGIN WITHOUT AUTH
-  onSubmit(): void {
-    if (this.loginForm.valid) {
-      this.isLoading = true;
-      this.errorMessage = '';
-
-      const { username, password } = this.loginForm.value;
-
-      // Simulate loading delay
-      setTimeout(() => {
-        // Set mock tokens and user data
-        localStorage.setItem('access_token', 'mock_access_token_' + Date.now());
-        localStorage.setItem('refresh_token', 'mock_refresh_token_' + Date.now());
-        localStorage.setItem('user_type', 'admin');
-        localStorage.setItem('username', username);
-
-        this.isLoading = false;
-        this.router.navigate(['/dashboard']);
-      }, 1000); // 1 second delay to simulate API call
     }
   }
 }
