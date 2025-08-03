@@ -5,7 +5,6 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { Subscription } from 'rxjs';
 import {
   faUser,
-  faEdit,
   faCalendarAlt,
   faPhone,
   faEnvelope,
@@ -74,7 +73,6 @@ interface MemberProfile {
 export class ProfileComponent implements OnInit, OnDestroy {
   // Font Awesome icons
   faUser = faUser;
-  faEdit = faEdit;
   faCalendarAlt = faCalendarAlt;
   faPhone = faPhone;
   faEnvelope = faEnvelope;
@@ -100,6 +98,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
   isLoading = true;
   errorMessage = '';
   qrCodeUrl: string = '';
+  qrCodeData: any = null;
+  qrCodeLoading = false;
 
   // Image loading states
   imageLoading = false;
@@ -115,7 +115,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadMemberProfile();
-    this.generateQRCode();
   }
 
   ngOnDestroy() {
@@ -141,6 +140,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
       this.memberProfile = profileData;
 
       console.log('Profile loaded successfully:', this.memberProfile);
+
+      // Load QR code after profile is loaded
+      await this.loadQRCode();
 
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -332,7 +334,31 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
   }
 
-  // QR Code generation method
+  // Load QR code from backend
+  async loadQRCode() {
+    if (!this.memberProfile) return;
+
+    this.qrCodeLoading = true;
+    try {
+      const qrData = await this.profileService.getCurrentMemberQRCode();
+      this.qrCodeData = qrData;
+      
+      // Convert base64 to data URL for display
+      if (qrData.qrCode) {
+        this.qrCodeUrl = `data:image/png;base64,${qrData.qrCode}`;
+      }
+      
+      console.log('QR code loaded successfully:', qrData);
+    } catch (error: any) {
+      console.error('Error loading QR code:', error);
+      // Fallback to generating QR code locally
+      this.generateQRCode();
+    } finally {
+      this.qrCodeLoading = false;
+    }
+  }
+
+  // QR Code generation method (fallback)
   generateQRCode() {
     if (this.memberProfile) {
       // Generate QR code with member information
@@ -342,28 +368,57 @@ export class ProfileComponent implements OnInit, OnDestroy {
         email: this.memberProfile.email
       };
 
-      // You can use a QR code library here like 'qrcode' or generate via API
-      // For now, we'll set a placeholder or use a service
+      // Use QR Server API as fallback
       this.qrCodeUrl = this.generateQRCodeUrl(JSON.stringify(qrData));
     }
   }
 
-  // Helper method to generate QR code URL (placeholder implementation)
+  // Helper method to generate QR code URL (fallback implementation)
   private generateQRCodeUrl(data: string): string {
-    // You can use a QR code service like QR Server API
+    // Use QR Server API as fallback
     const encodedData = encodeURIComponent(data);
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedData}`;
   }
 
   // Download QR Code method
   downloadQRCode() {
-    if (this.qrCodeUrl) {
-      const link = document.createElement('a');
-      link.href = this.qrCodeUrl;
-      link.download = `${this.getFullName()}_QR_Code.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    if (this.qrCodeUrl && this.qrCodeData) {
+      try {
+        // Create a canvas to convert data URL to blob
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx?.drawImage(img, 0, 0);
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `${this.getFullName()}_QR_Code.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }
+          }, 'image/png');
+        };
+        
+        img.src = this.qrCodeUrl;
+      } catch (error) {
+        console.error('Error downloading QR code:', error);
+        // Fallback to direct download
+        const link = document.createElement('a');
+        link.href = this.qrCodeUrl;
+        link.download = `${this.getFullName()}_QR_Code.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } else {
       console.warn('QR Code not available for download');
     }
@@ -395,9 +450,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     await this.loadMemberProfile();
   }
 
-  redirectToAccount() {
-    this.router.navigate(['/account']);
-  }
+
 
   cancelEdit() {
     this.isEditing = false;

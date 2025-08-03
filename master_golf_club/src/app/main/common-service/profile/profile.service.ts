@@ -262,6 +262,70 @@ export class ProfileService {
     }
   }
 
+  // Get QR code for current member
+  async getCurrentMemberQRCode(): Promise<any> {
+    try {
+      const config: any = {};
+
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers = {
+          'Authorization': `Bearer ${token}`
+        };
+      }
+
+      const response = await axios.get(this.apiUrl + 'member/current-qr-code/', config);
+
+      if (response.data && response.data.code === 1) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data?.message || 'Failed to get QR code');
+      }
+    } catch (error: any) {
+      console.error('Error getting QR code:', error);
+
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please log in again.');
+      } else if (error.response?.status === 404) {
+        throw new Error('QR code not found for this member.');
+      } else {
+        throw new Error(error.response?.data?.message || 'Failed to get QR code');
+      }
+    }
+  }
+
+  // Get QR code for specific member
+  async getMemberQRCode(memberId: string): Promise<any> {
+    try {
+      const config: any = {};
+
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers = {
+          'Authorization': `Bearer ${token}`
+        };
+      }
+
+      const response = await axios.get(this.apiUrl + `member/${memberId}/qr-code/`, config);
+
+      if (response.data && response.data.code === 1) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data?.message || 'Failed to get QR code');
+      }
+    } catch (error: any) {
+      console.error('Error getting QR code:', error);
+
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please log in again.');
+      } else if (error.response?.status === 404) {
+        throw new Error('Member or QR code not found.');
+      } else {
+        throw new Error(error.response?.data?.message || 'Failed to get QR code');
+      }
+    }
+  }
+
   // Existing methods
   getGender() {
     return axios.get(this.gender);

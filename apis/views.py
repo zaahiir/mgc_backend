@@ -1406,6 +1406,137 @@ Master Golf Club Management
                 'message': f'Error retrieving last member ID: {str(e)}'
             }, status=500)
 
+    @action(detail=True, methods=['GET'], url_path='qr-code')
+    def get_member_qr_code(self, request, pk=None):
+        """
+        Get QR code for a specific member
+        """
+        try:
+            logger.info(f"Fetching QR code for member ID: {pk}")
+            
+            # Get the member
+            member = MemberModel.objects.get(id=pk, hideStatus=0)
+            
+            if not member.qr_token:
+                logger.error(f"No QR token found for member {pk}")
+                return Response({
+                    'code': 0,
+                    'message': 'QR token not found for this member'
+                }, status=404)
+            
+            # Generate QR code
+            qr_image_data = self.generate_qr_code(member.qr_token)
+            
+            if not qr_image_data:
+                logger.error(f"Failed to generate QR code for member {pk}")
+                return Response({
+                    'code': 0,
+                    'message': 'Failed to generate QR code'
+                }, status=500)
+            
+            # Convert to base64 for API response
+            import base64
+            qr_base64 = base64.b64encode(qr_image_data).decode('utf-8')
+            
+            logger.info(f"QR code generated successfully for member {pk}")
+            
+            return Response({
+                'code': 1,
+                'message': 'QR code generated successfully',
+                'data': {
+                    'qrCode': qr_base64,
+                    'qrToken': member.qr_token,
+                    'memberId': member.golfClubId,
+                    'memberName': f"{member.firstName} {member.lastName}"
+                }
+            })
+            
+        except MemberModel.DoesNotExist:
+            logger.error(f"Member not found: {pk}")
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=404)
+        except Exception as e:
+            logger.error(f"Error generating QR code: {str(e)}")
+            return Response({
+                'code': 0,
+                'message': f'Error generating QR code: {str(e)}'
+            }, status=500)
+
+    @action(detail=False, methods=['GET'], url_path='current-qr-code')
+    def get_current_member_qr_code(self, request):
+        """
+        Get QR code for the currently authenticated member
+        """
+        try:
+            # Get current user's member profile
+            user_id = request.user.id if request.user.is_authenticated else None
+            
+            if not user_id:
+                return Response({
+                    'code': 0,
+                    'message': 'User not authenticated'
+                }, status=401)
+            
+            # Find member by user ID or email
+            try:
+                member = MemberModel.objects.get(id=user_id, hideStatus=0)
+            except MemberModel.DoesNotExist:
+                # Try to find by email if user ID doesn't match
+                if hasattr(request.user, 'email'):
+                    member = MemberModel.objects.get(email=request.user.email, hideStatus=0)
+                else:
+                    raise MemberModel.DoesNotExist
+            
+            if not member.qr_token:
+                logger.error(f"No QR token found for current member {member.id}")
+                return Response({
+                    'code': 0,
+                    'message': 'QR token not found for this member'
+                }, status=404)
+            
+            # Generate QR code
+            qr_image_data = self.generate_qr_code(member.qr_token)
+            
+            if not qr_image_data:
+                logger.error(f"Failed to generate QR code for current member {member.id}")
+                return Response({
+                    'code': 0,
+                    'message': 'Failed to generate QR code'
+                }, status=500)
+            
+            # Convert to base64 for API response
+            import base64
+            qr_base64 = base64.b64encode(qr_image_data).decode('utf-8')
+            
+            logger.info(f"QR code generated successfully for current member {member.id}")
+            
+            return Response({
+                'code': 1,
+                'message': 'QR code generated successfully',
+                'data': {
+                    'qrCode': qr_base64,
+                    'qrToken': member.qr_token,
+                    'memberId': member.golfClubId,
+                    'memberName': f"{member.firstName} {member.lastName}",
+                    'memberEmail': member.email
+                }
+            })
+            
+        except MemberModel.DoesNotExist:
+            logger.error("Current member not found")
+            return Response({
+                'code': 0,
+                'message': 'Member profile not found'
+            }, status=404)
+        except Exception as e:
+            logger.error(f"Error generating QR code for current member: {str(e)}")
+            return Response({
+                'code': 0,
+                'message': f'Error generating QR code: {str(e)}'
+            }, status=500)
+
 
 class AmenitiesViewSet(viewsets.ModelViewSet):
     queryset = AmenitiesModel.objects.filter(hideStatus=0)

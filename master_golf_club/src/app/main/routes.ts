@@ -50,10 +50,6 @@ export const mainRoutes: Routes = [
       loadComponent: () => import('./master-tournaments/master-tournaments.component').then(m => m.MasterTournamentsComponent)
     },
     {
-      path: 'account',
-      loadComponent: () => import('./account/account.component').then(m => m.AccountComponent)
-    },
-    {
       path: 'profile',
       loadComponent: () => import('./profile/profile.component').then(m => m.ProfileComponent)
     },
