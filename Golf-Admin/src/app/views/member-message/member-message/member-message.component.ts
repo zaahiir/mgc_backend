@@ -87,7 +87,7 @@ export class MemberMessageComponent implements OnInit {
       this.isLoading = true;
       const response = await this.memberMessageService.listMemberMessage('0');
       
-      if (response.data.code === 1) {
+      if (response.data.status === 'success') {
         this.messageList = response.data.data;
         this.filteredList = [...this.messageList];
         this.updatePageRange();
@@ -115,7 +115,7 @@ export class MemberMessageComponent implements OnInit {
     try {
       const response = await this.memberMessageService.markMessageAsRead(messageId.toString());
       
-      if (response.data.code === 1) {
+      if (response.data.status === 'success') {
         Swal.fire({
           icon: 'success',
           title: 'Success',
@@ -143,7 +143,7 @@ export class MemberMessageComponent implements OnInit {
     try {
       const response = await this.memberMessageService.markMessageAsReplied(messageId.toString());
       
-      if (response.data.code === 1) {
+      if (response.data.status === 'success') {
         Swal.fire({
           icon: 'success',
           title: 'Success',
@@ -171,7 +171,7 @@ export class MemberMessageComponent implements OnInit {
     try {
       const response = await this.memberMessageService.markMessageAsClosed(messageId.toString());
       
-      if (response.data.code === 1) {
+      if (response.data.status === 'success') {
         Swal.fire({
           icon: 'success',
           title: 'Success',

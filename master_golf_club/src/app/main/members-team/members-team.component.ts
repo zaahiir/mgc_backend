@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { 
@@ -46,11 +46,17 @@ export class MembersTeamComponent implements OnInit {
   error: string | null = null;
   protocolError: string | null = null;
 
-  constructor(private memberTeamService: MemberTeamService) {}
+  constructor(
+    private memberTeamService: MemberTeamService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
-    this.loadInstructors();
-    this.loadProtocols();
+    // Add a small delay to help with hydration
+    setTimeout(() => {
+      this.loadInstructors();
+      this.loadProtocols();
+    }, 100);
   }
 
   loadInstructors() {
@@ -59,7 +65,7 @@ export class MembersTeamComponent implements OnInit {
 
     this.memberTeamService.getActiveInstructors()
       .then(response => {
-        if (response.data && response.data.status === 'success') {
+        if (response.data && response.data.code === 1) {
           this.teamMembers = response.data.data.map((instructor: any) => ({
             id: instructor.id,
             instructorName: instructor.instructorName,
@@ -79,6 +85,7 @@ export class MembersTeamComponent implements OnInit {
       })
       .finally(() => {
         this.loading = false;
+        this.cdr.detectChanges();
       });
   }
 
@@ -88,7 +95,7 @@ export class MembersTeamComponent implements OnInit {
 
     this.memberTeamService.getActiveProtocols()
       .then(response => {
-        if (response.data && response.data.status === 'success') {
+        if (response.data && response.data.code === 1) {
           this.protocols = response.data.data.map((protocol: any) => ({
             id: protocol.id,
             protocolTitle: protocol.protocolTitle,
@@ -104,6 +111,7 @@ export class MembersTeamComponent implements OnInit {
       })
       .finally(() => {
         this.protocolLoading = false;
+        this.cdr.detectChanges();
       });
   }
 
@@ -132,5 +140,9 @@ export class MembersTeamComponent implements OnInit {
       return this.protocols[0].protocolDescription;
     }
     return 'Our golf club maintains the highest standards of elegance and professionalism. We believe that proper attire enhances the overall experience for all members and guests, creating an atmosphere of respect and tradition. Our golf club maintains the highest standards of elegance and professionalism. We believe that proper attire enhances the overall experience for all members and guests, creating an atmosphere of respect and tradition. Our golf club maintains the highest standards of elegance and professionalism. We believe that proper attire enhances the overall experience for all members and guests, creating an atmosphere of respect and tradition.';
+  }
+
+  trackByInstructor(index: number, instructor: Instructor): number {
+    return instructor.id;
   }
 }

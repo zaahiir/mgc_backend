@@ -78,7 +78,7 @@
 
         <!-- Team Members Grid -->
         <div *ngIf="!loading && !error" class="row g-4">
-          <div class="col-lg-3 col-md-6 col-sm-12" *ngFor="let member of teamMembers">
+          <div class="col-lg-3 col-md-6 col-sm-12" *ngFor="let member of teamMembers; trackBy: trackByInstructor">
             <div class="team-block">
               <div class="team-card">
                 <div class="team-image">
