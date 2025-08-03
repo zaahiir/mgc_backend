@@ -160,8 +160,16 @@ export class FaqComponent implements OnInit {
           text: this.isEditMode ? 'FAQ updated successfully' : 'FAQ created successfully'
         });
 
-        this.resetForm();
-        this.loadData();
+        if (!this.isEditMode) {
+          // After creating a new FAQ, redirect to listing view
+          this.showForm = false;
+          this.resetForm();
+          this.loadData();
+        } else {
+          // For edit mode, just reset form and reload data
+          this.resetForm();
+          this.loadData();
+        }
       } else {
         throw new Error(response?.message || 'Unknown error');
       }
