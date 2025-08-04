@@ -279,18 +279,7 @@
             </button>
           </div>
 
-          <div class="quick-info">
-            <div class="distance-info">
-              <fa-icon [icon]="routeIcon"></fa-icon>
-              <span>2.3 miles away</span>
-            </div>
-            <div class="rating-info">
-              <div class="stars">
-                <span>★★★★★</span>
-              </div>
-              <span>4.8 (124 reviews)</span>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -391,3 +380,59 @@
     </div>
   </div>
 </section>
+
+<!-- Booking Confirmation Modal -->
+<div class="modal-overlay" *ngIf="showBookingModal" (click)="closeBookingModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Booking Confirmation</h3>
+      <button class="modal-close" (click)="closeBookingModal()">
+        <fa-icon [icon]="chevronUpIcon"></fa-icon>
+      </button>
+    </div>
+    
+    <div class="modal-body" *ngIf="bookingConfirmationData">
+      <div class="confirmation-icon">
+        <fa-icon [icon]="golfIcon"></fa-icon>
+      </div>
+      
+      <div class="confirmation-message">
+        <h4>Your tee time has been booked successfully!</h4>
+        <p>Booking ID: #{{bookingConfirmationData.bookingId}}</p>
+      </div>
+      
+      <div class="booking-details">
+        <div class="detail-item">
+          <span class="label">Course:</span>
+          <span class="value">{{bookingConfirmationData.courseName}}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Tee:</span>
+          <span class="value">{{bookingConfirmationData.teeLabel}}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Date:</span>
+          <span class="value">{{bookingConfirmationData.date | date:'MMM d, yyyy'}}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Time:</span>
+          <span class="value">{{bookingConfirmationData.time}}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Participants:</span>
+          <span class="value">{{bookingConfirmationData.participants}}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Status:</span>
+          <span class="value status-pending">{{bookingConfirmationData.status}}</span>
+        </div>
+      </div>
+      
+      <div class="confirmation-actions">
+        <button class="theme-btn" (click)="closeBookingModal()">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

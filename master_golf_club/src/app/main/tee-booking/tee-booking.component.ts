@@ -73,7 +73,7 @@ interface CalendarDay {
   standalone: true,
   imports: [CommonModule, FormsModule, FontAwesomeModule],
   templateUrl: './tee-booking.component.html',
-  styleUrls: ['./tee-booking.component.scss']
+  styleUrls: ['./tee-booking.component.css']
 })
 export class TeeBookingComponent implements OnInit, OnDestroy {
   @Input() course: Course = {
@@ -127,6 +127,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   errorMessage: string = '';
   successMessage: string = '';
   
+  // Add booking confirmation modal properties
+  showBookingModal: boolean = false;
+  bookingConfirmationData: any = null;
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -496,7 +500,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     const bookingData = {
       course: this.course.id,
       tee: this.selectedTee!.id,
-      bookingDate: this.selectedDate.toISOString().split('T')[0],
+      bookingDate: this.selectedDate.toISOString().split('T')[0], // Ensure proper date format
       bookingTime: this.selectedTime,
       participants: this.participantCount,
       totalPrice: this.getTotalPrice(),
@@ -508,7 +512,21 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       
       this.isLoading = false;
       if (response.data.code === 1) {
-        this.successMessage = 'Booking created successfully!';
+        // Store booking confirmation data for modal
+        this.bookingConfirmationData = {
+          bookingId: response.data.data.id,
+          courseName: this.course.name,
+          teeLabel: this.selectedTee!.label,
+          date: this.selectedDate.toISOString().split('T')[0],
+          time: this.selectedTime,
+          participants: this.participantCount,
+          status: 'pending'
+        };
+        
+        // Show confirmation modal
+        this.showBookingModal = true;
+        
+        // Reset form after successful booking
         this.resetBookingForm();
       } else {
         this.errorMessage = response.data.message || 'Booking failed';
@@ -525,6 +543,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.errorMessage = error.response?.data?.message || 'Failed to create booking';
       }
     }
+  }
+
+  // Add method to close booking confirmation modal
+  closeBookingModal(): void {
+    this.showBookingModal = false;
+    this.bookingConfirmationData = null;
   }
 
   resetBookingForm(): void {

@@ -2084,12 +2084,22 @@ class BookingViewSet(viewsets.ModelViewSet):
                 slot_time = current_time.time()
                 is_available = slot_time not in booked_slots
                 
-                # Check if there's enough time for the selected tee duration
+                # Only check duration if slot is not already booked
                 if is_available:
                     duration_hours = tee.holeNumber * 0.167  # 10 minutes per hole
                     slot_end = current_time + dt.timedelta(hours=duration_hours)
+                    
+                    # Check if the booking would extend past closing time
                     if slot_end.time() > end_time:
                         is_available = False
+                    else:
+                        # Check if any of the time slots within the duration are already booked
+                        check_time = current_time
+                        while check_time < slot_end:
+                            if check_time.time() in booked_slots:
+                                is_available = False
+                                break
+                            check_time += dt.timedelta(minutes=8)
                 
                 slot_data = {
                     'time': slot_time.strftime('%H:%M'),
