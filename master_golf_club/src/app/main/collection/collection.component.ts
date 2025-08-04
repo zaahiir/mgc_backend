@@ -50,6 +50,11 @@ interface ApiResponse<T> {
   total?: number;
 }
 
+interface DateInfo {
+  date: Date;
+  available: boolean;
+}
+
 @Component({
   selector: 'app-collection',
   standalone: true,
@@ -66,10 +71,6 @@ export class CollectionComponent implements OnInit, AfterViewInit, OnDestroy {
   faSearch = faSearch;
 
   currentDate: Date = new Date();
-  selectedDate: Date | null = null;
-
-  isModalOpen = false;
-  selectedCourse: GolfCourse | null = null;
 
   // Data properties
   golfCourses: GolfCourse[] = [];
@@ -300,40 +301,33 @@ export class CollectionComponent implements OnInit, AfterViewInit, OnDestroy {
     return amenity ? amenity.tooltip : `Amenity ${amenityId}`;
   }
 
-  getNextSevenDates(): Date[] {
-    const dates: Date[] = [];
-    for (let i = 0; i < 8; i++) {
+  getNextSevenDates(): DateInfo[] {
+    const dates: DateInfo[] = [];
+    for (let i = 0; i < 7; i++) {
       const nextDate = new Date();
       nextDate.setDate(this.currentDate.getDate() + i);
-      dates.push(nextDate);
+      
+      // Static example: Make the 3rd date (index 2) not available
+      const isAvailable = i !== 2; // 3rd date will be not available
+      
+      dates.push({
+        date: nextDate,
+        available: isAvailable
+      });
     }
     return dates;
   }
 
-  openDateModal(selectedDate: Date, course: GolfCourse): void {
-    this.selectedDate = selectedDate;
-    this.selectedCourse = course;
-    this.isModalOpen = true;
-
-    if (isPlatformBrowser(this.platformId)) {
-      document.body.style.overflow = 'hidden';
+  // Handle date click - navigate to booking page
+  onDateClick(courseId: number, dateInfo: DateInfo): void {
+    if (!dateInfo.available) {
+      return; // Don't navigate if date is not available
     }
-  }
-
-  closeModal(): void {
-    this.isModalOpen = false;
-    this.selectedDate = null;
-    this.selectedCourse = null;
-
-    if (isPlatformBrowser(this.platformId)) {
-      document.body.style.overflow = 'auto';
-    }
-  }
-
-  goToWebsite(): void {
-    if (this.selectedCourse?.website && isPlatformBrowser(this.platformId)) {
-      window.open(this.selectedCourse.website, '_blank', 'noopener noreferrer');
-    }
+    
+    // Navigate to tee booking page with course and date parameters
+    const formattedDate = dateInfo.date.toISOString().split('T')[0];
+    const url = `/teeBooking?courseId=${courseId}&date=${formattedDate}`;
+    window.location.href = url;
   }
 
   viewCourseDetails(courseId: number, event: Event): void {

@@ -157,7 +157,6 @@
 
 .amenity-badge.active {
   background-color: #e0f2e0;
-  color: var(--theme-color);
 }
 
 .amenity-badge:hover {
@@ -277,10 +276,37 @@
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 45px;
+  position: relative;
 }
 
-.date-chip:hover {
+.date-chip.available {
   background-color: #e0f2e0;
+}
+
+.date-chip.available:hover {
+  background-color: var(--theme-color);
+  color: #fff;
+}
+
+.date-chip.available:hover .date-number,
+.date-chip.available:hover .date-day {
+  color: #fff;
+}
+
+.date-chip.not-available {
+  background-color: var(--secondary-color);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.date-chip.not-available:hover {
+  background-color: var(--secondary-color);
+  transform: none;
+}
+
+.date-chip.not-available .date-number,
+.date-chip.not-available .date-day {
+  color: #fff;
 }
 
 .date-number {
@@ -314,7 +340,7 @@
 
 .btn-theme:hover {
   color: #fff;
-  background-color: var(--secondary-color);
+  background-color: var(--theme-color);
 }
 
 .btn-outline {
@@ -341,99 +367,7 @@
   border-color: var(--theme-color);
 }
 
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  position: relative;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.close-icon {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  cursor: pointer;
-  font-size: 1.5rem;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #f5f5f5;
-  transition: all 0.3s ease;
-}
-
-.close-icon:hover {
-  background: #e0e0e0;
-}
-
-.modal-image {
-  width: 100%;
-  height: 200px;
-  background-size: cover;
-  background-position: center;
-  border-radius: 8px;
-  margin: 1rem 0;
-}
-
-.guest-policies {
-  color: #333;
-}
-
-.policy-list {
-  list-style: none;
-  padding: 0;
-}
-
-.policy-list li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  align-items: center;
-}
-
-.policy-list li:before {
-  content: "•";
-  color: var(--theme-color);
-  font-weight: bold;
-  margin-right: 0.5rem;
-}
-
-.go-to-website {
-  background-color: var(--theme-color);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  margin-top: 1.5rem;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.go-to-website:hover {
-  background-color: var(--secondary-color);
-}
-
-
+/* Search Styles */
 .search-wrapper-compact {
   max-width: 400px;
   margin-left: auto; /* This pushes the search to the right */

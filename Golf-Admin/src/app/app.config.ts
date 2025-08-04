@@ -1,7 +1,7 @@
 import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 
 import { 
   DropdownModule, 
@@ -13,7 +13,7 @@ import {
 } from '@coreui/angular';
 import { IconSetService } from '@coreui/icons-angular';
 import { routes } from './app.routes';
-import { AdminAuthInterceptor } from './auth/admin-auth.interceptor';
+import { adminAuthInterceptor } from './auth/admin-auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -24,16 +24,13 @@ export const appConfig: ApplicationConfig = {
       GridModule,
       CardModule,
       FormModule,
-      ButtonModule,
-      HttpClientModule
+      ButtonModule
+    ),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([adminAuthInterceptor])
     ),
     IconSetService,
-    provideAnimations(),
-    // Add the HTTP interceptor
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: AdminAuthInterceptor,
-      multi: true
-    }
+    provideAnimations()
   ]
 };

@@ -38,8 +38,6 @@
       </div>
     </div>
 
-
-
     <!-- Loading Indicator -->
     <div *ngIf="isLoading" class="text-center py-5">
       <div class="spinner-border" role="status">
@@ -109,11 +107,13 @@
             <!-- Booking Dates -->
             <div class="date-container d-flex justify-content-between mb-4">
               <div
-                *ngFor="let date of getNextSevenDates()"
+                *ngFor="let dateInfo of getNextSevenDates()"
                 class="date-chip"
-                (click)="openDateModal(date, course)">
-                <div class="date-number">{{ date | date: 'dd' }}</div>
-                <div class="date-day">{{ date | date: 'EEE' }}</div>
+                [class.available]="dateInfo.available"
+                [class.not-available]="!dateInfo.available"
+                (click)="onDateClick(course.id, dateInfo)">
+                <div class="date-number">{{ dateInfo.date | date: 'dd' }}</div>
+                <div class="date-day">{{ dateInfo.date | date: 'EEE' }}</div>
               </div>
             </div>
 
@@ -151,31 +151,6 @@
       <button class="btn btn-outline-primary" (click)="loadMoreCourses()">
         Load More Courses
       </button>
-    </div>
-  </div>
-
-  <!-- Modal -->
-  <div *ngIf="isModalOpen" class="modal-overlay" (click)="closeModal()">
-    <div class="modal-content lg-modal" (click)="$event.stopPropagation()">
-      <div class="close-icon" (click)="closeModal()">✕</div>
-      <h4 class="mb-3">{{ selectedCourse?.name }} - Guest Policies</h4>
-      <div class="modal-image" [style.backgroundImage]="'url(' + selectedCourse?.imageUrl + ')'"></div>
-      <div class="guest-policies mt-4">
-        <h5>Guest Availability Information</h5>
-        <ul class="policy-list">
-          <li>Members can bring up to 3 guests per visit</li>
-          <li>Advance booking required for all guests</li>
-          <li>Guest fees apply - see website for current rates</li>
-          <li>Proof of handicap may be required upon arrival</li>
-        </ul>
-        <p class="mt-3">
-          Please note that guest policies may vary during tournaments and special events.
-          Contact the club directly for specific event restrictions and current guest rates.
-        </p>
-      </div>
-      <button *ngIf="selectedCourse?.website"
-              class="go-to-website"
-              (click)="goToWebsite()">Visit Course Website</button>
     </div>
   </div>
 </div>
