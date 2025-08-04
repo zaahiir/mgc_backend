@@ -150,7 +150,7 @@
                           [class.unavailable]="!slot.available"
                           [disabled]="!slot.available"
                           (click)="selectTime(slot.time)"
-                          [title]="slot.available ? 'Available' : 'Booked'">
+                          [title]="getSlotTooltip(slot)">
                     <div class="time-slot-content">
                       <span class="time">{{slot.time}}</span>
                       <div class="golf-ball" [class.available]="slot.available">
@@ -158,6 +158,21 @@
                           <div class="dimple"></div>
                           <div class="dimple"></div>
                           <div class="dimple"></div>
+                        </div>
+                      </div>
+                      <!-- Show booking count if slot has bookings -->
+                      <div class="booking-indicator" *ngIf="slot.booking_count && slot.booking_count > 0">
+                        <span class="booking-count">{{slot.booking_count}}</span>
+                      </div>
+                    </div>
+                    <!-- Show booking details on hover for booked slots -->
+                    <div class="booking-details" *ngIf="slot.bookings && slot.bookings.length > 0">
+                      <div class="booking-detail" *ngFor="let booking of slot.bookings">
+                        <div class="booking-info">
+                          <span class="member-name">{{booking.member_name}}</span>
+                          <span class="booking-time">{{booking.start_time}} - {{booking.end_time}}</span>
+                          <span class="participants">{{booking.participants}} player{{booking.participants > 1 ? 's' : ''}}</span>
+                          <span class="hole-number">{{booking.hole_number}} holes</span>
                         </div>
                       </div>
                     </div>

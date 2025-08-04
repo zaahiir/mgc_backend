@@ -48,6 +48,18 @@ interface TimeSlot {
   time: string;
   available: boolean;
   formatted_time: string;
+  bookings?: BookingDetail[];
+  booking_count?: number;
+}
+
+interface BookingDetail {
+  booking_id: number;
+  member_name: string;
+  participants: number;
+  status: string;
+  hole_number: number;
+  start_time: string;
+  end_time: string;
 }
 
 interface CalendarDay {
@@ -569,8 +581,23 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   // Authentication helper
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('access_token');
+  isAuthenticated(): boolean { 
+    return !!localStorage.getItem('access_token'); 
+  }
+
+  getSlotTooltip(slot: TimeSlot): string {
+    if (slot.available) {
+      return 'Available';
+    }
+    
+    if (slot.bookings && slot.bookings.length > 0) {
+      const bookingDetails = slot.bookings.map(booking => 
+        `${booking.member_name} (${booking.participants} player${booking.participants > 1 ? 's' : ''}, ${booking.hole_number} holes)`
+      ).join('\n');
+      return `Booked:\n${bookingDetails}`;
+    }
+    
+    return 'Booked';
   }
 
   // Amenity icon helper

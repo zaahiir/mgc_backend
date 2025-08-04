@@ -1535,6 +1535,8 @@ Master Golf Club Management
             }, status=500)
 
 
+
+
 class AmenitiesViewSet(viewsets.ModelViewSet):
     queryset = AmenitiesModel.objects.filter(hideStatus=0)
     serializer_class = AmenitiesModelSerializers
@@ -1990,80 +1992,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             'message': 'Validation failed'
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=False, methods=['get'])
-    def available_slots(self, request):
-        """Get available time slots for a specific date and course"""
-        course_id = request.query_params.get('course_id')
-        booking_date = request.query_params.get('date')
-        tee_id = request.query_params.get('tee_id')
-        
-        if not all([course_id, booking_date, tee_id]):
-            return Response({
-                'code': 0,
-                'message': 'course_id, date, and tee_id parameters are required'
-            }, status=400)
-        
-        try:
-            date_obj = dt.datetime.strptime(booking_date, '%Y-%m-%d').date()
-            tee = TeeModel.objects.get(id=tee_id)
-            
-            # Generate time slots (6 AM to 8 PM, every 8 minutes)
-            slots = []
-            start_time = dt.datetime.strptime('06:00', '%H:%M').time()
-            end_time = dt.datetime.strptime('20:00', '%H:%M').time()
-            current_time = dt.datetime.combine(date_obj, start_time)
-            end_datetime = dt.datetime.combine(date_obj, end_time)
-            
-            # Get existing bookings for this date and course
-            existing_bookings = BookingModel.objects.filter(
-                course_id=course_id,
-                bookingDate=date_obj,
-                status__in=['pending', 'confirmed']
-            ).values_list('bookingTime', 'tee__holeNumber')
-            
-            booked_times = set()
-            for booking_time, hole_number in existing_bookings:
-                # Block time slots based on duration (10 minutes per hole)
-                duration_hours = hole_number * 0.167  # 10 minutes per hole
-                booking_start = dt.datetime.combine(date_obj, booking_time)
-                booking_end = booking_start + dt.timedelta(hours=duration_hours)
-                
-                # Block all 8-minute slots within this duration
-                slot_time = booking_start
-                while slot_time < booking_end:
-                    booked_times.add(slot_time.time())
-                    slot_time += dt.timedelta(minutes=8)
-            
-            while current_time <= end_datetime:
-                slot_time = current_time.time()
-                is_available = slot_time not in booked_times
-                
-                # Check if there's enough time for the selected tee duration
-                if is_available:
-                    duration_hours = tee.holeNumber * 0.167  # 10 minutes per hole
-                    slot_end = current_time + dt.timedelta(hours=duration_hours)
-                    if slot_end.time() > end_time:
-                        is_available = False
-                
-                slots.append({
-                    'time': slot_time.strftime('%H:%M'),
-                    'available': is_available,
-                    'formatted_time': slot_time.strftime('%I:%M %p')
-                })
-                
-                current_time += dt.timedelta(minutes=8)
-            
-            return Response({
-                'code': 1,
-                'data': slots,
-                'message': 'Available slots retrieved successfully'
-            })
-            
-        except Exception as e:
-            return Response({
-                'code': 0,
-                'message': f'Error retrieving slots: {str(e)}'
-            }, status=400)
+
     
     @action(detail=True, methods=['patch'])
     def cancel_booking(self, request, pk=None):
@@ -2089,6 +2018,106 @@ class BookingViewSet(viewsets.ModelViewSet):
             return Response({
                 'code': 0,
                 'message': f'Error cancelling booking: {str(e)}'
+            }, status=400)
+
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def available_slots(self, request):
+        """Get available time slots for a specific date and course"""
+        course_id = request.query_params.get('course_id')
+        booking_date = request.query_params.get('date')
+        tee_id = request.query_params.get('tee_id')
+        
+        if not all([course_id, booking_date, tee_id]):
+            return Response({
+                'code': 0,
+                'message': 'course_id, date, and tee_id parameters are required'
+            }, status=400)
+        
+        try:
+            date_obj = dt.datetime.strptime(booking_date, '%Y-%m-%d').date()
+            tee = TeeModel.objects.get(id=tee_id)
+            
+            # Generate time slots (6 AM to 8 PM, every 8 minutes)
+            slots = []
+            start_time = dt.datetime.strptime('06:00', '%H:%M').time()
+            end_time = dt.datetime.strptime('20:00', '%H:%M').time()
+            current_time = dt.datetime.combine(date_obj, start_time)
+            end_datetime = dt.datetime.combine(date_obj, end_time)
+            
+            # Get existing bookings for this date and course with full details
+            existing_bookings = BookingModel.objects.filter(
+                course_id=course_id,
+                bookingDate=date_obj,
+                status__in=['pending', 'confirmed']
+            ).select_related('member', 'tee').values(
+                'id', 'bookingTime', 'tee__holeNumber', 'member__firstName', 
+                'member__lastName', 'participants', 'status'
+            )
+            
+            # Create a mapping of time slots to booking details
+            booked_slots = {}
+            for booking in existing_bookings:
+                booking_time = booking['bookingTime']
+                hole_number = booking['tee__holeNumber']
+                duration_hours = hole_number * 0.167  # 10 minutes per hole
+                booking_start = dt.datetime.combine(date_obj, booking_time)
+                booking_end = booking_start + dt.timedelta(hours=duration_hours)
+                
+                # Block all 8-minute slots within this duration
+                slot_time = booking_start
+                while slot_time < booking_end:
+                    time_key = slot_time.time()
+                    if time_key not in booked_slots:
+                        booked_slots[time_key] = []
+                    booked_slots[time_key].append({
+                        'booking_id': booking['id'],
+                        'member_name': f"{booking['member__firstName']} {booking['member__lastName']}",
+                        'participants': booking['participants'],
+                        'status': booking['status'],
+                        'hole_number': hole_number,
+                        'start_time': booking_time.strftime('%H:%M'),
+                        'end_time': booking_end.time().strftime('%H:%M')
+                    })
+                    slot_time += dt.timedelta(minutes=8)
+            
+            while current_time <= end_datetime:
+                slot_time = current_time.time()
+                is_available = slot_time not in booked_slots
+                
+                # Check if there's enough time for the selected tee duration
+                if is_available:
+                    duration_hours = tee.holeNumber * 0.167  # 10 minutes per hole
+                    slot_end = current_time + dt.timedelta(hours=duration_hours)
+                    if slot_end.time() > end_time:
+                        is_available = False
+                
+                slot_data = {
+                    'time': slot_time.strftime('%H:%M'),
+                    'available': is_available,
+                    'formatted_time': slot_time.strftime('%I:%M %p')
+                }
+                
+                # Add booking details if slot is booked
+                if slot_time in booked_slots:
+                    slot_data['bookings'] = booked_slots[slot_time]
+                    slot_data['booking_count'] = len(booked_slots[slot_time])
+                else:
+                    slot_data['bookings'] = []
+                    slot_data['booking_count'] = 0
+                
+                slots.append(slot_data)
+                current_time += dt.timedelta(minutes=8)
+            
+            return Response({
+                'code': 1,
+                'data': slots,
+                'message': 'Available slots retrieved successfully'
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving slots: {str(e)}'
             }, status=400)
 
 

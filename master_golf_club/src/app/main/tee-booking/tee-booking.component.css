@@ -717,7 +717,121 @@
 }
 
 .time-slot.unavailable .time {
-    color: #888;
+    color: #999;
+}
+
+/* Booking indicator styles */
+.booking-indicator {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e74c3c;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.booking-count {
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* Booking details styles */
+.booking-details {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.time-slot:hover .booking-details {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.booking-detail {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.booking-detail:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.booking-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.booking-info .member-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 12px;
+}
+
+.booking-info .booking-time {
+    color: #666;
+    font-size: 11px;
+}
+
+.booking-info .participants {
+    color: #666;
+    font-size: 11px;
+}
+
+.booking-info .hole-number {
+    color: #666;
+    font-size: 11px;
+}
+
+/* Arrow for booking details tooltip */
+.booking-details::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid white;
+}
+
+.booking-details::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #ddd;
 }
 
 .dimples {
