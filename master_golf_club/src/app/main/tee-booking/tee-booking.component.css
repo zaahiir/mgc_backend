@@ -770,6 +770,38 @@
     background: var(--secondary-color);
 }
 
+/* Today notice and no slots message */
+.today-notice {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 1px solid #ffeaa7;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.today-notice p {
+    margin: 0;
+    color: #856404;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.no-slots-message {
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-top: 15px;
+}
+
+.no-slots-message p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 14px;
+    font-weight: 500;
+}
+
 /* Optimized Contact & Directions Widget */
 .contact-directions-widget {
     background: linear-gradient(135deg, #fff 0%, #f8fffe 100%);

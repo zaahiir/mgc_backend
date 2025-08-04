@@ -336,6 +336,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     return date.toDateString() === today.toDateString();
   }
 
+  isSelectedDateToday(): boolean {
+    return this.selectedDate && this.isToday(this.selectedDate);
+  }
+
   isDayAvailable(date: Date): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -366,7 +370,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       
       this.isLoading = false;
       if (response.data.code === 1 && response.data.data) {
-        this.currentTimeSlots = response.data.data;
+        // Filter time slots if the selected date is today
+        this.currentTimeSlots = this.filterTimeSlotsForToday(response.data.data);
       } else {
         this.errorMessage = 'Failed to load available time slots';
       }
@@ -375,6 +380,33 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       console.error('Error loading time slots:', error);
       this.errorMessage = 'Failed to load available time slots';
     }
+  }
+
+  // Filter time slots to show only future times when date is today
+  private filterTimeSlotsForToday(timeSlots: TimeSlot[]): TimeSlot[] {
+    const today = new Date();
+    const selectedDate = new Date(this.selectedDate);
+    
+    // Check if selected date is today
+    const isToday = today.toDateString() === selectedDate.toDateString();
+    
+    if (!isToday) {
+      // If not today, return all time slots as they are
+      return timeSlots;
+    }
+    
+    // If today, filter out past time slots
+    const currentTime = today.getHours() * 60 + today.getMinutes(); // Convert to minutes
+    
+    return timeSlots.filter(slot => {
+      // Parse the time slot (assuming format like "09:00", "14:30", etc.)
+      const [hours, minutes] = slot.time.split(':').map(Number);
+      const slotTimeInMinutes = hours * 60 + minutes;
+      
+      // Only show slots that are at least 30 minutes in the future
+      // This gives users time to complete their booking
+      return slotTimeInMinutes > (currentTime + 30);
+    });
   }
 
   selectTime(time: string): void {
