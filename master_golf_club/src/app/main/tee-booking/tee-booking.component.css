@@ -1418,6 +1418,24 @@
     .current-month {
         font-size: 14px;
     }
+
+    .today-notice {
+        padding: 8px 12px;
+        margin-bottom: 12px;
+    }
+
+    .today-notice p {
+        font-size: 12px;
+    }
+
+    .no-slots-message {
+        padding: 15px;
+        margin-top: 12px;
+    }
+
+    .no-slots-message p {
+        font-size: 13px;
+    }
 }
 
 /* Booking Summary Styles */

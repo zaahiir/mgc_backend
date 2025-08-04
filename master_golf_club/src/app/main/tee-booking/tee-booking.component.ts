@@ -319,9 +319,17 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   selectDate(date: Date): void {
     if (this.isDayAvailable(date)) {
+      const wasToday = this.isSelectedDateToday();
       this.selectedDate = new Date(date);
       this.selectedTime = '';
       this.showCalendar = false;
+      
+      // If switching to today, clear any previously selected time
+      // as it might no longer be valid
+      if (this.isSelectedDateToday() && !wasToday) {
+        this.selectedTime = '';
+      }
+      
       this.loadAvailableTimeSlots();
     }
   }
@@ -338,6 +346,16 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   isSelectedDateToday(): boolean {
     return this.selectedDate && this.isToday(this.selectedDate);
+  }
+
+  // Helper method to get current time for debugging
+  getCurrentTime(): string {
+    const now = new Date();
+    return now.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
   }
 
   isDayAvailable(date: Date): boolean {
@@ -399,13 +417,31 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     const currentTime = today.getHours() * 60 + today.getMinutes(); // Convert to minutes
     
     return timeSlots.filter(slot => {
-      // Parse the time slot (assuming format like "09:00", "14:30", etc.)
-      const [hours, minutes] = slot.time.split(':').map(Number);
-      const slotTimeInMinutes = hours * 60 + minutes;
-      
-      // Only show slots that are at least 30 minutes in the future
-      // This gives users time to complete their booking
-      return slotTimeInMinutes > (currentTime + 30);
+      try {
+        // Parse the time slot (assuming format like "09:00", "14:30", etc.)
+        const timeParts = slot.time.split(':');
+        if (timeParts.length !== 2) {
+          console.warn('Invalid time format:', slot.time);
+          return false; // Skip invalid time formats
+        }
+        
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1], 10);
+        
+        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+          console.warn('Invalid time values:', slot.time);
+          return false; // Skip invalid time values
+        }
+        
+        const slotTimeInMinutes = hours * 60 + minutes;
+        
+        // Only show slots that are at least 30 minutes in the future
+        // This gives users time to complete their booking
+        return slotTimeInMinutes > (currentTime + 30);
+      } catch (error) {
+        console.error('Error parsing time slot:', slot.time, error);
+        return false; // Skip slots that cause errors
+      }
     });
   }
 
