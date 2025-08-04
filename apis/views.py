@@ -2007,7 +2007,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             date_obj = dt.datetime.strptime(booking_date, '%Y-%m-%d').date()
             tee = TeeModel.objects.get(id=tee_id)
             
-            # Generate time slots (6 AM to 8 PM, every 30 minutes)
+            # Generate time slots (6 AM to 8 PM, every 8 minutes)
             slots = []
             start_time = dt.datetime.strptime('06:00', '%H:%M').time()
             end_time = dt.datetime.strptime('20:00', '%H:%M').time()
@@ -2028,11 +2028,11 @@ class BookingViewSet(viewsets.ModelViewSet):
                 booking_start = dt.datetime.combine(date_obj, booking_time)
                 booking_end = booking_start + dt.timedelta(hours=duration_hours)
                 
-                # Block all 30-minute slots within this duration
+                # Block all 8-minute slots within this duration
                 slot_time = booking_start
                 while slot_time < booking_end:
                     booked_times.add(slot_time.time())
-                    slot_time += dt.timedelta(minutes=30)
+                    slot_time += dt.timedelta(minutes=8)
             
             while current_time <= end_datetime:
                 slot_time = current_time.time()
@@ -2051,7 +2051,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'formatted_time': slot_time.strftime('%I:%M %p')
                 })
                 
-                current_time += dt.timedelta(minutes=30)
+                current_time += dt.timedelta(minutes=8)
             
             return Response({
                 'code': 1,
