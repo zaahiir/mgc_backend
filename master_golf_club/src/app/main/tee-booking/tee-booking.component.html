@@ -295,10 +295,6 @@
 
             
             <h3>Our facilities include</h3>
-            <!-- Debug info -->
-            <div style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-size: 12px; color: #666;">
-              Debug: {{course.amenities?.length || 0}} amenities loaded
-            </div>
             <div class="amenities-grid" *ngIf="course.amenities && course.amenities.length > 0">
               <div class="amenity-item" *ngFor="let amenity of course.amenities; trackBy: trackByAmenity">
                 <div class="amenity-icon-wrapper">

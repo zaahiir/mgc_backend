@@ -153,6 +153,11 @@
     min-height: 50px;
 }
 
+.amenity-icon-wrapper * {
+    color: var(--theme-color);
+    fill: var(--theme-color);
+}
+
 .amenity-icon-wrapper .amenity-icon {
     width: 24px;
     height: 24px;
@@ -169,12 +174,17 @@
     transform: scale(1.05);
 }
 
+.amenity-item:hover .amenity-icon-wrapper * {
+    color: var(--secondary-color) !important;
+    fill: var(--secondary-color) !important;
+}
+
 .amenity-item:hover .amenity-icon-wrapper .amenity-icon {
     color: var(--secondary-color);
 }
 
 .amenity-item:hover .amenity-icon-wrapper .amenity-icon svg {
-    fill: var(--secondary-color);
+    fill: var(--secondary-color) !important;
 }
 
 .amenity-icon-wrapper .amenity-icon {
@@ -190,6 +200,7 @@
     height: 100%;
     fill: var(--theme-color);
     display: block;
+    transition: fill 0.3s ease;
 }
 
 .amenity-icon-wrapper .amenity-icon {
