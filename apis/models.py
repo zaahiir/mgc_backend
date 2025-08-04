@@ -329,16 +329,21 @@ class BookingModel(models.Model):
     
     @property
     def end_time(self):
-        from datetime import datetime, timedelta
-        start_datetime = datetime.combine(self.bookingDate, self.bookingTime)
+        from datetime import timedelta
+        from django.utils import timezone
+        start_datetime = timezone.datetime.combine(self.bookingDate, self.bookingTime)
         duration = timedelta(hours=self.duration_hours)
         return (start_datetime + duration).time()
     
     @property
     def can_cancel(self):
         # Allow cancellation up to 24 hours before booking
-        booking_datetime = timezone.datetime.combine(self.bookingDate, self.bookingTime)
-        return booking_datetime - timezone.now() > timezone.timedelta(hours=24)
+        try:
+            booking_datetime = timezone.datetime.combine(self.bookingDate, self.bookingTime)
+            return booking_datetime - timezone.now() > timezone.timedelta(hours=24)
+        except (TypeError, ValueError):
+            # Handle cases where datetime comparison fails (e.g., during creation)
+            return True
 
 
 

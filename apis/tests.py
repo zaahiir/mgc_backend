@@ -52,7 +52,7 @@ class TeeBookingTestCase(APITestCase):
     def test_get_available_slots(self):
         """Test getting available time slots for a date and tee"""
         tomorrow = datetime.now().date() + timedelta(days=1)
-        url = reverse('booking-available_slots')
+        url = reverse('booking-available-slots')
         
         response = self.client.get(url, {
             'course_id': self.course.id,

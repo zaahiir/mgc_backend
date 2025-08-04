@@ -469,6 +469,9 @@ class BookingSerializer(serializers.ModelSerializer):
             'tee', 'teeInfo', 'bookingDate', 'formattedDate', 'bookingTime', 'endTime',
             'participants', 'totalPrice', 'status', 'notes', 'canCancel'
         ]
+        extra_kwargs = {
+            'totalPrice': {'required': False}
+        }
     
     def get_memberFullName(self, obj):
         return f"{obj.member.firstName} {obj.member.lastName}"
