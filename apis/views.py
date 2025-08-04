@@ -15,6 +15,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.conf import settings
 from datetime import datetime, timedelta
+import datetime as dt
 import json
 import logging
 import qrcode
@@ -35,9 +36,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail
 from django.conf import settings
-from django.utils import timezone
 from django.db.models import Q
-from datetime import datetime, timedelta
 import json
 import random
 import string
@@ -275,7 +274,7 @@ class UserViewSet(viewsets.ViewSet):
             from django.core.mail import send_mail
             
             verification_code = str(random.randint(100000, 999999))
-            reset_token_expiry = datetime.datetime.now() + datetime.timedelta(hours=1)  # 1 hour expiry
+            reset_token_expiry = dt.datetime.now() + dt.timedelta(hours=1)  # 1 hour expiry
             
             # Store verification code and expiry in member record
             member.reset_token = verification_code  # Using reset_token field to store verification code
@@ -348,11 +347,10 @@ class UserViewSet(viewsets.ViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Find member by verification code
-            import datetime
             try:
                 member = MemberModel.objects.get(
                     reset_token=verification_code,
-                    reset_token_expiry__gt=datetime.datetime.now(),
+                    reset_token_expiry__gt=dt.datetime.now(),
                     hideStatus=0
                 )
                 return Response({
@@ -401,11 +399,10 @@ class UserViewSet(viewsets.ViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Find member by verification code
-            import datetime
             try:
                 member = MemberModel.objects.get(
                     reset_token=verification_code,
-                    reset_token_expiry__gt=datetime.datetime.now(),
+                    reset_token_expiry__gt=dt.datetime.now(),
                     hideStatus=0
                 )
             except MemberModel.DoesNotExist:
@@ -1010,10 +1007,10 @@ Master Golf Club Management
             
             # Add calculated fields
             if member.membershipEndDate:
-                from datetime import datetime, date
+                from datetime import date
                 end_date = member.membershipEndDate
                 if isinstance(end_date, str):
-                    end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                    end_date = dt.datetime.strptime(end_date, '%Y-%m-%d').date()
                 
                 today = date.today()
                 days_until_expiry = (end_date - today).days
@@ -1029,7 +1026,7 @@ Master Golf Club Management
                 today = date.today()
                 birth_date = member.dateOfBirth
                 if isinstance(birth_date, str):
-                    birth_date = datetime.strptime(birth_date, '%Y-%m-%d').date()
+                    birth_date = dt.datetime.strptime(birth_date, '%Y-%m-%d').date()
                 
                 age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
                 profile_data['age'] = age
@@ -1170,10 +1167,10 @@ Master Golf Club Management
             
             # Add calculated fields (same as above)
             if member.membershipEndDate:
-                from datetime import datetime, date
+                from datetime import date
                 end_date = member.membershipEndDate
                 if isinstance(end_date, str):
-                    end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                    end_date = dt.datetime.strptime(end_date, '%Y-%m-%d').date()
                 
                 today = date.today()
                 days_until_expiry = (end_date - today).days
@@ -1188,7 +1185,7 @@ Master Golf Club Management
                 today = date.today()
                 birth_date = member.dateOfBirth
                 if isinstance(birth_date, str):
-                    birth_date = datetime.strptime(birth_date, '%Y-%m-%d').date()
+                    birth_date = dt.datetime.strptime(birth_date, '%Y-%m-%d').date()
                 
                 age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
                 profile_data['age'] = age
@@ -1987,15 +1984,15 @@ class BookingViewSet(viewsets.ModelViewSet):
             }, status=400)
         
         try:
-            date_obj = datetime.strptime(booking_date, '%Y-%m-%d').date()
+            date_obj = dt.datetime.strptime(booking_date, '%Y-%m-%d').date()
             tee = TeeModel.objects.get(id=tee_id)
             
             # Generate time slots (6 AM to 8 PM, every 30 minutes)
             slots = []
-            start_time = datetime.strptime('06:00', '%H:%M').time()
-            end_time = datetime.strptime('20:00', '%H:%M').time()
-            current_time = datetime.combine(date_obj, start_time)
-            end_datetime = datetime.combine(date_obj, end_time)
+            start_time = dt.datetime.strptime('06:00', '%H:%M').time()
+            end_time = dt.datetime.strptime('20:00', '%H:%M').time()
+            current_time = dt.datetime.combine(date_obj, start_time)
+            end_datetime = dt.datetime.combine(date_obj, end_time)
             
             # Get existing bookings for this date and course
             existing_bookings = BookingModel.objects.filter(
@@ -2008,14 +2005,14 @@ class BookingViewSet(viewsets.ModelViewSet):
             for booking_time, hole_number in existing_bookings:
                 # Block time slots based on duration (10 minutes per hole)
                 duration_hours = hole_number * 0.167  # 10 minutes per hole
-                booking_start = datetime.combine(date_obj, booking_time)
-                booking_end = booking_start + timedelta(hours=duration_hours)
+                booking_start = dt.datetime.combine(date_obj, booking_time)
+                booking_end = booking_start + dt.timedelta(hours=duration_hours)
                 
                 # Block all 30-minute slots within this duration
                 slot_time = booking_start
                 while slot_time < booking_end:
                     booked_times.add(slot_time.time())
-                    slot_time += timedelta(minutes=30)
+                    slot_time += dt.timedelta(minutes=30)
             
             while current_time <= end_datetime:
                 slot_time = current_time.time()
@@ -2024,7 +2021,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 # Check if there's enough time for the selected tee duration
                 if is_available:
                     duration_hours = tee.holeNumber * 0.167  # 10 minutes per hole
-                    slot_end = current_time + timedelta(hours=duration_hours)
+                    slot_end = current_time + dt.timedelta(hours=duration_hours)
                     if slot_end.time() > end_time:
                         is_available = False
                 
@@ -2034,7 +2031,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'formatted_time': slot_time.strftime('%I:%M %p')
                 })
                 
-                current_time += timedelta(minutes=30)
+                current_time += dt.timedelta(minutes=30)
             
             return Response({
                 'code': 1,
