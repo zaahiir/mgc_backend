@@ -189,7 +189,7 @@ class CourseModel(models.Model):
     id = models.AutoField(primary_key=True)
     courseName = models.CharField(max_length=255, null=True, blank=True)
     courseAddress = models.TextField(null=True, blank=True)
-    courseOpenFrom = models.CharField(max_length=255, null=True, blank=True)
+    courseOpenFrom = models.TimeField(null=True, blank=True, help_text="Course opening time (e.g., 06:00)")
     coursePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
     courseAlternatePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
     courseWebsite = models.URLField(max_length=255, null=True, blank=True)

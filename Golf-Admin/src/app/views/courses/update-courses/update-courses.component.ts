@@ -160,7 +160,7 @@ export class UpdateCoursesComponent implements OnInit {
         this.golfCourseForm.patchValue({
           courseName: courseData.name || courseData.courseName,
           courseAddress: courseData.address || courseData.courseAddress,
-          courseOpenFrom: courseData.timing || courseData.courseOpenFrom,
+          courseOpenFrom: this.convertTimeForInput(courseData.timing || courseData.courseOpenFrom),
           coursePhoneNumber: courseData.phone || courseData.coursePhoneNumber,
           courseAlternatePhoneNumber: courseData.alternatePhone || courseData.courseAlternatePhoneNumber,
           courseWebsite: courseData.website || courseData.courseWebsite,
@@ -222,7 +222,7 @@ export class UpdateCoursesComponent implements OnInit {
     this.golfCourseForm = this.formBuilder.group({
       courseName: ['', [Validators.required, Validators.minLength(2)]],
       courseAddress: ['', [Validators.required]],
-      courseOpenFrom: ['6:00 AM', [Validators.required]],
+      courseOpenFrom: ['06:00', [Validators.required]],
       coursePhoneNumber: ['', [Validators.required, Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
       courseAlternatePhoneNumber: ['', [Validators.pattern(/^[\+]?[\d\s\-\(\)]+$/)]],
       courseWebsite: ['', [Validators.pattern(/^https?:\/\/.+/)]],
@@ -621,5 +621,32 @@ export class UpdateCoursesComponent implements OnInit {
     }
 
     return 'Invalid value';
+  }
+
+  private convertTimeForInput(timeString: string | undefined): string {
+    if (!timeString) return '06:00';
+    
+    // If it's already in HH:MM format, return as is
+    if (/^\d{2}:\d{2}$/.test(timeString)) {
+      return timeString;
+    }
+    
+    // If it's in "6:00 AM" format, convert to HH:MM
+    const timeMatch = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1]);
+      const minutes = timeMatch[2];
+      const period = timeMatch[3].toUpperCase();
+      
+      if (period === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}`;
+    }
+    
+    return '06:00';
   }
 }

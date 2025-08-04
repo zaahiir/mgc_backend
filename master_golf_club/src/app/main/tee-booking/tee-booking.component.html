@@ -120,8 +120,8 @@
                           [class.other-month]="day.otherMonth"
                           [class.selected]="isDateSelected(day.date)"
                           [class.today]="isToday(day.date)"
-                          [class.available]="isDayAvailable(day.date)"
-                          [disabled]="!isDayAvailable(day.date) || day.otherMonth"
+                          [class.available]="day.available"
+                          [disabled]="!day.available || day.otherMonth"
                           (click)="selectDate(day.date)">
                     {{day.date | date:'d'}}
                   </button>
@@ -290,16 +290,23 @@
           <!-- Course Information -->
           <div class="content-section">
             <h2>About {{course.name}}</h2>
-            <p>Aldenham Golf Club is renowned for the quality of the course, particularly our immaculate greens and exceptional condition of the fairways and surrounding areas. The Church Course opened in 1975 and has matured well over the years with many different tree species and lovely views over the neighboring countryside.</p>
+            <p *ngIf="course.description">{{course.description}}</p>
+            <p *ngIf="!course.description">Experience exceptional golfing conditions with our meticulously maintained fairways, challenging layout, and stunning natural surroundings. Perfect for golfers of all skill levels.</p>
 
-            <h3>Course Features</h3>
-            <p>The 13th is their signature hole and was, for many years, the longest hole in Europe at 621 yards. Our team of expert groundsmen led by Course Manager Marc Winnan has some of the best equipment available to maintain this course to its reputation.</p>
-
-            <h3>Year-Round Excellence</h3>
-            <p>Members will get the benefits of the course throughout the whole year even in the depths of winter. The club prides itself on maintaining the greens all year round so there is no need for temporary greens.</p>
-
+            
             <h3>Our facilities include</h3>
-            <ul class="facilities-list">
+            <ul class="facilities-list" *ngIf="course.amenities && course.amenities.length > 0">
+              <li *ngFor="let amenity of course.amenities">
+                <span>
+                  <fa-icon [icon]="getAmenityIcon(amenity)"></fa-icon> 
+                  {{amenity.name}}:
+                </span> 
+                {{amenity.description}}
+              </li>
+            </ul>
+            
+            <!-- Fallback facilities if no amenities are available -->
+            <ul class="facilities-list" *ngIf="!course.amenities || course.amenities.length === 0">
               <li><span><fa-icon [icon]="wifiIcon"></fa-icon> Free WiFi:</span> Stay connected throughout your visit with complimentary high-speed internet access.</li>
               <li><span><fa-icon [icon]="parkingIcon"></fa-icon> Free Parking:</span> Convenient and secure parking facilities available for all guests.</li>
               <li><span><fa-icon [icon]="restaurantIcon"></fa-icon> Restaurant:</span> Enjoy delicious meals and refreshments at our on-site restaurant.</li>
@@ -307,7 +314,7 @@
             </ul>
 
             <!-- Benefit Section -->
-            <div class="benefit-section">
+            <!-- <div class="benefit-section">
               <img src="https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80"
                    alt="Golf Experience" class="benefit-image">
               <div class="benefit-content">
@@ -315,7 +322,7 @@
                 <p>Experience exceptional golfing conditions with our meticulously maintained fairways, challenging layout, and stunning natural surroundings. Perfect for golfers of all skill levels.</p>
                 <p><strong>Price:</strong> £{{selectedTee?.pricePerPerson || basePrice}} per person</p>
               </div>
-            </div>
+            </div> -->
           </div>
         </div>
       </div>

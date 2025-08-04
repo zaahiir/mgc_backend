@@ -22,6 +22,17 @@ interface Course {
   phone: string;
   timing: string;
   imageUrl: string;
+  description?: string;
+  amenities?: Amenity[];
+}
+
+interface Amenity {
+  id: number;
+  name: string;
+  description: string;
+  icon_svg?: string;
+  icon_path?: string;
+  viewbox?: string;
 }
 
 interface Tee {
@@ -43,6 +54,7 @@ interface TimeSlot {
 interface CalendarDay {
   date: Date;
   otherMonth: boolean;
+  available: boolean;
 }
 
 @Component({
@@ -156,7 +168,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           code: courseData.code || '',
           phone: courseData.phone || '',
           timing: courseData.timing || '',
-          imageUrl: courseData.imageUrl || 'assets/images/golf-course.jpg'
+          imageUrl: courseData.imageUrl || 'assets/images/golf-course.jpg',
+          description: courseData.description || '',
+          amenities: courseData.amenities || []
         };
         
         console.log('Course loaded:', this.course);
@@ -263,7 +277,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       
       this.calendarDays.push({
         date: date,
-        otherMonth: date.getMonth() !== month
+        otherMonth: date.getMonth() !== month,
+        available: this.isDayAvailable(date)
       });
     }
   }
@@ -301,7 +316,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     date.setHours(0, 0, 0, 0);
-    return date >= today;
+    
+    // Only allow next 8 days from today
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + 8);
+    
+    return date >= today && date <= maxDate;
   }
 
   // Time slot management
@@ -434,5 +454,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     } else {
       this.copyToClipboard(address);
     }
+  }
+
+  // Amenity icon helper
+  getAmenityIcon(amenity: Amenity): any {
+    // Map amenity names to FontAwesome icons
+    const iconMap: { [key: string]: any } = {
+      'WiFi': this.wifiIcon,
+      'Parking': this.parkingIcon,
+      'Restaurant': this.restaurantIcon,
+      'Pro Shop': this.shopIcon
+    };
+    
+    return iconMap[amenity.name] || this.wifiIcon; // Default to WiFi icon
   }
 }

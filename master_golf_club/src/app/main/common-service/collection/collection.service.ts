@@ -81,11 +81,12 @@ export class CollectionService {
     return axios.get(url);
   }
 
-  // Amenities API endpoints
   getAmenities() {
     const url = `${this.apiUrl}amenities/collection_amenities/`;
     return axios.get(url);
   }
+
+  // Amenities API endpoints
 
   // Tee Management API endpoints
   getTeesByCourse(courseId: number) {
