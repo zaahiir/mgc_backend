@@ -27,6 +27,7 @@ interface AmenityData {
   amenityName: string;
   amenityIcon?: string;
   amenityTooltip?: string;
+  amenitiesDescription?: string;
   hideStatus: number;
 }
 
@@ -104,7 +105,8 @@ export class CreateAmenitiesComponent implements OnInit {
         this.amenityForm.patchValue({
           amenityName: amenityData.amenityName || '',
           amenityIcon: amenityData.amenityIcon || '',
-          amenityTooltip: amenityData.amenityTooltip || ''
+          amenityTooltip: amenityData.amenityTooltip || '',
+          amenitiesDescription: amenityData.amenitiesDescription || ''
         });
 
         // Set SVG preview if available
@@ -131,6 +133,7 @@ export class CreateAmenitiesComponent implements OnInit {
       amenityName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
       amenityIcon: ['', [Validators.required, this.svgValidator.bind(this)]],
       amenityTooltip: ['', [Validators.maxLength(500)]],
+      amenitiesDescription: ['', [Validators.maxLength(1000)]],
       hideStatus: [0]
     });
   }
@@ -207,6 +210,7 @@ export class CreateAmenitiesComponent implements OnInit {
         amenityName: this.amenityForm.value.amenityName.trim(),
         amenityIcon: this.amenityForm.value.amenityIcon.trim(),
         amenityTooltip: this.amenityForm.value.amenityTooltip?.trim() || '',
+        amenitiesDescription: this.amenityForm.value.amenitiesDescription?.trim() || '',
         hideStatus: 0
       };
 

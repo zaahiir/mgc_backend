@@ -31,6 +31,7 @@ interface AmenityInterface {
   amenityName?: string;
   amenityIcon?: string;
   amenityTooltip?: string;
+  amenitiesDescription?: string;
   hideStatus?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -41,6 +42,7 @@ interface AmenityInterface {
   // New format properties (from list_all endpoint)
   title?: string;
   tooltip?: string;
+  description?: string;
   icon?: string;
   icon_file?: string;
   icon_svg?: string;

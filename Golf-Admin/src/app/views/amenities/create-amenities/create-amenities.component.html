@@ -78,6 +78,16 @@
             </c-form-feedback>
           </c-col>
 
+          <!-- Amenities Description -->
+          <c-col [cFormFloating]="true" xs="12">
+            <textarea cFormControl id="amenitiesDescription" formControlName="amenitiesDescription"
+                     placeholder="Detailed description of the amenity" rows="4"></textarea>
+            <label cLabel for="amenitiesDescription" class="ms-2">Detailed Description</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('amenitiesDescription')">
+              {{ getErrorMessage('amenitiesDescription') }}
+            </c-form-feedback>
+          </c-col>
+
           <!-- Font Awesome Guidelines -->
           <c-col xs="12">
             <c-card class="mt-3">

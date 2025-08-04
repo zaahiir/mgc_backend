@@ -28,11 +28,11 @@ interface Course {
 
 interface Amenity {
   id: number;
-  name: string;
-  description: string;
-  icon_svg?: string;
-  icon_path?: string;
-  viewbox?: string;
+  amenityName: string;
+  amenityTooltip: string; // This is the "description" field
+  amenity_icon_svg?: string;
+  amenity_icon_path?: string;
+  amenity_viewbox?: string;
 }
 
 interface Tee {
@@ -258,38 +258,56 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   generateCalendar(): void {
+    this.calendarDays = [];
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
     
-    // First day of the month
+    // Get first day of the month
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     
-    // Start from the beginning of the week
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - startDate.getDay());
+    // Get the day of week for the first day (0 = Sunday, 1 = Monday, etc.)
+    const firstDayOfWeek = firstDay.getDay();
     
-    // Generate 42 days (6 weeks)
-    this.calendarDays = [];
-    for (let i = 0; i < 42; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      
+    // Add days from previous month to fill the first week
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+      const date = new Date(year, month, -i);
       this.calendarDays.push({
         date: date,
-        otherMonth: date.getMonth() !== month,
+        otherMonth: true,
+        available: false
+      });
+    }
+    
+    // Add all days of the current month
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const date = new Date(year, month, day);
+      this.calendarDays.push({
+        date: date,
+        otherMonth: false,
         available: this.isDayAvailable(date)
+      });
+    }
+    
+    // Add days from next month to fill the last week
+    const lastDayOfWeek = lastDay.getDay();
+    for (let day = 1; day <= 6 - lastDayOfWeek; day++) {
+      const date = new Date(year, month + 1, day);
+      this.calendarDays.push({
+        date: date,
+        otherMonth: true,
+        available: false
       });
     }
   }
 
   previousMonth(): void {
-    this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 1);
     this.generateCalendar();
   }
 
   nextMonth(): void {
-    this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 1);
     this.generateCalendar();
   }
 
@@ -317,9 +335,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     today.setHours(0, 0, 0, 0);
     date.setHours(0, 0, 0, 0);
     
-    // Only allow next 8 days from today
+    // Only allow next 7 days from today (including today)
     const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + 8);
+    maxDate.setDate(today.getDate() + 6);
     
     return date >= today && date <= maxDate;
   }
@@ -466,6 +484,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       'Pro Shop': this.shopIcon
     };
     
-    return iconMap[amenity.name] || this.wifiIcon; // Default to WiFi icon
+    return iconMap[amenity.amenityName] || this.wifiIcon; // Default to WiFi icon
   }
 }

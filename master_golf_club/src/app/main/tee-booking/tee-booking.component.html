@@ -117,13 +117,13 @@
                 <div class="calendar-days">
                   <button *ngFor="let day of calendarDays"
                           class="calendar-day"
-                          [class.other-month]="day.otherMonth"
                           [class.selected]="isDateSelected(day.date)"
                           [class.today]="isToday(day.date)"
                           [class.available]="day.available"
+                          [class.other-month]="day.otherMonth"
                           [disabled]="!day.available || day.otherMonth"
                           (click)="selectDate(day.date)">
-                    {{day.date | date:'d'}}
+                    <div class="day-number">{{day.date | date:'d'}}</div>
                   </button>
                 </div>
               </div>
@@ -298,10 +298,11 @@
             <ul class="facilities-list" *ngIf="course.amenities && course.amenities.length > 0">
               <li *ngFor="let amenity of course.amenities">
                 <span>
-                  <fa-icon [icon]="getAmenityIcon(amenity)"></fa-icon> 
-                  {{amenity.name}}:
+                  <div class="amenity-icon" *ngIf="amenity.amenity_icon_svg" [innerHTML]="amenity.amenity_icon_svg"></div>
+                  <fa-icon *ngIf="!amenity.amenity_icon_svg" [icon]="getAmenityIcon(amenity)"></fa-icon>
+                  {{amenity.amenityName}}:
                 </span> 
-                {{amenity.description}}
+                {{amenity.amenityTooltip}}
               </li>
             </ul>
             

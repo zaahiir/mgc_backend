@@ -50,6 +50,7 @@
               <th scope="col">Icon</th>
               <th scope="col">Amenity Name</th>
               <th scope="col">Tooltip</th>
+              <th scope="col">Description</th>
               <th scope="col">Action</th>
             </tr>
           </thead>
@@ -110,6 +111,7 @@
               </td>
               <td>{{ amenity.title || amenity.amenityName }}</td>
               <td>{{ amenity.tooltip || amenity.amenityTooltip || amenity.title || amenity.amenityName }}</td>
+              <td>{{ amenity.description || amenity.amenitiesDescription }}</td>
               <td>
                 <a cButton
                    [routerLink]="['/amenities/update', amenity.id]"
@@ -133,7 +135,7 @@
             </tr>
             <!-- Empty State -->
             <tr *ngIf="paginatedAmenityList.length === 0 && !isLoading">
-              <td colspan="5" class="text-center">
+              <td colspan="6" class="text-center">
                 <span *ngIf="searchTerm; else noData">No amenities found matching "{{ searchTerm }}"</span>
                 <ng-template #noData>No amenities available</ng-template>
               </td>

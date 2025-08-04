@@ -106,9 +106,20 @@ export class UpdateCoursesComponent implements OnInit {
 
   ngOnInit(): void {
     this.courseId = this.route.snapshot.paramMap.get('id') || '';
-    this.loadAmenities();
-    this.loadCourseData();
     this.initializeForm();
+    this.loadDataSequentially();
+  }
+
+  private async loadDataSequentially(): Promise<void> {
+    try {
+      // First load amenities
+      await this.loadAmenities();
+      
+      // Then load course data (which sets selected amenities)
+      await this.loadCourseData();
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
   }
 
   private async loadAmenities(): Promise<void> {
@@ -149,6 +160,15 @@ export class UpdateCoursesComponent implements OnInit {
 
         // Update selected amenities
         this.selectedAmenities = courseData.amenities || [];
+        
+        // Extract amenity IDs from objects if they are objects
+        if (this.selectedAmenities.length > 0 && typeof this.selectedAmenities[0] === 'object') {
+          this.selectedAmenities = this.selectedAmenities.map((amenity: any) => amenity.id);
+        }
+        
+        // Ensure amenities are numbers
+        this.selectedAmenities = this.selectedAmenities.map(id => Number(id));
+        
         this.golfCourseForm.patchValue({
           courseAmenities: this.selectedAmenities
         });
@@ -401,7 +421,8 @@ export class UpdateCoursesComponent implements OnInit {
   }
 
   isAmenitySelected(amenityId: number): boolean {
-    return this.selectedAmenities.includes(amenityId);
+    const isSelected = this.selectedAmenities.includes(amenityId);
+    return isSelected;
   }
 
   toggleAmenity(amenity: Amenity): void {
@@ -476,8 +497,15 @@ export class UpdateCoursesComponent implements OnInit {
       formData.append('courseLocation', formValue.courseLocation);
       formData.append('hideStatus', formValue.hideStatus.toString());
 
-      // Add amenities
-      formData.append('courseAmenities', JSON.stringify(this.selectedAmenities));
+      // Add amenities as array
+      if (this.selectedAmenities.length > 0) {
+        this.selectedAmenities.forEach((amenityId, index) => {
+          formData.append(`courseAmenities[${index}]`, amenityId.toString());
+        });
+      } else {
+        // Send empty array if no amenities selected
+        formData.append('courseAmenities[]', '');
+      }
 
       // Add tees
       const teesData = this.teesFormArray.value;

@@ -48,6 +48,6 @@ export class AmenitiesService {
    * Get all amenities for frontend consumption
    */
   getAllAmenities() {
-    return axios.get(this.apiUrl + "amenities/list_all/");
+    return axios.get(this.apiUrl + "amenities/0/listing/");
   }
 }

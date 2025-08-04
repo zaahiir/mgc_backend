@@ -484,8 +484,15 @@ export class CreateCoursesComponent implements OnInit {
       formData.append('courseLocation', formValues.courseLocation || '');
       formData.append('hideStatus', formValues.hideStatus.toString());
 
-      // Add amenities as JSON string
-      formData.append('courseAmenities', JSON.stringify(this.selectedAmenities));
+      // Add amenities as array
+      if (this.selectedAmenities.length > 0) {
+        this.selectedAmenities.forEach((amenityId, index) => {
+          formData.append(`courseAmenities[${index}]`, amenityId.toString());
+        });
+      } else {
+        // Send empty array if no amenities selected
+        formData.append('courseAmenities[]', '');
+      }
 
       // Add tees data as JSON string
       formData.append('tees', JSON.stringify(formValues.tees));

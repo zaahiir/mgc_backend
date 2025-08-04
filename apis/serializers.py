@@ -270,8 +270,9 @@ class CourseDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_amenities(self, obj):
-        """Return amenity IDs as expected by frontend"""
-        return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
+        """Return full amenity details with icons and descriptions"""
+        amenities = obj.courseAmenities.filter(hideStatus=0)
+        return AmenitiesModelSerializers(amenities, many=True, context=self.context).data
 
     def get_imageUrl(self, obj):
         """Return full image URL"""
@@ -308,26 +309,36 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
     def validate_courseAmenities(self, value):
         """Validate that all amenity IDs exist"""
         if value:
-            # Convert to integers if they're strings
-            try:
-                amenity_ids = [int(amenity_id) for amenity_id in value]
-            except (ValueError, TypeError):
-                raise serializers.ValidationError("Invalid amenity IDs provided")
-            
-            existing_ids = set(AmenitiesModel.objects.filter(
-                id__in=amenity_ids, 
-                hideStatus=0
-            ).values_list('id', flat=True))
-            
-            invalid_ids = set(amenity_ids) - existing_ids
-            if invalid_ids:
-                raise serializers.ValidationError(
-                    f"Invalid amenity IDs: {list(invalid_ids)}"
-                )
-            
-            # Return the converted list
-            return amenity_ids
-        return value
+            # Handle empty strings and None values
+            if isinstance(value, list):
+                # Filter out empty strings, None, and 'null' values
+                filtered_value = []
+                for item in value:
+                    if item is not None and item != '' and item != 'null':
+                        try:
+                            filtered_value.append(int(item))
+                        except (ValueError, TypeError):
+                            raise serializers.ValidationError(f"Invalid amenity ID: {item}")
+                
+                if filtered_value:
+                    existing_ids = set(AmenitiesModel.objects.filter(
+                        id__in=filtered_value, 
+                        hideStatus=0
+                    ).values_list('id', flat=True))
+                    
+                    invalid_ids = set(filtered_value) - existing_ids
+                    if invalid_ids:
+                        raise serializers.ValidationError(
+                            f"Invalid amenity IDs: {list(invalid_ids)}"
+                        )
+                    
+                    # Return the filtered list
+                    return filtered_value
+                else:
+                    return []
+            else:
+                raise serializers.ValidationError("courseAmenities must be a list")
+        return []
     
 
     

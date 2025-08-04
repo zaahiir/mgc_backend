@@ -154,6 +154,7 @@ class AmenitiesModel(models.Model):
     amenityName = models.CharField(max_length=200, null=True, blank=True)
     amenityIcon = models.TextField(null=True, blank=True)  # SVG content
     amenityTooltip = models.CharField(max_length=500, null=True, blank=True)
+    amenitiesDescription = models.TextField(null=True, blank=True, help_text="Detailed description of the amenity")
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
