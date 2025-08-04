@@ -256,9 +256,17 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   selectTee(tee: Tee): void {
+    console.log('Tee selected:', tee);
     this.selectedTee = tee;
     this.selectedTime = '';
-    this.loadAvailableTimeSlots();
+    
+    // Load time slots if date is already selected
+    if (this.selectedDate) {
+      console.log('Loading time slots for selected tee and date');
+      this.loadAvailableTimeSlots();
+    } else {
+      console.log('No date selected yet, time slots will be loaded when date is selected');
+    }
   }
 
   // Date management
@@ -358,15 +366,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     return this.selectedDate && this.isToday(this.selectedDate);
   }
 
-  // Helper method to get current time for debugging
-  getCurrentTime(): string {
-    const now = new Date();
-    return now.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  }
+
 
   isDayAvailable(date: Date): boolean {
     const today = new Date();
@@ -383,11 +383,22 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // Time slot management
   async loadAvailableTimeSlots(): Promise<void> {
     if (!this.selectedTee || !this.selectedDate) {
+      console.log('Missing required data for loading time slots:', {
+        selectedTee: this.selectedTee,
+        selectedDate: this.selectedDate
+      });
       return;
     }
 
     this.isLoading = true;
+    this.errorMessage = '';
     const dateString = this.selectedDate.toISOString().split('T')[0];
+    
+    console.log('Loading time slots for:', {
+      courseId: this.course.id,
+      date: dateString,
+      teeId: this.selectedTee.id
+    });
     
     try {
       const response = await this.collectionService.getAvailableSlots(
@@ -396,12 +407,16 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.selectedTee.id
       );
       
+      console.log('Time slots response:', response);
+      
       this.isLoading = false;
       if (response.data.code === 1 && response.data.data) {
-        // Filter time slots if the selected date is today
-        this.currentTimeSlots = this.filterTimeSlotsForToday(response.data.data);
+        // Backend now handles filtering for today's slots
+        this.currentTimeSlots = response.data.data;
+        console.log('Time slots loaded:', this.currentTimeSlots);
       } else {
-        this.errorMessage = 'Failed to load available time slots';
+        console.error('Failed to load time slots:', response.data);
+        this.errorMessage = response.data.message || 'Failed to load available time slots';
       }
     } catch (error) {
       this.isLoading = false;
@@ -410,50 +425,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Filter time slots to show only future times when date is today
-  private filterTimeSlotsForToday(timeSlots: TimeSlot[]): TimeSlot[] {
-    const today = new Date();
-    const selectedDate = new Date(this.selectedDate);
-    
-    // Check if selected date is today
-    const isToday = today.toDateString() === selectedDate.toDateString();
-    
-    if (!isToday) {
-      // If not today, return all time slots as they are
-      return timeSlots;
-    }
-    
-    // If today, filter out past time slots
-    const currentTime = today.getHours() * 60 + today.getMinutes(); // Convert to minutes
-    
-    return timeSlots.filter(slot => {
-      try {
-        // Parse the time slot (assuming format like "09:00", "14:30", etc.)
-        const timeParts = slot.time.split(':');
-        if (timeParts.length !== 2) {
-          console.warn('Invalid time format:', slot.time);
-          return false; // Skip invalid time formats
-        }
-        
-        const hours = parseInt(timeParts[0], 10);
-        const minutes = parseInt(timeParts[1], 10);
-        
-        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-          console.warn('Invalid time values:', slot.time);
-          return false; // Skip invalid time values
-        }
-        
-        const slotTimeInMinutes = hours * 60 + minutes;
-        
-        // Only show slots that are at least 30 minutes in the future
-        // This gives users time to complete their booking
-        return slotTimeInMinutes > (currentTime + 30);
-      } catch (error) {
-        console.error('Error parsing time slot:', slot.time, error);
-        return false; // Skip slots that cause errors
-      }
-    });
-  }
+
 
   selectTime(time: string): void {
     this.selectedTime = time;
@@ -610,10 +582,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   getSlotTooltip(slot: TimeSlot): string {
-    if (slot.available) {
-      return 'Available';
-    }
-    
     if (slot.bookings && slot.bookings.length > 0) {
       const bookingDetails = slot.bookings.map(booking => 
         `${booking.member_name} (${booking.participants} player${booking.participants > 1 ? 's' : ''}, ${booking.hole_number} holes)`
@@ -621,7 +589,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       return `Booked:\n${bookingDetails}`;
     }
     
-    return 'Booked';
+    return 'Available';
   }
 
   // Amenity icon helper

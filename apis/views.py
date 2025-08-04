@@ -2037,12 +2037,17 @@ class BookingViewSet(viewsets.ModelViewSet):
             date_obj = dt.datetime.strptime(booking_date, '%Y-%m-%d').date()
             tee = TeeModel.objects.get(id=tee_id)
             
-            # Generate time slots (6 AM to 8 PM, every 8 minutes)
+            # Generate time slots (6 AM to 7 PM, every 8 minutes for better UX)
             slots = []
             start_time = dt.datetime.strptime('06:00', '%H:%M').time()
-            end_time = dt.datetime.strptime('20:00', '%H:%M').time()
+            end_time = dt.datetime.strptime('19:00', '%H:%M').time() # 7 PM as requested
             current_time = dt.datetime.combine(date_obj, start_time)
             end_datetime = dt.datetime.combine(date_obj, end_time)
+            
+            # Get current time for today's date
+            now = dt.datetime.now()
+            today_start = dt.datetime.combine(date_obj, dt.time(0, 0))
+            current_time_for_date = now.replace(year=date_obj.year, month=date_obj.month, day=date_obj.day)
             
             # Get existing bookings for this date and course with full details
             existing_bookings = BookingModel.objects.filter(
@@ -2095,11 +2100,11 @@ class BookingViewSet(viewsets.ModelViewSet):
                     else:
                         # Check if any of the time slots within the duration are already booked
                         check_time = current_time
-                        while check_time < slot_end:
-                            if check_time.time() in booked_slots:
-                                is_available = False
-                                break
-                            check_time += dt.timedelta(minutes=8)
+                    while check_time < slot_end:
+                        if check_time.time() in booked_slots:
+                            is_available = False
+                            break
+                        check_time += dt.timedelta(minutes=8)
                 
                 slot_data = {
                     'time': slot_time.strftime('%H:%M'),
@@ -2115,7 +2120,16 @@ class BookingViewSet(viewsets.ModelViewSet):
                     slot_data['bookings'] = []
                     slot_data['booking_count'] = 0
                 
-                slots.append(slot_data)
+                # Only add slots that are after current time for today's date
+                # For other dates, show all slots
+                if date_obj == now.date():
+                    # For today, only show slots that are at least 30 minutes in the future
+                    if current_time >= current_time_for_date + dt.timedelta(minutes=30):
+                        slots.append(slot_data)
+                else:
+                    # For other dates, show all slots
+                    slots.append(slot_data)
+                
                 current_time += dt.timedelta(minutes=8)
             
             return Response({

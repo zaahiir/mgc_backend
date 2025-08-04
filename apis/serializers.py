@@ -913,3 +913,12 @@ class FAQModelSerializer(serializers.ModelSerializer):
         if not value or value.strip() == '':
             raise serializers.ValidationError("FAQ answer is required")
         return value.strip()
+
+
+class TimeSlotSerializer(serializers.Serializer):
+    """Serializer for time slot data"""
+    time = serializers.CharField()
+    available = serializers.BooleanField()
+    formatted_time = serializers.CharField()
+    bookings = serializers.ListField(required=False, default=list)
+    booking_count = serializers.IntegerField(required=False, default=0)

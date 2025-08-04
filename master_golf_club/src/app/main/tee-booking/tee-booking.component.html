@@ -137,23 +137,18 @@
                 </div>
               </div>
               
-              <!-- Show message when selected date is today -->
-              <div class="today-notice" *ngIf="isSelectedDateToday()">
-                <p><small>Showing only future time slots for today (30+ minutes from now)</small></p>
-              </div>
-              
               <div class="time-slots-container">
                 <div class="time-slots-grid">
                   <button *ngFor="let slot of currentTimeSlots"
                           class="time-slot"
                           [class.selected]="selectedTime === slot.time"
-                          [class.unavailable]="!slot.available"
-                          [disabled]="!slot.available"
+                          [class.unavailable]="slot.bookings && slot.bookings.length > 0"
+                          [disabled]="slot.bookings && slot.bookings.length > 0"
                           (click)="selectTime(slot.time)"
                           [title]="getSlotTooltip(slot)">
                     <div class="time-slot-content">
                       <span class="time">{{slot.time}}</span>
-                      <div class="golf-ball" [class.available]="slot.available">
+                      <div class="golf-ball" [class.available]="!(slot.bookings && slot.bookings.length > 0)">
                         <div class="dimples">
                           <div class="dimple"></div>
                           <div class="dimple"></div>
@@ -181,8 +176,7 @@
                 
                 <!-- Show message when no time slots are available -->
                 <div *ngIf="currentTimeSlots.length === 0 && !isLoading" class="no-slots-message">
-                  <p *ngIf="isSelectedDateToday()">No available time slots for today. Please select a future date.</p>
-                  <p *ngIf="!isSelectedDateToday()">No available time slots for the selected date.</p>
+                  <p>No available time slots for the selected date.</p>
                 </div>
               </div>
             </div>
