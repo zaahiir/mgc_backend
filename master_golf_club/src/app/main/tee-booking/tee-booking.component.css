@@ -109,94 +109,157 @@
     font-family: var(--font-poppins);
 }
 
-.facilities-list {
-    list-style: none;
-    padding: 0;
+/* New Amenities Grid Design */
+.amenities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
     margin-bottom: 30px;
 }
 
-.facilities-list li {
+.amenity-item {
     display: flex;
-    flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
-    padding: 15px 20px;
-    background: linear-gradient(135deg, #f8fffe 0%, #f5f9f5 100%);
-    border-radius: 12px;
-    border: 1px solid rgba(119, 169, 106, 0.1);
-    margin-bottom: 12px;
+    gap: 20px;
+    padding: 0;
+    background: transparent;
+    border: none;
     transition: all 0.3s ease;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     font-size: 16px;
     line-height: 1.6;
     color: var(--text-color);
     font-family: var(--font-poppins);
 }
 
-.facilities-list li::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: linear-gradient(135deg, var(--theme-color) 0%, #6fa65d 100%);
-    border-radius: 0 2px 2px 0;
-}
-
-.facilities-list li:hover {
+.amenity-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(119, 169, 106, 0.15);
-    border-color: rgba(119, 169, 106, 0.3);
 }
 
-.facilities-list li:last-child {
-    margin-bottom: 0;
-}
-
-.facilities-list li span {
+.amenity-icon-wrapper {
+    flex-shrink: 0;
+    width: 50px;
+    height: 50px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    background: var(--theme-color);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 20px;
+    box-shadow: 0 4px 15px rgba(119, 169, 106, 0.2);
+    transition: all 0.3s ease;
+}
+
+.amenity-item:hover .amenity-icon-wrapper {
+    background: var(--secondary-color);
+    box-shadow: 0 6px 20px rgba(28, 64, 61, 0.3);
+    transform: scale(1.05);
+}
+
+.amenity-icon-wrapper .amenity-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.amenity-icon-wrapper .amenity-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+.amenity-icon-wrapper fa-icon {
+    color: #fff;
+    font-size: 20px;
+}
+
+.amenity-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.amenity-name {
+    font-size: 18px;
     font-weight: 600;
     color: var(--title-color);
-    font-size: 16px;
+    margin: 0;
+    font-family: var(--font-sans);
+    line-height: 1.3;
 }
 
-.facilities-list li span fa-icon {
-    color: var(--theme-color);
-    font-size: 18px;
-    width: 20px;
-    text-align: center;
+.amenity-description {
+    font-size: 14px;
+    color: var(--text-color);
+    margin: 0;
+    line-height: 1.5;
+    font-family: var(--font-poppins);
+    opacity: 0.8;
 }
 
-
-
-.benefit-section {
-    background: #f8f9fa;
-    border-radius: 15px;
-    padding: 30px;
-    display: flex;
-    align-items: center;
-    gap: 25px;
-    margin-top: 30px;
+/* Update Calendar Selected Date to use Secondary Color */
+.calendar-day.selected {
+    background: var(--secondary-color);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(28, 64, 61, 0.4);
 }
 
-.benefit-image {
-    flex: 0 0 200px;
-    height: 150px;
-    object-fit: cover;
-    border-radius: 10px;
+.calendar-day:hover:not(:disabled):not(.selected) {
+    background: var(--secondary-color);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(28, 64, 61, 0.3);
 }
 
-.benefit-content h3 {
-    font-size: 20px;
-    margin-bottom: 15px;
+/* Responsive Design for Amenities */
+@media (max-width: 768px) {
+    .amenities-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .amenity-item {
+        gap: 15px;
+    }
+    
+    .amenity-icon-wrapper {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+    
+    .amenity-name {
+        font-size: 16px;
+    }
+    
+    .amenity-description {
+        font-size: 13px;
+    }
 }
 
-.benefit-content p {
-    margin-bottom: 15px;
+@media (max-width: 576px) {
+    .amenity-item {
+        gap: 12px;
+    }
+    
+    .amenity-icon-wrapper {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .amenity-name {
+        font-size: 15px;
+    }
+    
+    .amenity-description {
+        font-size: 12px;
+    }
 }
 
 /* Booking Form Styles */
@@ -484,9 +547,9 @@
 }
 
 .calendar-day.selected {
-    background: var(--theme-color);
+    background: var(--secondary-color);
     color: #fff;
-    box-shadow: 0 4px 15px rgba(119, 169, 106, 0.4);
+    box-shadow: 0 4px 15px rgba(28, 64, 61, 0.4);
 }
 
 .calendar-day.today:not(.selected) {
@@ -1622,7 +1685,7 @@
     font-weight: 500;
 }
 
-/* Amenity icon styles */
+/* Amenity icon styles for inline use */
 .amenity-icon {
     width: 20px;
     height: 20px;
@@ -1637,20 +1700,5 @@
     width: 100%;
     height: 100%;
     fill: var(--theme-color);
-}
-
-.facilities-list li span {
-    font-weight: 600;
-    color: var(--title-color);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.facilities-list li span fa-icon {
-    color: var(--theme-color);
-    font-size: 16px;
-    width: 20px;
-    text-align: center;
 }
 

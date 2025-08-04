@@ -29,7 +29,8 @@ interface Course {
 interface Amenity {
   id: number;
   amenityName: string;
-  amenityTooltip: string; // This is the "description" field
+  amenityTooltip: string; // Short description/tooltip
+  amenitiesDescription?: string; // Detailed description from backend
   amenity_icon_svg?: string;
   amenity_icon_path?: string;
   amenity_viewbox?: string;
@@ -479,11 +480,33 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     // Map amenity names to FontAwesome icons
     const iconMap: { [key: string]: any } = {
       'WiFi': this.wifiIcon,
+      'Free WiFi': this.wifiIcon,
       'Parking': this.parkingIcon,
+      'Free Parking': this.parkingIcon,
       'Restaurant': this.restaurantIcon,
-      'Pro Shop': this.shopIcon
+      'Pro Shop': this.shopIcon,
+      'Golf Shop': this.shopIcon,
+      'Clubhouse': this.restaurantIcon,
+      'Driving Range': this.golfIcon,
+      'Practice Green': this.golfIcon,
+      'Golf Cart': this.golfIcon,
+      'Locker Room': this.wifiIcon,
+      'Shower': this.wifiIcon,
+      'Bar': this.restaurantIcon,
+      'Cafe': this.restaurantIcon
     };
     
-    return iconMap[amenity.amenityName] || this.wifiIcon; // Default to WiFi icon
+    // Try to match by exact name first, then by partial match
+    const exactMatch = iconMap[amenity.amenityName];
+    if (exactMatch) return exactMatch;
+    
+    // Try partial matching
+    for (const [key, icon] of Object.entries(iconMap)) {
+      if (amenity.amenityName.toLowerCase().includes(key.toLowerCase())) {
+        return icon;
+      }
+    }
+    
+    return this.wifiIcon; // Default to WiFi icon
   }
 }

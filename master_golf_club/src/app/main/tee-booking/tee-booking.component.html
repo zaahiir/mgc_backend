@@ -295,24 +295,58 @@
 
             
             <h3>Our facilities include</h3>
-            <ul class="facilities-list" *ngIf="course.amenities && course.amenities.length > 0">
-              <li *ngFor="let amenity of course.amenities">
-                <span>
-                  <div class="amenity-icon" *ngIf="amenity.amenity_icon_svg" [innerHTML]="amenity.amenity_icon_svg"></div>
-                  <fa-icon *ngIf="!amenity.amenity_icon_svg" [icon]="getAmenityIcon(amenity)"></fa-icon>
-                  {{amenity.amenityName}}:
-                </span> 
-                {{amenity.amenityTooltip}}
-              </li>
-            </ul>
+            <div class="amenities-grid" *ngIf="course.amenities && course.amenities.length > 0">
+              <div class="amenity-item" *ngFor="let amenity of course.amenities">
+                <div class="amenity-icon-wrapper">
+                  <div class="amenity-icon" *ngIf="amenity.amenity_icon_svg && amenity.amenity_icon_svg.trim()" [innerHTML]="amenity.amenity_icon_svg"></div>
+                  <fa-icon *ngIf="!amenity.amenity_icon_svg || !amenity.amenity_icon_svg.trim()" [icon]="getAmenityIcon(amenity)"></fa-icon>
+                </div>
+                <div class="amenity-content">
+                  <h4 class="amenity-name">{{amenity.amenityName}}</h4>
+                  <p class="amenity-description">{{amenity.amenitiesDescription || amenity.amenityTooltip}}</p>
+                </div>
+              </div>
+            </div>
             
             <!-- Fallback facilities if no amenities are available -->
-            <ul class="facilities-list" *ngIf="!course.amenities || course.amenities.length === 0">
-              <li><span><fa-icon [icon]="wifiIcon"></fa-icon> Free WiFi:</span> Stay connected throughout your visit with complimentary high-speed internet access.</li>
-              <li><span><fa-icon [icon]="parkingIcon"></fa-icon> Free Parking:</span> Convenient and secure parking facilities available for all guests.</li>
-              <li><span><fa-icon [icon]="restaurantIcon"></fa-icon> Restaurant:</span> Enjoy delicious meals and refreshments at our on-site restaurant.</li>
-              <li><span><fa-icon [icon]="shopIcon"></fa-icon> Pro Shop:</span> Browse our fully-stocked pro shop for all your golfing needs.</li>
-            </ul>
+            <div class="amenities-grid" *ngIf="!course.amenities || course.amenities.length === 0">
+              <div class="amenity-item">
+                <div class="amenity-icon-wrapper">
+                  <fa-icon [icon]="wifiIcon"></fa-icon>
+                </div>
+                <div class="amenity-content">
+                  <h4 class="amenity-name">Free WiFi</h4>
+                  <p class="amenity-description">Stay connected throughout your visit with complimentary high-speed internet access.</p>
+                </div>
+              </div>
+              <div class="amenity-item">
+                <div class="amenity-icon-wrapper">
+                  <fa-icon [icon]="parkingIcon"></fa-icon>
+                </div>
+                <div class="amenity-content">
+                  <h4 class="amenity-name">Free Parking</h4>
+                  <p class="amenity-description">Convenient and secure parking facilities available for all guests.</p>
+                </div>
+              </div>
+              <div class="amenity-item">
+                <div class="amenity-icon-wrapper">
+                  <fa-icon [icon]="restaurantIcon"></fa-icon>
+                </div>
+                <div class="amenity-content">
+                  <h4 class="amenity-name">Restaurant</h4>
+                  <p class="amenity-description">Enjoy delicious meals and refreshments at our on-site restaurant.</p>
+                </div>
+              </div>
+              <div class="amenity-item">
+                <div class="amenity-icon-wrapper">
+                  <fa-icon [icon]="shopIcon"></fa-icon>
+                </div>
+                <div class="amenity-content">
+                  <h4 class="amenity-name">Pro Shop</h4>
+                  <p class="amenity-description">Browse our fully-stocked pro shop for all your golfing needs.</p>
+                </div>
+              </div>
+            </div>
 
             <!-- Benefit Section -->
             <!-- <div class="benefit-section">
