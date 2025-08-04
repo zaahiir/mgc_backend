@@ -477,7 +477,7 @@ class BookingSerializer(serializers.ModelSerializer):
         return f"{obj.member.firstName} {obj.member.lastName}"
     
     def get_teeInfo(self, obj):
-        return f"{obj.tee.holeNumber} Holes @ {obj.tee.formatted_price}"
+        return f"{obj.tee.holeNumber} Holes"
     
     def get_formattedDate(self, obj):
         return obj.bookingDate.strftime('%B %d, %Y')
