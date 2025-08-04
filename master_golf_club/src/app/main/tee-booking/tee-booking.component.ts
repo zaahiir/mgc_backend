@@ -41,7 +41,6 @@ interface Tee {
   id: number;
   holeNumber: number;
   label: string;
-  pricePerPerson: number;
   formattedPrice: string;
   description: string;
   estimatedDuration: string;
@@ -228,8 +227,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           id: tee.id,
           holeNumber: tee.holeNumber,
           label: tee.label || `${tee.holeNumber} Holes`,
-          pricePerPerson: tee.pricePerPerson,
-          formattedPrice: tee.formattedPrice || `£${tee.pricePerPerson}`,
+          formattedPrice: tee.formattedPrice || '₹0',
           description: `${tee.holeNumber} holes of golf`,
           estimatedDuration: `${Math.round(tee.holeNumber * 10)} minutes`
         }));
@@ -467,7 +465,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   getTotalPrice(): number {
     if (!this.selectedTee) return 0;
-    return this.selectedTee.pricePerPerson * this.participantCount;
+    return 0; // Price removed from tees
   }
 
   async bookTeeTime(): Promise<void> {

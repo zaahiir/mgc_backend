@@ -197,24 +197,7 @@
                         </c-form-feedback>
                       </c-col>
 
-                      <!-- Price Per Person -->
-                      <c-col md="6">
-                        <label cLabel [for]="'pricePerPerson_' + i" class="form-label">Price (₹) *</label>
-                        <input 
-                          cFormControl 
-                          [id]="'pricePerPerson_' + i"
-                          formControlName="pricePerPerson" 
-                          type="number" 
-                          min="1"
-                          step="0.01"
-                          placeholder="1000"
-                          class="form-control"
-                          [class.is-invalid]="isTeeFieldInvalid(i, 'pricePerPerson')"
-                        />
-                        <c-form-feedback [valid]="false" *ngIf="isTeeFieldInvalid(i, 'pricePerPerson')">
-                          {{ getTeeErrorMessage(i, 'pricePerPerson') }}
-                        </c-form-feedback>
-                      </c-col>
+                      <!-- Price field removed -->
                     </div>
                   </div>
                 </div>
@@ -229,7 +212,7 @@
               <div class="form-text">
                 <small class="text-muted">
                   <i class="fas fa-info-circle me-1"></i>
-                  Add multiple tees to offer different pricing options. Each tee can have any number of holes with its own pricing.
+                  Add multiple tees to offer different hole configurations. Each tee can have any number of holes.
                 </small>
               </div>
             </div>

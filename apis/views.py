@@ -24,7 +24,7 @@ from django.core.mail import EmailMultiAlternatives
 import os
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-import decimal
+from decimal import Decimal
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import render
@@ -1776,10 +1776,9 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
                             
                         tee_id = tee_data.get('id')
                         hole_number = tee_data.get('holeNumber')
-                        price_per_person = tee_data.get('pricePerPerson')
                         
                         # Validate required fields
-                        if not hole_number or not price_per_person:
+                        if not hole_number:
                             continue
                         
                         if tee_id and tee_id in existing_tee_ids:
@@ -1787,7 +1786,6 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
                             try:
                                 tee = TeeModel.objects.get(id=tee_id, course=course)
                                 tee.holeNumber = int(hole_number)
-                                tee.pricePerPerson = float(price_per_person)
                                 tee.save()
                                 processed_tee_ids.add(tee_id)
                             except (TeeModel.DoesNotExist, ValueError, TypeError):
@@ -1797,8 +1795,7 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
                             try:
                                 new_tee = TeeModel.objects.create(
                                     course=course,
-                                    holeNumber=int(hole_number),
-                                    pricePerPerson=float(price_per_person)
+                                    holeNumber=int(hole_number)
                                 )
                                 processed_tee_ids.add(new_tee.id)
                             except (ValueError, TypeError):
@@ -1850,7 +1847,7 @@ class TeeViewSet(viewsets.ModelViewSet):
     serializer_class = TeeSerializer
     
     def get_queryset(self):
-        queryset = TeeModel.objects.filter(hideStatus=0).select_related('course').order_by('holeNumber', 'pricePerPerson')
+        queryset = TeeModel.objects.filter(hideStatus=0).select_related('course').order_by('holeNumber')
         course_id = self.request.query_params.get('course_id')
         if course_id:
             queryset = queryset.filter(course_id=course_id)
@@ -1948,9 +1945,8 @@ class BookingViewSet(viewsets.ModelViewSet):
             try:
                 # Calculate total price if not provided
                 if 'totalPrice' not in request.data or not request.data['totalPrice']:
-                    tee = TeeModel.objects.get(id=request.data['tee'])
-                    participants = int(request.data.get('participants', 1))
-                    serializer.validated_data['totalPrice'] = tee.pricePerPerson * participants
+                    # Since pricePerPerson is removed, set totalPrice to 0 or a default value
+                    serializer.validated_data['totalPrice'] = Decimal('0')
                 
                 instance = serializer.save()
                 return Response({

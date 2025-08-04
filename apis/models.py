@@ -229,7 +229,7 @@ class CourseModel(models.Model):
     @property
     def available_tees(self):
         """Return all available tees for this course"""
-        return self.tees.filter(hideStatus=0).order_by('holeNumber', 'pricePerPerson')
+        return self.tees.filter(hideStatus=0).order_by('holeNumber')
     
     def get_default_tee(self):
         """Get the default tee (first available tee)"""
@@ -240,7 +240,6 @@ class TeeModel(models.Model):
     id = models.AutoField(primary_key=True)
     course = models.ForeignKey(CourseModel, on_delete=models.CASCADE, related_name="tees")
     holeNumber = models.IntegerField(help_text="Number of holes for this tee (any positive integer)")
-    pricePerPerson = models.DecimalField(max_digits=10, decimal_places=2)
     hideStatus = models.IntegerField(default=0)
 
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -253,19 +252,17 @@ class TeeModel(models.Model):
         super().clean()
         if self.holeNumber <= 0:
             raise ValidationError("Hole number must be a positive integer")
-        if self.pricePerPerson <= 0:
-            raise ValidationError("Price per person must be greater than 0")
 
     @property
     def formatted_price(self):
-        return f"₹{self.pricePerPerson}"
+        return "₹0"  # Default price since pricePerPerson is removed
     
     @property
     def price_per_hour(self):
         # Calculate hours based on hole number: approximately 10 minutes per hole
         hours_per_hole = 0.167
         total_hours = self.holeNumber * hours_per_hole
-        return self.pricePerPerson / Decimal(str(total_hours))
+        return Decimal('0') / Decimal(str(total_hours))  # Return 0 since price is removed
 
 
 class BookingModel(models.Model):
@@ -296,7 +293,8 @@ class BookingModel(models.Model):
     def save(self, *args, **kwargs):
         # Calculate totalPrice automatically if not provided
         if not self.totalPrice:
-            self.totalPrice = self.tee.pricePerPerson * self.participants
+            # Since pricePerPerson is removed, set totalPrice to 0 or a default value
+            self.totalPrice = Decimal('0')
         super().save(*args, **kwargs)
 
     def __str__(self):

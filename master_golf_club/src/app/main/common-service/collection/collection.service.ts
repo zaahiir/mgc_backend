@@ -23,7 +23,6 @@ interface Tee {
   courseId: number;
   courseName: string;
   holeNumber: number;
-  pricePerPerson: number;
   formattedPrice: string;
   label?: string;
 }

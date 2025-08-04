@@ -54,7 +54,6 @@ interface CourseData {
 interface TeeData {
   id?: number;
   holeNumber: number;
-  pricePerPerson: number;
 }
 
 @Component({
@@ -222,8 +221,7 @@ export class UpdateCoursesComponent implements OnInit {
           this.courseTees.forEach(tee => {
             this.teesFormArray.push(this.createTeeFormGroup({
               id: tee.id,
-              holeNumber: tee.holeNumber,
-              pricePerPerson: tee.pricePerPerson
+              holeNumber: tee.holeNumber
             }));
           });
         } else {
@@ -267,10 +265,6 @@ export class UpdateCoursesComponent implements OnInit {
       holeNumber: [
         teeData?.holeNumber || '', 
         [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]
-      ],
-      pricePerPerson: [
-        teeData?.pricePerPerson || '', 
-        [Validators.required, Validators.min(1), Validators.max(50000)]
       ]
     });
   }
@@ -278,8 +272,7 @@ export class UpdateCoursesComponent implements OnInit {
   // Add a new tee
   addTee(): void {
     const teeForm = this.createTeeFormGroup({
-      holeNumber: 9, // Default to 9 holes
-      pricePerPerson: 1000
+      holeNumber: 9 // Default to 9 holes
     });
     this.teesFormArray.push(teeForm);
   }
@@ -287,8 +280,7 @@ export class UpdateCoursesComponent implements OnInit {
   // Add default tee for new courses
   private addDefaultTee(): void {
     const defaultTee = this.createTeeFormGroup({
-      holeNumber: 9,
-      pricePerPerson: 1000
+      holeNumber: 9
     });
     this.teesFormArray.push(defaultTee);
   }
@@ -330,18 +322,12 @@ export class UpdateCoursesComponent implements OnInit {
     if (errors['required']) {
       switch (fieldName) {
         case 'holeNumber': return 'Please enter number of holes';
-        case 'pricePerPerson': return 'Price per person is required';
         default: return 'This field is required';
       }
     }
   
     if (errors['min']) {
       if (fieldName === 'holeNumber') return 'Hole number must be at least 1';
-      if (fieldName === 'pricePerPerson') return 'Price must be at least ₹1';
-    }
-  
-    if (errors['max']) {
-      if (fieldName === 'pricePerPerson') return 'Price cannot exceed ₹50,000';
     }
   
     if (errors['pattern']) {

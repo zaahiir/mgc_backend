@@ -437,13 +437,12 @@ class TeeSerializer(serializers.ModelSerializer):
         model = TeeModel
         fields = [
             'id', 'courseId', 'courseName', 'holeNumber', 
-            'pricePerPerson', 'formattedPrice', 'label',
+            'formattedPrice', 'label',
             'course', 'hideStatus'
         ]
         extra_kwargs = {
             'course': {'required': True},
-            'holeNumber': {'required': True},
-            'pricePerPerson': {'required': True}
+            'holeNumber': {'required': True}
         }
     
     def get_label(self, obj):
@@ -452,11 +451,6 @@ class TeeSerializer(serializers.ModelSerializer):
     def validate_holeNumber(self, value):
         if value <= 0:
             raise serializers.ValidationError("Hole number must be a positive integer")
-        return value
-    
-    def validate_pricePerPerson(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Price per person must be greater than 0")
         return value
 
 class BookingSerializer(serializers.ModelSerializer):
