@@ -457,13 +457,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   getDirections(): void {
-    const address = `${this.course.lane}, ${this.course.address}, ${this.course.code}`;
+    const address = this.course.address;
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
     window.open(mapsUrl, '_blank');
   }
 
   shareLocation(): void {
-    const address = `${this.course.lane}, ${this.course.address}, ${this.course.code}`;
+    const address = this.course.address;
     if (navigator.share) {
       navigator.share({
         title: this.course.name,

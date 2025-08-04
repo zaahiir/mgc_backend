@@ -214,13 +214,13 @@
           </div>
           
           <div class="contact-info">
-            <div class="info-item" (click)="copyToClipboard(course.lane + ', ' + course.address + ', ' + course.code)">
+            <div class="info-item" (click)="copyToClipboard(course.address)">
               <div class="icon-wrapper">
                 <fa-icon [icon]="locationIcon"></fa-icon>
               </div>
               <div class="info-content">
                 <span class="label">Location</span>
-                <span class="value">{{course.lane}}, {{course.address}}, {{course.code}}</span>
+                <span class="value">{{course.address}}</span>
               </div>
               <div class="action-icon">
                 <fa-icon [icon]="copyIcon" title="Copy address"></fa-icon>
