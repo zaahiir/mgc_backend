@@ -12,6 +12,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 interface Course {
   id: number;
@@ -122,13 +123,17 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   constructor(
     private collectionService: CollectionService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
-    this.loadCourseData();
-    this.generateCalendar();
-    this.setMinimumDate();
+    // Add a small delay to ensure proper initialization and avoid hydration issues
+    setTimeout(() => {
+      this.loadCourseData();
+      this.generateCalendar();
+      this.setMinimumDate();
+    }, 100);
   }
 
   private loadCourseData(): void {
@@ -175,6 +180,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         };
         
         console.log('Course loaded:', this.course);
+        console.log('Amenities:', this.course.amenities);
         
         // Load tees after course data is loaded
         await this.loadAvailableTees();
@@ -475,8 +481,23 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Safe SVG rendering method
+  getSafeSvgIcon(amenity: Amenity): SafeHtml | null {
+    if (amenity.amenity_icon_svg && amenity.amenity_icon_svg.trim()) {
+      return this.sanitizer.bypassSecurityTrustHtml(amenity.amenity_icon_svg);
+    }
+    return null;
+  }
+
+  // TrackBy function for performance
+  trackByAmenity(index: number, amenity: Amenity): number {
+    return amenity.id;
+  }
+
   // Amenity icon helper
   getAmenityIcon(amenity: Amenity): any {
+    console.log('Getting icon for amenity:', amenity.amenityName, 'SVG:', amenity.amenity_icon_svg);
+    
     // Map amenity names to FontAwesome icons
     const iconMap: { [key: string]: any } = {
       'WiFi': this.wifiIcon,
@@ -490,6 +511,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       'Driving Range': this.golfIcon,
       'Practice Green': this.golfIcon,
       'Golf Cart': this.golfIcon,
+      'Golf Cart Rental': this.golfIcon,
+      'Spa & Wellness': this.wifiIcon,
+      'Conference Rooms': this.wifiIcon,
       'Locker Room': this.wifiIcon,
       'Shower': this.wifiIcon,
       'Bar': this.restaurantIcon,
@@ -498,15 +522,20 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     
     // Try to match by exact name first, then by partial match
     const exactMatch = iconMap[amenity.amenityName];
-    if (exactMatch) return exactMatch;
+    if (exactMatch) {
+      console.log('Found exact match for:', amenity.amenityName);
+      return exactMatch;
+    }
     
     // Try partial matching
     for (const [key, icon] of Object.entries(iconMap)) {
       if (amenity.amenityName.toLowerCase().includes(key.toLowerCase())) {
+        console.log('Found partial match for:', amenity.amenityName, 'matching:', key);
         return icon;
       }
     }
     
+    console.log('Using default WiFi icon for:', amenity.amenityName);
     return this.wifiIcon; // Default to WiFi icon
   }
 }
