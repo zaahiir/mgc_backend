@@ -1920,11 +1920,21 @@ class TeeViewSet(viewsets.ModelViewSet):
 
 class BookingViewSet(viewsets.ModelViewSet):
     serializer_class = BookingSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         queryset = BookingModel.objects.select_related('member', 'course', 'tee').order_by('-bookingDate', '-bookingTime')
         
-        # Filter by member if provided
+        # Filter by current member if authenticated
+        if hasattr(self.request, 'user') and self.request.user.is_authenticated:
+            try:
+                member = MemberModel.objects.get(email=self.request.user.email)
+                queryset = queryset.filter(member=member)
+            except MemberModel.DoesNotExist:
+                queryset = queryset.none()
+        
+        # Filter by member if provided (for admin purposes)
         member_id = self.request.query_params.get('member_id')
         if member_id:
             queryset = queryset.filter(member_id=member_id)
@@ -1943,10 +1953,24 @@ class BookingViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             try:
-                # Calculate total price if not provided
-                if 'totalPrice' not in request.data or not request.data['totalPrice']:
-                    # Since pricePerPerson is removed, set totalPrice to 0 or a default value
-                    serializer.validated_data['totalPrice'] = Decimal('0')
+                # Get current member from authentication
+                if hasattr(request, 'user') and request.user.is_authenticated:
+                    try:
+                        member = MemberModel.objects.get(email=request.user.email)
+                        serializer.validated_data['member'] = member
+                    except MemberModel.DoesNotExist:
+                        return Response({
+                            'code': 0,
+                            'message': 'Member not found for current user'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({
+                        'code': 0,
+                        'message': 'Authentication required'
+                    }, status=status.HTTP_401_UNAUTHORIZED)
+                
+                # Set total price to 0 since pricing is removed
+                serializer.validated_data['totalPrice'] = Decimal('0')
                 
                 instance = serializer.save()
                 return Response({

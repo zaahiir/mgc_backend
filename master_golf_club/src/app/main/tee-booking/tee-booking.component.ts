@@ -2,7 +2,7 @@ import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CollectionService } from '../common-service/collection/collection.service';
 import { 
   faUsers, faGolfBall, faCalendarAlt, faClock, faMapMarkerAlt, 
@@ -41,9 +41,7 @@ interface Tee {
   id: number;
   holeNumber: number;
   label: string;
-  formattedPrice: string;
   description: string;
-  estimatedDuration: string;
 }
 
 interface TimeSlot {
@@ -105,7 +103,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   selectedDate: Date = new Date();
   selectedTime: string = '';
   currentTimeSlots: TimeSlot[] = [];
-  basePrice: number = 25; // Base price for 9 holes
   
   // Calendar state
   showCalendar: boolean = false;
@@ -123,6 +120,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   constructor(
     private collectionService: CollectionService,
     private route: ActivatedRoute,
+    private router: Router,
     private sanitizer: DomSanitizer
   ) {}
 
@@ -227,9 +225,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           id: tee.id,
           holeNumber: tee.holeNumber,
           label: tee.label || `${tee.holeNumber} Holes`,
-          formattedPrice: tee.formattedPrice || '₹0',
-          description: `${tee.holeNumber} holes of golf`,
-          estimatedDuration: `${Math.round(tee.holeNumber * 10)} minutes`
+          description: `${tee.holeNumber} holes of golf`
         }));
         
         console.log('Available tees loaded:', this.availableTees);
@@ -459,12 +455,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   updateTotalPrice(): void {
-    // This will be called whenever participants change
-    // The total price calculation is handled in the backend
+    // Price calculation removed - no longer needed
   }
 
   getTotalPrice(): number {
-    if (!this.selectedTee) return 0;
     return 0; // Price removed from tees
   }
 
@@ -474,12 +468,20 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Check if user is authenticated
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      this.errorMessage = 'Please log in to book a tee time';
+      // Redirect to login page
+      this.router.navigate(['/login']);
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
     this.successMessage = '';
 
     const bookingData = {
-      member: 1, // Default member ID for non-logged users
       course: this.course.id,
       tee: this.selectedTee!.id,
       bookingDate: this.selectedDate.toISOString().split('T')[0],
@@ -502,7 +504,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     } catch (error: any) {
       this.isLoading = false;
       console.error('Booking error:', error);
-      this.errorMessage = error.response?.data?.message || 'Failed to create booking';
+      
+      // Handle authentication errors
+      if (error.response?.status === 401) {
+        this.errorMessage = 'Please log in to book a tee time';
+        this.router.navigate(['/login']);
+      } else {
+        this.errorMessage = error.response?.data?.message || 'Failed to create booking';
+      }
     }
   }
 
@@ -557,6 +566,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // TrackBy function for performance
   trackByAmenity(index: number, amenity: Amenity): number {
     return amenity.id;
+  }
+
+  // Authentication helper
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('access_token');
   }
 
   // Amenity icon helper

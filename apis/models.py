@@ -254,15 +254,11 @@ class TeeModel(models.Model):
             raise ValidationError("Hole number must be a positive integer")
 
     @property
-    def formatted_price(self):
-        return "₹0"  # Default price since pricePerPerson is removed
-    
-    @property
-    def price_per_hour(self):
-        # Calculate hours based on hole number: approximately 10 minutes per hole
-        hours_per_hole = 0.167
-        total_hours = self.holeNumber * hours_per_hole
-        return Decimal('0') / Decimal(str(total_hours))  # Return 0 since price is removed
+    def estimated_duration(self):
+        # Calculate estimated duration based on hole number: approximately 10 minutes per hole
+        minutes_per_hole = 10
+        total_minutes = self.holeNumber * minutes_per_hole
+        return f"{total_minutes} minutes"
 
 
 class BookingModel(models.Model):

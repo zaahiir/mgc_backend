@@ -430,15 +430,14 @@ class LegacyCollectionSerializer(serializers.ModelSerializer):
 class TeeSerializer(serializers.ModelSerializer):
     courseId = serializers.IntegerField(source='course.id', read_only=True)
     courseName = serializers.CharField(source='course.courseName', read_only=True)
-    formattedPrice = serializers.CharField(source='formatted_price', read_only=True)
     label = serializers.SerializerMethodField(read_only=True)
+    estimatedDuration = serializers.CharField(source='estimated_duration', read_only=True)
 
     class Meta:
         model = TeeModel
         fields = [
             'id', 'courseId', 'courseName', 'holeNumber', 
-            'formattedPrice', 'label',
-            'course', 'hideStatus'
+            'label', 'estimatedDuration', 'course', 'hideStatus'
         ]
         extra_kwargs = {
             'course': {'required': True},
@@ -470,6 +469,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'participants', 'totalPrice', 'status', 'notes', 'canCancel'
         ]
         extra_kwargs = {
+            'member': {'required': False},  # Will be set automatically from authentication
             'totalPrice': {'required': False}
         }
     

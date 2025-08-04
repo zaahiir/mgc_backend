@@ -23,12 +23,11 @@ interface Tee {
   courseId: number;
   courseName: string;
   holeNumber: number;
-  formattedPrice: string;
   label?: string;
+  estimatedDuration: string;
 }
 
 interface BookingData {
-  member: number;
   course: number;
   tee: number;
   bookingDate: string;
@@ -97,18 +96,37 @@ export class CollectionService {
   // Booking Management API endpoints
   createBooking(bookingData: BookingData) {
     const url = `${this.apiUrl}booking/`;
-    return axios.post(url, bookingData);
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, bookingData, config);
   }
 
   getAvailableSlots(courseId: number, date: string, teeId: number) {
     const url = `${this.apiUrl}booking/available_slots/`;
-    const config = { 
+    const config: any = { 
       params: { 
         course_id: courseId,
         date: date,
         tee_id: teeId
       } 
     };
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
     return axios.get(url, config);
   }
 

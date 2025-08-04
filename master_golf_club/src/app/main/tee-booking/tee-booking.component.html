@@ -64,7 +64,6 @@
                         [class.selected]="selectedTee?.id === tee.id"
                         (click)="selectTee(tee)">
                   <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
-                  <span class="tee-price">{{tee.formattedPrice}}</span>
                 </button>
                 
                 <!-- Show message when no tees available -->
@@ -195,10 +194,6 @@
                   <span class="label">Participants:</span>
                   <span class="value">{{participantCount}}</span>
                 </div>
-                <div class="summary-item total">
-                  <span class="label">Total Price:</span>
-                  <span class="value">£{{getTotalPrice()}}</span>
-                </div>
               </div>
             </div>
 
@@ -208,6 +203,11 @@
                     (click)="bookTeeTime()">
               {{isLoading ? 'Booking...' : 'Book Now'}}
             </button>
+            
+            <!-- Login prompt for unauthenticated users -->
+            <div class="login-prompt" *ngIf="!isAuthenticated()">
+              <p><small>Please log in to book a tee time</small></p>
+            </div>
 
             <div class="success-message" *ngIf="successMessage">
               {{successMessage}}
