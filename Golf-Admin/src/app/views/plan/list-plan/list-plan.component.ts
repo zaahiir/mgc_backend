@@ -11,8 +11,7 @@ import Swal from 'sweetalert2';
 interface PlanInterface {
   id: number;
   planName: string;
-  planType: string;
-  planDuration: string;
+  planDuration: number;
   planPrice: number;
 }
 
@@ -111,8 +110,7 @@ export class ListPlanComponent implements OnInit {
       const searchTermLower = this.searchTerm.toLowerCase();
       filtered = this.planList.filter(plan =>
         plan.planName.toLowerCase().includes(searchTermLower) ||
-        plan.planType.toLowerCase().includes(searchTermLower) ||
-        plan.planDuration.toLowerCase().includes(searchTermLower) ||
+        plan.planDuration.toString().includes(searchTermLower) ||
         plan.planPrice.toString().includes(searchTermLower)
       );
     }
@@ -124,8 +122,7 @@ export class ListPlanComponent implements OnInit {
     const filteredLength = this.searchTerm ?
       this.planList.filter(plan =>
         plan.planName.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        plan.planType.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        plan.planDuration.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        plan.planDuration.toString().includes(this.searchTerm.toLowerCase()) ||
         plan.planPrice.toString().includes(this.searchTerm.toLowerCase())
       ).length :
       this.planList.length;

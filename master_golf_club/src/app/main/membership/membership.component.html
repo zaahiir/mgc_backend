@@ -19,54 +19,51 @@
         <h2>Choose Your Perfect Plan</h2>
       </div>
 
-      <div class="tabs-box">
-        <div class="tab-btn-box">
-          <ul class="tab-btns">
-            <li class="tab-btn"
-                [class.active-btn]="activeTab === 'monthly'"
-                (click)="switchTab('monthly')">
-              Monthly
-            </li>
-            <li class="tab-btn"
-                [class.active-btn]="activeTab === 'yearly'"
-                (click)="switchTab('yearly')">
-              Yearly
-            </li>
-          </ul>
-        </div>
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading membership plans...</p>
+      </div>
 
-        <div class="tabs-content">
-          <div class="tab active-tab">
-            <div class="row">
-              <div class="col-lg-4 col-md-6 col-sm-12" *ngFor="let plan of getCurrentPlans()">
-                <div class="pricing-block-one">
-                  <div class="pricing-table">
-                    <div class="table-header">
-                      <span class="title">{{ plan.title }}</span>
-                      <h2>${{ plan.price }}</h2>
-                      <span class="text">{{ plan.period }}</span>
-                    </div>
-                    <div class="table-content">
-                      <p>{{ plan.description }}</p>
-                      <ul class="feature-list">
-                        <li *ngFor="let feature of plan.features"
-                            [class.cancel]="!feature.included">
-                          <i [class]="feature.included ? 'icon-check' : 'icon-cross'"></i>
-                          {{ feature.name }}
-                        </li>
-                      </ul>
-                    </div>
-                    <div class="table-footer">
-                      <a href="javascript:void(0)"
-                         class="theme-btn btn-two"
-                         (click)="choosePlan(plan)">
-                        Choose This Plan
-                      </a>
-                    </div>
-                  </div>
-                </div>
+      <!-- Error State -->
+      <div *ngIf="error && !loading" class="error-container">
+        <div class="error-message">
+          <i class="icon-warning"></i>
+          <p>{{ error }}</p>
+          <button class="theme-btn btn-one" (click)="loadPlans()">Try Again</button>
+        </div>
+      </div>
+
+      <!-- Plans Content -->
+      <div *ngIf="!loading && !error" class="plans-container">
+        <div class="plans-grid" [class.single-plan]="membershipPlans.length === 1">
+          <div class="pricing-block-one" *ngFor="let plan of membershipPlans">
+            <div class="pricing-table">
+              <div class="table-header">
+                <span class="title">{{ plan.title }}</span>
+                <h2>${{ plan.price }}</h2>
+                <span class="text">{{ plan.period }}</span>
+              </div>
+              <div class="table-content">
+                <p class="plan-description">{{ plan.description }}</p>
+                <ul class="feature-list">
+                  <li *ngFor="let feature of plan.features"
+                      [class.cancel]="!feature.included">
+                    <i [class]="feature.included ? 'icon-check' : 'icon-cross'"></i>
+                    {{ feature.name }}
+                  </li>
+                </ul>
               </div>
             </div>
+          </div>
+        </div>
+        
+        <!-- No Plans Available -->
+        <div *ngIf="membershipPlans.length === 0" class="no-plans-container">
+          <div class="no-plans-message">
+            <i class="icon-info"></i>
+            <h3>No Plans Available</h3>
+            <p>No membership plans are currently available.</p>
           </div>
         </div>
       </div>

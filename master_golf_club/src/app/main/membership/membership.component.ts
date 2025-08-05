@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PlanService } from '../common-service/plan/plan.service';
 
 @Component({
   selector: 'app-membership',
@@ -8,139 +9,152 @@ import { CommonModule } from '@angular/common';
   templateUrl: './membership.component.html',
   styleUrl: './membership.component.css'
 })
-export class MembershipComponent {
-  activeTab: string = 'monthly';
+export class MembershipComponent implements OnInit {
+  loading: boolean = true;
+  error: string = '';
 
-  membershipPlans = {
-    monthly: [
-      {
-        title: 'Basic Membership',
-        price: 25.00,
-        period: 'Per Month',
-        description: 'Perfect for beginners looking to explore golf with basic access and amenities.',
-        features: [
-          { name: 'Access to Practice Range', included: true },
-          { name: 'Basic Equipment Rental', included: true },
-          { name: 'Guest Privileges (2 per month)', included: true },
-          { name: 'Priority Course Booking', included: false },
-          { name: 'Professional Training Sessions', included: false },
-          { name: 'Tournament Participation', included: false },
-          { name: 'Clubhouse Dining Discounts', included: false }
-        ]
-      },
-      {
-        title: 'Regular Membership',
-        price: 55.00,
-        period: 'Per Month',
-        description: 'Ideal for regular players who want enhanced access and exclusive benefits.',
-        features: [
-          { name: 'Access to Practice Range', included: true },
-          { name: 'Basic Equipment Rental', included: true },
-          { name: 'Guest Privileges (5 per month)', included: true },
-          { name: 'Priority Course Booking', included: true },
-          { name: 'Professional Training Sessions', included: true },
-          { name: 'Tournament Participation', included: false },
-          { name: 'Clubhouse Dining Discounts', included: false }
-        ]
-      },
-      {
-        title: 'Premium Membership',
-        price: 95.00,
-        period: 'Per Month',
-        description: 'Complete access to all facilities and exclusive premium member benefits.',
-        features: [
-          { name: 'Access to Practice Range', included: true },
-          { name: 'Premium Equipment Rental', included: true },
-          { name: 'Unlimited Guest Privileges', included: true },
-          { name: 'Priority Course Booking', included: true },
-          { name: 'Professional Training Sessions', included: true },
-          { name: 'Tournament Participation', included: true },
-          { name: 'Clubhouse Dining Discounts', included: true }
-        ]
-      }
-    ],
-    yearly: [
-      {
-        title: 'Basic Membership',
-        price: 250.00,
-        period: 'Per Year',
-        description: 'Perfect for beginners looking to explore golf with basic access and amenities.',
-        features: [
-          { name: 'Access to Practice Range', included: true },
-          { name: 'Basic Equipment Rental', included: true },
-          { name: 'Guest Privileges (2 per month)', included: true },
-          { name: 'Priority Course Booking', included: false },
-          { name: 'Professional Training Sessions', included: false },
-          { name: 'Tournament Participation', included: false },
-          { name: 'Clubhouse Dining Discounts', included: false }
-        ]
-      },
-      {
-        title: 'Regular Membership',
-        price: 580.00,
-        period: 'Per Year',
-        description: 'Ideal for regular players who want enhanced access and exclusive benefits.',
-        features: [
-          { name: 'Access to Practice Range', included: true },
-          { name: 'Basic Equipment Rental', included: true },
-          { name: 'Guest Privileges (5 per month)', included: true },
-          { name: 'Priority Course Booking', included: true },
-          { name: 'Professional Training Sessions', included: true },
-          { name: 'Tournament Participation', included: false },
-          { name: 'Clubhouse Dining Discounts', included: false }
-        ]
-      },
-      {
-        title: 'Premium Membership',
-        price: 980.00,
-        period: 'Per Year',
-        description: 'Complete access to all facilities and exclusive premium member benefits.',
-        features: [
-          { name: 'Access to Practice Range', included: true },
-          { name: 'Premium Equipment Rental', included: true },
-          { name: 'Unlimited Guest Privileges', included: true },
-          { name: 'Priority Course Booking', included: true },
-          { name: 'Professional Training Sessions', included: true },
-          { name: 'Tournament Participation', included: true },
-          { name: 'Clubhouse Dining Discounts', included: true }
-        ]
-      }
-    ]
-  };
+  membershipPlans: any[] = [];
 
   // Current membership status for the user
-  currentMemberships = [
-    {
-      type: 'Premium Membership',
-      startDate: '2024-01-15',
-      expirationDate: '2025-01-15',
-      status: 'Active',
-      isActive: true
-    },
-    {
-      type: 'Regular Membership',
-      startDate: '2022-05-10',
-      expirationDate: '2023-05-10',
-      status: 'Expired',
-      isActive: false
+  currentMemberships: any[] = [];
+
+  constructor(private planService: PlanService) {}
+
+  ngOnInit() {
+    this.loadPlans();
+    this.loadCurrentMemberships();
+  }
+
+  async loadPlans() {
+    try {
+      this.loading = true;
+      this.error = '';
+      
+      // If you want to show only one plan, use getPrimaryPlan()
+      // const plan = await this.planService.getPrimaryPlan();
+      // if (plan) {
+      //   this.membershipPlans = [{
+      //     id: plan.id,
+      //     title: plan.planName,
+      //     price: parseFloat(plan.planPrice),
+      //     period: plan.planDuration === 1 ? 'Per Month' : 'Per Year',
+      //     duration: plan.planDuration,
+      //     description: plan.planDescription,
+      //     features: this.generateDefaultFeatures(plan.planDuration)
+      //   }];
+      // } else {
+      //   this.membershipPlans = [];
+      // }
+      
+      // For now, showing all active plans
+      const plans = await this.planService.getActivePlans();
+      
+                    // Transform plans to the format needed for display
+        this.membershipPlans = plans.map((plan: any) => ({
+          id: plan.id,
+          title: plan.planName,
+          price: parseFloat(plan.planPrice),
+          period: plan.planDuration === 1 ? 'Per Month' : 'Per Year',
+          duration: plan.planDuration,
+          description: plan.planDescription,
+          features: this.generateDefaultFeatures(plan.planDuration)
+        }));
+    } catch (error) {
+      console.error('Error loading plans:', error);
+      this.error = 'Failed to load membership plans. Please try again later.';
+      // Fallback to default plans if API fails
+      this.loadDefaultPlans();
+    } finally {
+      this.loading = false;
     }
-  ];
-
-  switchTab(tab: string) {
-    this.activeTab = tab;
   }
 
-  choosePlan(plan: any) {
-    console.log('Selected plan:', plan);
-    // Add your plan selection logic here
+  async loadCurrentMemberships() {
+    try {
+      this.currentMemberships = await this.planService.getCurrentMemberships();
+    } catch (error) {
+      console.error('Error loading current memberships:', error);
+      // Fallback to default memberships if API fails
+      this.loadDefaultMemberships();
+    }
   }
 
-  renewMembership(membership: any) {
-    console.log('Renewing membership:', membership);
-    // Add your renewal logic here
+  loadDefaultPlans() {
+    this.membershipPlans = [];
   }
 
-  getCurrentPlans() {
-    return this.membershipPlans[this.activeTab as keyof typeof this.membershipPlans];
+  loadDefaultMemberships() {
+    this.currentMemberships = [
+      {
+        type: 'Premium Membership',
+        startDate: '2024-01-15',
+        expirationDate: '2025-01-15',
+        status: 'Active',
+        isActive: true
+      },
+      {
+        type: 'Regular Membership',
+        startDate: '2022-05-10',
+        expirationDate: '2023-05-10',
+        status: 'Expired',
+        isActive: false
+      }
+    ];
+  }
+
+  // Generate default features based on plan duration
+  private generateDefaultFeatures(duration: number): any[] {
+    const baseFeatures = [
+      { name: 'Access to Practice Range', included: true },
+      { name: 'Basic Equipment Rental', included: true },
+      { name: 'Guest Privileges', included: true },
+      { name: 'Priority Course Booking', included: false },
+      { name: 'Professional Training Sessions', included: false },
+      { name: 'Tournament Participation', included: false },
+      { name: 'Clubhouse Dining Discounts', included: false }
+    ];
+
+    // Adjust features based on duration
+    if (duration === 1) {
+      // Monthly plans - basic features
+      baseFeatures[2].name = 'Guest Privileges (2 per month)';
+    } else {
+      // Yearly plans - enhanced features
+      baseFeatures[1].name = 'Premium Equipment Rental';
+      baseFeatures[2].name = 'Guest Privileges (5 per month)';
+      baseFeatures[3].included = true;
+      baseFeatures[4].included = true;
+    }
+
+    return baseFeatures;
+  }
+
+
+
+  async renewMembership(membership: any) {
+    try {
+      console.log('Renewing membership:', membership);
+      
+      // Check if user is authenticated
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        alert('Please login to renew your membership.');
+        return;
+      }
+
+      // Call the plan service to renew membership
+      const result = await this.planService.renewMembership(membership.id);
+      
+      if (result.success) {
+        alert('Membership renewed successfully!');
+        // Optionally reload current memberships
+        await this.loadCurrentMemberships();
+      } else {
+        alert('Failed to renew membership. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error renewing membership:', error);
+      alert('An error occurred while renewing the membership. Please try again.');
+    }
   }
 }

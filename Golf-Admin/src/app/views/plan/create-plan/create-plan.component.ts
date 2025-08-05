@@ -6,21 +6,6 @@ import Swal from 'sweetalert2';
 import { Router } from '@angular/router';
 import { PlanService } from '../../common-service/plan/plan.service';
 
-interface PlanType {
-  id: number;
-  planTypeName: string;
-}
-
-interface PlanDuration {
-  id: number;
-  planDurationName: string;
-}
-
-interface PlanCycle {
-  id: number;
-  planCycleName: string;
-}
-
 @Component({
   selector: 'app-create-plan',
   standalone: true,
@@ -36,10 +21,6 @@ export class CreatePlanComponent implements OnInit {
   loading = false;
   submitted = false;
 
-  planTypes: PlanType[] = [];
-  planDurations: PlanDuration[] = [];
-  planCycles: PlanCycle[] = [];
-
   constructor(
     private fb: FormBuilder,
     private planService: PlanService,
@@ -52,52 +33,16 @@ export class CreatePlanComponent implements OnInit {
     this.planForm = this.fb.group({
       planName: ['', [Validators.required]],
       planDescription: ['', [Validators.required]],
-      planType: ['', [Validators.required]],
-      planDuration: ['', [Validators.required]],
-      planPrice: ['', [Validators.required, Validators.min(0)]],
-      planCycle: ['', [Validators.required]]
+      planDuration: ['', [Validators.required, Validators.min(1)]],
+      planPrice: ['', [Validators.required, Validators.min(0)]]
     });
   }
 
   async ngOnInit(): Promise<void> {
-    try {
-      await this.loadDropdownData();
-    } catch (error) {
-      await this.showError('Failed to load form data');
-    }
+    // No need to load dropdown data since we're using simple text inputs
   }
 
   get f() { return this.planForm.controls; }
-
-  private async loadDropdownData(): Promise<void> {
-    try {
-      const [typesRes, durationsRes, cyclesRes] = await Promise.all([
-        this.planService.getPlanTypes(),
-        this.planService.getPlanDurations(),
-        this.planService.getPlanCycles()
-      ]);
-
-      if (typesRes?.data) {
-        this.planTypes = Array.isArray(typesRes.data) ? typesRes.data :
-                        typesRes.data.data ? typesRes.data.data :
-                        [];
-      }
-
-      if (durationsRes?.data) {
-        this.planDurations = Array.isArray(durationsRes.data) ? durationsRes.data :
-                            durationsRes.data.data ? durationsRes.data.data :
-                            [];
-      }
-
-      if (cyclesRes?.data) {
-        this.planCycles = Array.isArray(cyclesRes.data) ? cyclesRes.data :
-                         cyclesRes.data.data ? cyclesRes.data.data :
-                         [];
-      }
-    } catch (error) {
-      throw error;
-    }
-  }
 
   async onSubmit(): Promise<void> {
     this.submitted = true;
@@ -116,9 +61,7 @@ export class CreatePlanComponent implements OnInit {
       this.loading = true;
       const formData = {
         ...this.planForm.value,
-        planType: Number(this.planForm.value.planType),
         planDuration: Number(this.planForm.value.planDuration),
-        planCycle: Number(this.planForm.value.planCycle),
         planPrice: Number(this.planForm.value.planPrice)
       };
 

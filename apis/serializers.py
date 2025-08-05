@@ -35,39 +35,29 @@ class GenderModelSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class PlanTypeModelSerializers(serializers.ModelSerializer):
-    class Meta:
-        model = PlanTypeModel
-        fields = '__all__'
 
-
-class PlanDurationModelSerializers(serializers.ModelSerializer):
-    class Meta:
-        model = PlanDurationModel
-        fields = '__all__'
-
-
-class PlanCycleModelSerializers(serializers.ModelSerializer):
-    class Meta:
-        model = PlanCycleModel
-        fields = '__all__'
 
 
 class PlanModelSerializers(serializers.ModelSerializer):
-    planType = serializers.PrimaryKeyRelatedField(queryset=PlanTypeModel.objects.all())
-    planDuration = serializers.PrimaryKeyRelatedField(queryset=PlanDurationModel.objects.all())
-    planCycle = serializers.PrimaryKeyRelatedField(queryset=PlanCycleModel.objects.all())
-
     class Meta:
         model = PlanModel
         fields = '__all__'
+        extra_kwargs = {
+            'planName': {'required': True},
+            'planDescription': {'required': True},
+            'planDuration': {'required': True},
+            'planPrice': {'required': True},
+        }
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['planType'] = instance.planType.planTypeName if instance.planType else None
-        representation['planDuration'] = instance.planDuration.planDurationName if instance.planDuration else None
-        representation['planCycle'] = instance.planCycle.planCycleName if instance.planCycle else None
-        return representation
+    def validate_planPrice(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Plan price cannot be negative")
+        return value
+
+    def validate_planDuration(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("Plan duration must be a positive number of years")
+        return value
 
 
 class MemberModelSerializers(serializers.ModelSerializer):
@@ -84,10 +74,7 @@ class MemberModelSerializers(serializers.ModelSerializer):
         allow_null=True,
         allow_empty=True
     )
-    plan = serializers.PrimaryKeyRelatedField(
-        queryset=PlanModel.objects.all(),
-        required=True  # This remains required
-    )
+    plan = serializers.IntegerField(required=True)
     paymentStatus = serializers.PrimaryKeyRelatedField(
         queryset=PaymentStatusModel.objects.all(), 
         required=False, 
@@ -139,7 +126,15 @@ class MemberModelSerializers(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         representation['gender'] = instance.gender.genderName if instance.gender else None
         representation['nationality'] = instance.nationality.countryName if instance.nationality else None
-        representation['plan'] = instance.plan.planName if instance.plan else None
+        # Get plan name from plan ID
+        if instance.plan:
+            try:
+                plan_obj = PlanModel.objects.get(id=instance.plan)
+                representation['plan'] = plan_obj.planName
+            except PlanModel.DoesNotExist:
+                representation['plan'] = None
+        else:
+            representation['plan'] = None
         representation['paymentStatus'] = instance.paymentStatus.statusName if instance.paymentStatus else None
         representation['paymentMethod'] = instance.paymentMethod.methodName if instance.paymentMethod else None
         return representation
@@ -178,7 +173,13 @@ class MemberQRDetailSerializer(serializers.ModelSerializer):
         return obj.nationality.countryName if obj.nationality else None
 
     def get_plan(self, obj):
-        return obj.plan.planName if obj.plan else None
+        if obj.plan:
+            try:
+                plan_obj = PlanModel.objects.get(id=obj.plan)
+                return plan_obj.planName
+            except PlanModel.DoesNotExist:
+                return None
+        return None
 
     def get_fullName(self, obj):
         first_name = obj.firstName or ""
@@ -660,11 +661,7 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
         validated_data.pop('selected_plan_name', None)  # Remove plan name as it's not needed for creation
         
         if plan_id:
-            try:
-                plan = PlanModel.objects.get(id=plan_id)
-                validated_data['memberEnquiryPlan'] = plan
-            except PlanModel.DoesNotExist:
-                pass  # Plan will remain None if not found
+            validated_data['memberEnquiryPlan'] = plan_id
         
         return super().create(validated_data)
 
@@ -674,11 +671,7 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
         validated_data.pop('selected_plan_name', None)  # Remove plan name as it's not needed for update
         
         if plan_id:
-            try:
-                plan = PlanModel.objects.get(id=plan_id)
-                validated_data['memberEnquiryPlan'] = plan
-            except PlanModel.DoesNotExist:
-                pass  # Keep existing plan if new one not found
+            validated_data['memberEnquiryPlan'] = plan_id
         
         # Handle conversion date automatically if is_converted is being set to True
         if validated_data.get('is_converted', False) and not instance.is_converted:
@@ -691,10 +684,14 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
         
         # Handle plan representation - return the plan object for frontend compatibility
         if instance.memberEnquiryPlan:
-            representation['memberEnquiryPlan'] = {
-                'id': instance.memberEnquiryPlan.id,
-                'planName': instance.memberEnquiryPlan.planName
-            }
+            try:
+                plan_obj = PlanModel.objects.get(id=instance.memberEnquiryPlan)
+                representation['memberEnquiryPlan'] = {
+                    'id': plan_obj.id,
+                    'planName': plan_obj.planName
+                }
+            except PlanModel.DoesNotExist:
+                representation['memberEnquiryPlan'] = None
         else:
             representation['memberEnquiryPlan'] = None
         

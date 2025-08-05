@@ -52,28 +52,7 @@ class PaymentMethodModel(models.Model):
     updatedAt = models.DateTimeField(auto_now=True)
 
 
-class PlanTypeModel(models.Model):
-    id = models.AutoField(primary_key=True)
-    planTypeName = models.CharField(max_length=200, null=True, blank=True)
-    hideStatus = models.IntegerField(default=0)
-    createdAt = models.DateTimeField(auto_now_add=True)
-    updatedAt = models.DateTimeField(auto_now=True)
 
-
-class PlanDurationModel(models.Model):
-    id = models.AutoField(primary_key=True)
-    planDurationName = models.CharField(max_length=200, null=True, blank=True)
-    hideStatus = models.IntegerField(default=0)
-    createdAt = models.DateTimeField(auto_now_add=True)
-    updatedAt = models.DateTimeField(auto_now=True)
-
-
-class PlanCycleModel(models.Model):
-    id = models.AutoField(primary_key=True)
-    planCycleName = models.CharField(max_length=200, null=True, blank=True)
-    hideStatus = models.IntegerField(default=0)
-    createdAt = models.DateTimeField(auto_now_add=True)
-    updatedAt = models.DateTimeField(auto_now=True)
 
 
 # Start of Master
@@ -81,16 +60,18 @@ class PlanModel(models.Model):
     id = models.AutoField(primary_key=True)
     planName = models.CharField(max_length=255, null=True, blank=True)
     planDescription = models.CharField(max_length=255, null=True, blank=True)
-    planType = models.ForeignKey(PlanTypeModel, on_delete=models.CASCADE, related_name="planType", null=True,
-                                 blank=True)
-    planDuration = models.ForeignKey(PlanDurationModel, on_delete=models.CASCADE, related_name="planDuration",
-                                     null=True, blank=True)
+    planDuration = models.IntegerField(null=True, blank=True, help_text="Duration in years")  # Changed to IntegerField for years
     planPrice = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    planCycle = models.ForeignKey(PlanCycleModel, on_delete=models.CASCADE, related_name="planCycle",
-                                  null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.planName or f"Plan {self.id}"
+
+    class Meta:
+        verbose_name = 'Plan'
+        verbose_name_plural = 'Plans'
 
 
 class MemberModel(models.Model): 
@@ -109,7 +90,7 @@ class MemberModel(models.Model):
     nationality = models.ForeignKey('CountryModel', on_delete=models.CASCADE, null=True, blank=True,
                                     related_name="memberNationality")
     address = models.TextField(null=True, blank=True)
-    plan = models.ForeignKey('PlanModel', on_delete=models.CASCADE, related_name="memberPlan")  # Required
+    plan = models.IntegerField(null=True, blank=True)  # Changed from ForeignKey to IntegerField
     membershipStartDate = models.DateField(null=True, blank=True)
     membershipEndDate = models.DateField(null=True, blank=True)
     emergencyContactName = models.CharField(max_length=200, null=True, blank=True)
@@ -560,13 +541,7 @@ class ContactEnquiryModel(models.Model):
 
 class MemberEnquiryModel(models.Model):
     memberEnquiryDate = models.DateField(auto_now_add=True)
-    memberEnquiryPlan = models.ForeignKey(
-        PlanModel, 
-        on_delete=models.CASCADE, 
-        null=True, 
-        blank=True,
-        related_name="memberEnquiryPlan"
-    )
+    memberEnquiryPlan = models.IntegerField(null=True, blank=True)  # Changed from ForeignKey to IntegerField
     memberEnquiryFirstName = models.CharField(max_length=150, null=True, blank=True)
     memberEnquiryLastName = models.CharField(max_length=150, null=True, blank=True)
     memberEnquiryEmail = models.EmailField(null=True, blank=True)

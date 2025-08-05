@@ -67,82 +67,26 @@
   font-weight: 700;
 }
 
-/* Tab Buttons */
-.tabs-box {
+/* Plans Grid */
+.plans-container {
   position: relative;
 }
 
-.tab-btn-box {
-  margin-bottom: 70px;
-}
-
-.tab-btns {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.tab-btns:before {
-  position: absolute;
-  left: 0;
-  right: 0;
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
   margin: 0 auto;
-  height: 34px;
-  width: 60px;
-  content: "";
-  border-radius: 30px;
-  background: #E9EDED;
 }
 
-.tab-btns .tab-btn {
-  position: relative;
-  display: inline-block;
-  min-width: 160px;
-  text-align: right;
-  font-size: 18px;
-  line-height: 34px;
-  cursor: pointer;
-  padding-right: 37px;
-  transition: all 500ms ease;
-  color: #666;
-  font-family: var(--font-poppins);
-  font-weight: 500;
+.plans-grid.single-plan {
+  grid-template-columns: 1fr;
+  max-width: 500px;
 }
 
-.tab-btns .tab-btn.active-btn {
-  color: var(--title-color);
-}
-
-.tab-btns .tab-btn:last-child {
-  padding-right: 0;
-  padding-left: 37px;
-  text-align: left;
-}
-
-.tab-btns .tab-btn:before {
-  position: absolute;
-  top: 5px;
-  height: 24px;
-  width: 24px;
-  border-radius: 50%;
-  content: "";
-  right: -25px;
-  background: var(--theme-color);
-  transition: all 300ms ease;
-  opacity: 0;
-}
-
-.tab-btns .tab-btn.active-btn:before {
-  opacity: 1;
-  right: 1px;
-}
-
-.tab-btns .tab-btn:last-child:before {
-  display: none;
+.plans-grid.single-plan .pricing-block-one {
+  margin: 0 auto;
 }
 
 /* Pricing Cards */
@@ -208,6 +152,14 @@
   color: var(--text-color);
   font-family: var(--font-poppins);
   line-height: 1.6;
+}
+
+.plan-description {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-color);
+  margin-bottom: 25px;
+  font-family: var(--font-poppins);
 }
 
 .feature-list {
@@ -449,6 +401,11 @@
     padding: 35px 30px;
   }
 
+  .plans-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+  }
+
   .benefits-grid {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 25px;
@@ -465,9 +422,9 @@
     line-height: 46px;
   }
 
-  .tab-btns .tab-btn {
-    min-width: 120px;
-    font-size: 16px;
+  .plans-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .pricing-table h2 {
@@ -524,4 +481,89 @@
   .membership-table td {
     padding: 10px 8px;
   }
+}
+
+/* Loading State Styles */
+.loading-container {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Error State Styles */
+.error-container {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.error-message {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.error-message i {
+  font-size: 48px;
+  color: #e74c3c;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.error-message p {
+  color: #666;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.error-message .theme-btn {
+  margin-top: 10px;
+}
+
+/* No Plans Available Styles */
+.no-plans-container {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.no-plans-message {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.no-plans-message i {
+  font-size: 48px;
+  color: #95a5a6;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.no-plans-message h3 {
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.no-plans-message p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
 }

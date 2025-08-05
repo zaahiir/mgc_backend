@@ -25,8 +25,7 @@
             <tr>
               <th scope="col">S.No</th>
               <th scope="col">Plan Name</th>
-              <th scope="col">Plan Type</th>
-              <th scope="col">Plan Duration</th>
+              <th scope="col">Plan Duration (Years)</th>
               <th scope="col">Plan Price</th>
               <th scope="col">Action</th>
             </tr>
@@ -35,7 +34,6 @@
             <tr *ngFor="let plan of paginatedPlanList; let i = index">
               <td>{{ (currentPage - 1) * itemsPerPage + i + 1 }}</td>
               <td>{{ plan.planName }}</td>
-              <td>{{ plan.planType }}</td>
               <td>{{ plan.planDuration }}</td>
               <td>{{ plan.planPrice }}</td>
               <td>

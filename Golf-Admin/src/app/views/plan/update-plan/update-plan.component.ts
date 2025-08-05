@@ -6,21 +6,6 @@ import { PlanService } from '../../common-service/plan/plan.service';
 import Swal from 'sweetalert2';
 import { Router, ActivatedRoute } from '@angular/router';
 
-interface PlanType {
-  id: number;
-  planTypeName: string;
-}
-
-interface PlanDuration {
-  id: number;
-  planDurationName: string;
-}
-
-interface PlanCycle {
-  id: number;
-  planCycleName: string;
-}
-
 @Component({
   selector: 'app-update-plan',
   standalone: true,
@@ -39,10 +24,6 @@ export class UpdatePlanComponent implements OnInit {
   planForm!: FormGroup;
   loading = false;
   submitted = false;
-
-  planTypes: PlanType[] = [];
-  planDurations: PlanDuration[] = [];
-  planCycles: PlanCycle[] = [];
   planId: string = '';
 
   constructor(
@@ -58,21 +39,13 @@ export class UpdatePlanComponent implements OnInit {
     this.planForm = this.fb.group({
       planName: ['', [Validators.required]],
       planDescription: ['', [Validators.required]],
-      planType: ['', [Validators.required]],
-      planDuration: ['', [Validators.required]],
-      planPrice: ['', [Validators.required, Validators.min(0)]],
-      planCycle: ['', [Validators.required]]
+      planDuration: ['', [Validators.required, Validators.min(1)]],
+      planPrice: ['', [Validators.required, Validators.min(0)]]
     });
   }
 
   async ngOnInit(): Promise<void> {
     try {
-      await Promise.all([
-        this.loadPlanTypes(),
-        this.loadPlanDurations(),
-        this.loadPlanCycles()
-      ]);
-
       this.route.params.subscribe(params => {
         this.planId = params['id'];
         this.loadPlanData(this.planId);
@@ -85,54 +58,17 @@ export class UpdatePlanComponent implements OnInit {
 
   get f() { return this.planForm.controls; }
 
-  async loadPlanTypes(): Promise<void> {
-    try {
-      const response = await this.planService.getPlanTypes();
-      this.planTypes = response.data;
-    } catch (error) {
-      console.error('Error loading plan types:', error);
-      throw error;
-    }
-  }
-
-  async loadPlanDurations(): Promise<void> {
-    try {
-      const response = await this.planService.getPlanDurations();
-      this.planDurations = response.data;
-    } catch (error) {
-      console.error('Error loading plan durations:', error);
-      throw error;
-    }
-  }
-
-  async loadPlanCycles(): Promise<void> {
-    try {
-      const response = await this.planService.getPlanCycles();
-      this.planCycles = response.data;
-    } catch (error) {
-      console.error('Error loading plan cycles:', error);
-      throw error;
-    }
-  }
-
   async loadPlanData(planId: string): Promise<void> {
     try {
       const response = await this.planService.listPlan(planId);
       if (response.data.code === 1 && response.data.data.length > 0) {
         const planData = response.data.data[0];
 
-        // Find the matching IDs from the respective arrays
-        const planType = this.planTypes.find(type => type.planTypeName === planData.planType)?.id;
-        const planDuration = this.planDurations.find(duration => duration.planDurationName === planData.planDuration)?.id;
-        const planCycle = this.planCycles.find(cycle => cycle.planCycleName === planData.planCycle)?.id;
-
         this.planForm.patchValue({
           planName: planData.planName,
           planDescription: planData.planDescription,
-          planType: planType,
-          planDuration: planDuration,
-          planPrice: planData.planPrice,
-          planCycle: planCycle
+          planDuration: planData.planDuration,
+          planPrice: planData.planPrice
         });
       }
     } catch (error) {
@@ -157,7 +93,11 @@ export class UpdatePlanComponent implements OnInit {
     this.loading = true;
 
     try {
-      const formData = this.planForm.value;
+      const formData = {
+        ...this.planForm.value,
+        planDuration: Number(this.planForm.value.planDuration),
+        planPrice: Number(this.planForm.value.planPrice)
+      };
       const response = await this.planService.processPlan(formData, this.planId);
 
       if (response.data.code === 1) {

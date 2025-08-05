@@ -24,31 +24,12 @@
             </c-form-feedback>
           </c-col>
 
-          <!-- Plan Type -->
-          <c-col [cFormFloating]="true" md="6">
-            <select cSelect id="planType" formControlName="planType" required>
-              <option value="">Select Plan Type</option>
-              <option *ngFor="let type of planTypes" [value]="type.id">
-                {{type.planTypeName}}
-              </option>
-            </select>
-            <label cLabel for="planType" class="ms-2">Plan Type</label>
-            <c-form-feedback [valid]="false" *ngIf="f['planType'].errors && (f['planType'].touched || submitted)">
-              Please select a plan type
-            </c-form-feedback>
-          </c-col>
-
           <!-- Plan Duration -->
           <c-col [cFormFloating]="true" md="6">
-            <select cSelect id="planDuration" formControlName="planDuration" required>
-              <option value="">Select Plan Duration</option>
-              <option *ngFor="let duration of planDurations" [value]="duration.id">
-                {{duration.planDurationName}}
-              </option>
-            </select>
-            <label cLabel for="planDuration" class="ms-2">Plan Duration</label>
+            <input cFormControl id="planDuration" formControlName="planDuration" required type="number" min="1" step="1" placeholder="Duration in years (e.g., 1, 2, 5)" />
+            <label cLabel for="planDuration" class="ms-2">Plan Duration (Years)</label>
             <c-form-feedback [valid]="false" *ngIf="f['planDuration'].errors && (f['planDuration'].touched || submitted)">
-              Please select a duration
+              Please provide a valid duration in years
             </c-form-feedback>
           </c-col>
 
@@ -58,20 +39,6 @@
             <label cLabel for="planPrice" class="ms-2">Plan Price</label>
             <c-form-feedback [valid]="false" *ngIf="f['planPrice'].errors && (f['planPrice'].touched || submitted)">
               Please provide a valid price
-            </c-form-feedback>
-          </c-col>
-
-          <!-- Plan Cycle -->
-          <c-col [cFormFloating]="true" md="6">
-            <select cSelect id="planCycle" formControlName="planCycle" required>
-              <option value="">Select Billing Cycle</option>
-              <option *ngFor="let cycle of planCycles" [value]="cycle.id">
-                {{cycle.planCycleName}}
-              </option>
-            </select>
-            <label cLabel for="planCycle" class="ms-2">Billing Cycle</label>
-            <c-form-feedback [valid]="false" *ngIf="f['planCycle'].errors && (f['planCycle'].touched || submitted)">
-              Please select a billing cycle
             </c-form-feedback>
           </c-col>
 
