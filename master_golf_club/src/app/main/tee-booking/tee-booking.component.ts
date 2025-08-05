@@ -443,15 +443,19 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // Filter time slots based on current date vs other dates
   filterTimeSlotsForDate(slots: any[]): any[] {
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate date comparison
+    
     const selectedDate = new Date(this.selectedDate);
-    const isToday = selectedDate.toDateString() === today.toDateString();
+    selectedDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate date comparison
+    
+    const isToday = selectedDate.getTime() === today.getTime();
     
     if (!isToday) {
-      // For other dates, show all slots from open time
+      // For all future dates (including tomorrow), show all slots from open time (no filtering)
       return slots;
     }
     
-    // For today, filter out slots that have already passed
+    // Only for today, filter out slots that have already passed
     const now = new Date();
     const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
     

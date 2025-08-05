@@ -197,12 +197,17 @@ export class CollectionService {
 
   getAvailableSlotsWithParticipants(courseId: number, date: string, teeId: number, participants: number) {
     const url = `${this.apiUrl}booking/available_slots/`;
+    
+    // Get timezone offset in minutes
+    const timezoneOffset = new Date().getTimezoneOffset();
+    
     const config: any = { 
       params: { 
         course_id: courseId,
         date: date,
         tee_id: teeId,
-        participants: participants
+        participants: participants,
+        timezone_offset: timezoneOffset
       } 
     };
     

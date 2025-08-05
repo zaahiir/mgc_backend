@@ -2159,6 +2159,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             date_str = request.query_params.get('date')
             tee_id = request.query_params.get('tee_id')
             participants = int(request.query_params.get('participants', 1))
+            timezone_offset = request.query_params.get('timezone_offset')
             
             if not all([course_id, date_str, tee_id]):
                 return Response({
@@ -2180,8 +2181,8 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Course or tee not found'
                 }, status=404)
             
-            # Generate time slots
-            slots = self.generate_time_slots(course, booking_date, tee, participants)
+            # Generate time slots with timezone consideration
+            slots = self.generate_time_slots(course, booking_date, tee, participants, timezone_offset)
             
             return Response({
                 'code': 1,
@@ -2195,9 +2196,10 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': str(e)
             }, status=400)
 
-    def generate_time_slots(self, course, booking_date, tee, requested_participants):
+    def generate_time_slots(self, course, booking_date, tee, requested_participants, timezone_offset=None):
         """Generate time slots dynamically based on course opening time and slot duration"""
         from datetime import datetime, time, timedelta
+        from django.utils import timezone
         
         # Course opening time (default 6:00 AM)
         open_time = course.courseOpenFrom or time(6, 0)
@@ -2205,21 +2207,43 @@ class BookingViewSet(viewsets.ModelViewSet):
         slot_duration = 8  # 8 minutes per slot
         
         slots = []
-        current_time = datetime.combine(booking_date, open_time)
-        end_datetime = datetime.combine(booking_date, close_time)
+        # Make current_time timezone-aware
+        current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
+        end_datetime = timezone.make_aware(datetime.combine(booking_date, close_time))
         
-        # If booking for today, start from current time rounded to next slot
-        if booking_date == datetime.now().date():
-            now = datetime.now()
+        # Only for today, start from current time rounded to next slot
+        if booking_date == timezone.now().date():
+            # Adjust for timezone if provided
+            if timezone_offset is not None:
+                try:
+                    offset_minutes = int(timezone_offset)
+                    # Adjust the current time by the timezone offset
+                    now = timezone.now() + timedelta(minutes=offset_minutes)
+                    print(f"Timezone offset: {offset_minutes} minutes, Adjusted time: {now}")
+                except (ValueError, TypeError):
+                    now = timezone.now()
+                    print(f"Invalid timezone offset: {timezone_offset}, using server time: {now}")
+            else:
+                now = timezone.now()
+                print(f"No timezone offset provided, using server time: {now}")
+                
             if current_time < now:
                 # Round up to next 8-minute slot
-                minutes_since_open = (now - datetime.combine(booking_date, open_time)).total_seconds() / 60
+                minutes_since_open = (now - timezone.make_aware(datetime.combine(booking_date, open_time))).total_seconds() / 60
                 slots_since_open = int(minutes_since_open / slot_duration) + 1
-                current_time = datetime.combine(booking_date, open_time) + timedelta(minutes=slots_since_open * slot_duration)
+                current_time = timezone.make_aware(datetime.combine(booking_date, open_time)) + timedelta(minutes=slots_since_open * slot_duration)
                 
                 # Ensure we don't start before the open time
                 if current_time.time() < open_time:
-                    current_time = datetime.combine(booking_date, open_time)
+                    current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
+                
+                print(f"Today's booking - starting from: {current_time.time()}")
+            else:
+                print(f"Today's booking - using open time: {current_time.time()}")
+        else:
+            # For all future dates (including tomorrow), start from the course opening time
+            current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
+            print(f"Future date {booking_date} - using open time: {current_time.time()}")
         
         while current_time.time() <= close_time:
             slot_time = current_time.time()
