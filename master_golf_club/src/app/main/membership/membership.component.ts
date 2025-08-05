@@ -67,7 +67,7 @@ export class MembershipComponent implements OnInit {
             period: plan.planDuration === 1 ? 'Per Month' : 'Per Year',
             duration: plan.planDuration,
             description: plan.planDescription,
-            features: transformedFeatures.length > 0 ? transformedFeatures : this.generateDefaultFeatures(plan.planDuration)
+            features: transformedFeatures
           };
         }));
     } catch (error) {
@@ -113,32 +113,7 @@ export class MembershipComponent implements OnInit {
     ];
   }
 
-  // Generate default features based on plan duration
-  private generateDefaultFeatures(duration: number): any[] {
-    const baseFeatures = [
-      { name: 'Access to Practice Range', included: true },
-      { name: 'Basic Equipment Rental', included: true },
-      { name: 'Guest Privileges', included: true },
-      { name: 'Priority Course Booking', included: false },
-      { name: 'Professional Training Sessions', included: false },
-      { name: 'Tournament Participation', included: false },
-      { name: 'Clubhouse Dining Discounts', included: false }
-    ];
 
-    // Adjust features based on duration
-    if (duration === 1) {
-      // Monthly plans - basic features
-      baseFeatures[2].name = 'Guest Privileges (2 per month)';
-    } else {
-      // Yearly plans - enhanced features
-      baseFeatures[1].name = 'Premium Equipment Rental';
-      baseFeatures[2].name = 'Guest Privileges (5 per month)';
-      baseFeatures[3].included = true;
-      baseFeatures[4].included = true;
-    }
-
-    return baseFeatures;
-  }
 
 
 

@@ -52,6 +52,10 @@
                     <i [class]="feature.included ? 'icon-check' : 'icon-cross'"></i>
                     {{ feature.name }}
                   </li>
+                  <li *ngIf="plan.features.length === 0" class="no-features">
+                    <i class="icon-info"></i>
+                    No features specified for this plan
+                  </li>
                 </ul>
               </div>
             </div>
