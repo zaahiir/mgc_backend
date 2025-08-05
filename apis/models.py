@@ -276,9 +276,19 @@ class BookingModel(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
-        ('cancelled', 'Cancelled')
+        ('cancelled', 'Cancelled'),
+        ('pending_approval', 'Pending Approval'),  # New status for join requests
+        ('approved', 'Approved'),  # New status for approved join requests
+        ('rejected', 'Rejected'),  # New status for rejected join requests
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # New fields for join request functionality
+    original_booking = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, 
+                                       related_name='join_requests', 
+                                       help_text="Original booking this join request is for")
+    is_join_request = models.BooleanField(default=False, 
+                                         help_text="Whether this booking is a join request")
     
     notes = models.TextField(null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
@@ -306,16 +316,21 @@ class BookingModel(models.Model):
         if not (6 <= self.bookingTime.hour <= 20):
             raise ValidationError("Booking time must be between 6:00 AM and 8:00 PM")
         
-        # Check for overlapping bookings
-        overlapping = BookingModel.objects.filter(
-            course=self.course,
-            bookingDate=self.bookingDate,
-            bookingTime=self.bookingTime,
-            status__in=['pending', 'confirmed']
-        ).exclude(id=self.id if self.id else None)
+        # Validate participants count
+        if self.participants < 1 or self.participants > 4:
+            raise ValidationError("Participants must be between 1 and 4")
         
-        if overlapping.exists():
-            raise ValidationError("This time slot is already booked")
+        # Check for overlapping bookings only if this is not a join request
+        if not self.is_join_request:
+            overlapping = BookingModel.objects.filter(
+                course=self.course,
+                bookingDate=self.bookingDate,
+                bookingTime=self.bookingTime,
+                status__in=['pending', 'confirmed']
+            ).exclude(id=self.id if self.id else None)
+            
+            if overlapping.exists():
+                raise ValidationError("This time slot is already booked")
     
     @property
     def duration_hours(self):
@@ -340,6 +355,130 @@ class BookingModel(models.Model):
         except (TypeError, ValueError):
             # Handle cases where datetime comparison fails (e.g., during creation)
             return True
+    
+    @property
+    def slot_participant_count(self):
+        """Get total participants for this time slot"""
+        if self.is_join_request:
+            # For join requests, count the original booking participants
+            return self.original_booking.participants if self.original_booking else 0
+        else:
+            # For regular bookings, count all confirmed bookings for this slot
+            return BookingModel.objects.filter(
+                course=self.course,
+                bookingDate=self.bookingDate,
+                bookingTime=self.bookingTime,
+                status__in=['confirmed', 'pending'],
+                is_join_request=False
+            ).aggregate(total=models.Sum('participants'))['total'] or 0
+    
+    @property
+    def available_spots(self):
+        """Get available spots in this slot"""
+        total_participants = self.slot_participant_count
+        return max(0, 4 - total_participants)
+    
+    @property
+    def slot_status(self):
+        """Get slot status based on participant count"""
+        total_participants = self.slot_participant_count
+        if total_participants == 0:
+            return 'available'
+        elif total_participants < 4:
+            return 'partially_available'
+        else:
+            return 'booked'
+    
+    def can_join_slot(self, requested_participants):
+        """Check if a member can join this slot with the requested number of participants"""
+        if self.slot_status == 'booked':
+            return False
+        return self.available_spots >= requested_participants
+    
+    def get_join_requests(self):
+        """Get all join requests for this booking"""
+        return BookingModel.objects.filter(
+            original_booking=self,
+            is_join_request=True,
+            status__in=['pending_approval', 'approved', 'rejected']
+        )
+    
+    def get_pending_join_requests(self):
+        """Get pending join requests for this booking"""
+        return BookingModel.objects.filter(
+            original_booking=self,
+            is_join_request=True,
+            status='pending_approval'
+        )
+
+
+class NotificationModel(models.Model):
+    """Model for managing booking notifications"""
+    NOTIFICATION_TYPES = [
+        ('join_request', 'Join Request'),
+        ('join_approved', 'Join Approved'),
+        ('join_rejected', 'Join Rejected'),
+        ('booking_confirmed', 'Booking Confirmed'),
+        ('booking_cancelled', 'Booking Cancelled'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    recipient = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="notifications")
+    sender = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="sent_notifications", null=True, blank=True)
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    related_booking = models.ForeignKey(BookingModel, on_delete=models.CASCADE, related_name="notifications", null=True, blank=True)
+    is_read = models.BooleanField(default=False)
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-createdAt']
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+
+    def __str__(self):
+        return f"{self.notification_type} - {self.recipient.firstName}"
+
+    @property
+    def is_new(self):
+        """Check if notification is new (unread)"""
+        return not self.is_read
+
+    def mark_as_read(self):
+        """Mark notification as read"""
+        self.is_read = True
+        self.save(update_fields=['is_read', 'updatedAt'])
+
+    @classmethod
+    def create_join_request_notification(cls, recipient, sender, booking, join_request):
+        """Create a join request notification"""
+        return cls.objects.create(
+            recipient=recipient,
+            sender=sender,
+            notification_type='join_request',
+            title='Join Request',
+            message=f"{sender.firstName} {sender.lastName} wants to join your tee slot at {booking.bookingTime.strftime('%I:%M %p')} on {booking.bookingDate.strftime('%B %d, %Y')}. Approve or Reject.",
+            related_booking=booking
+        )
+
+    @classmethod
+    def create_join_response_notification(cls, recipient, sender, booking, is_approved):
+        """Create a join response notification"""
+        notification_type = 'join_approved' if is_approved else 'join_rejected'
+        title = 'Join Request Approved' if is_approved else 'Join Request Rejected'
+        message = f"Your join request for {booking.bookingTime.strftime('%I:%M %p')} on {booking.bookingDate.strftime('%B %d, %Y')} has been {'approved' if is_approved else 'rejected'}."
+        
+        return cls.objects.create(
+            recipient=recipient,
+            sender=sender,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            related_booking=booking
+        )
 
 
 

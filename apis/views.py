@@ -1974,6 +1974,22 @@ class BookingViewSet(viewsets.ModelViewSet):
                 # Set total price to 0 since pricing is removed
                 serializer.validated_data['totalPrice'] = Decimal('0')
                 
+                # Handle join requests
+                is_join_request = serializer.validated_data.get('is_join_request', False)
+                if is_join_request:
+                    original_booking = serializer.validated_data.get('original_booking')
+                    if original_booking:
+                        # Set status to pending approval for join requests
+                        serializer.validated_data['status'] = 'pending_approval'
+                        
+                        # Create notification for original booking member
+                        NotificationModel.create_join_request_notification(
+                            recipient=original_booking.member,
+                            sender=member,
+                            booking=original_booking,
+                            join_request=serializer.validated_data
+                        )
+                
                 instance = serializer.save()
                 return Response({
                     'code': 1,
@@ -2019,6 +2035,145 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'code': 0,
                 'message': f'Error cancelling booking: {str(e)}'
             }, status=400)
+    
+    @action(detail=True, methods=['post'])
+    def approve_join_request(self, request, pk=None):
+        """Approve a join request"""
+        try:
+            booking = self.get_object()
+            
+            # Check if current user is the original booking member
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                try:
+                    member = MemberModel.objects.get(email=request.user.email)
+                    if booking.member != member:
+                        return Response({
+                            'code': 0,
+                            'message': 'Only the original booking member can approve join requests'
+                        }, status=403)
+                except MemberModel.DoesNotExist:
+                    return Response({
+                        'code': 0,
+                        'message': 'Member not found'
+                    }, status=400)
+            
+            # Find the join request to approve
+            join_request_id = request.data.get('join_request_id')
+            if not join_request_id:
+                return Response({
+                    'code': 0,
+                    'message': 'join_request_id is required'
+                }, status=400)
+            
+            try:
+                join_request = BookingModel.objects.get(
+                    id=join_request_id,
+                    original_booking=booking,
+                    is_join_request=True,
+                    status='pending_approval'
+                )
+            except BookingModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Join request not found'
+                }, status=404)
+            
+            # Check if slot still has enough space
+            if not booking.can_join_slot(join_request.participants):
+                return Response({
+                    'code': 0,
+                    'message': 'Not enough available spots in this slot'
+                }, status=400)
+            
+            # Approve the join request
+            join_request.status = 'approved'
+            join_request.save()
+            
+            # Create notification for the requesting member
+            NotificationModel.create_join_response_notification(
+                recipient=join_request.member,
+                sender=booking.member,
+                booking=booking,
+                is_approved=True
+            )
+            
+            return Response({
+                'code': 1,
+                'data': BookingSerializer(join_request).data,
+                'message': 'Join request approved successfully'
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error approving join request: {str(e)}'
+            }, status=400)
+    
+    @action(detail=True, methods=['post'])
+    def reject_join_request(self, request, pk=None):
+        """Reject a join request"""
+        try:
+            booking = self.get_object()
+            
+            # Check if current user is the original booking member
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                try:
+                    member = MemberModel.objects.get(email=request.user.email)
+                    if booking.member != member:
+                        return Response({
+                            'code': 0,
+                            'message': 'Only the original booking member can reject join requests'
+                        }, status=403)
+                except MemberModel.DoesNotExist:
+                    return Response({
+                        'code': 0,
+                        'message': 'Member not found'
+                    }, status=400)
+            
+            # Find the join request to reject
+            join_request_id = request.data.get('join_request_id')
+            if not join_request_id:
+                return Response({
+                    'code': 0,
+                    'message': 'join_request_id is required'
+                }, status=400)
+            
+            try:
+                join_request = BookingModel.objects.get(
+                    id=join_request_id,
+                    original_booking=booking,
+                    is_join_request=True,
+                    status='pending_approval'
+                )
+            except BookingModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Join request not found'
+                }, status=404)
+            
+            # Reject the join request
+            join_request.status = 'rejected'
+            join_request.save()
+            
+            # Create notification for the requesting member
+            NotificationModel.create_join_response_notification(
+                recipient=join_request.member,
+                sender=booking.member,
+                booking=booking,
+                is_approved=False
+            )
+            
+            return Response({
+                'code': 1,
+                'data': BookingSerializer(join_request).data,
+                'message': 'Join request rejected successfully'
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error rejecting join request: {str(e)}'
+            }, status=400)
 
     @action(detail=False, methods=['get'], permission_classes=[])
     def available_slots(self, request):
@@ -2026,6 +2181,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         course_id = request.query_params.get('course_id')
         booking_date = request.query_params.get('date')
         tee_id = request.query_params.get('tee_id')
+        participants = int(request.query_params.get('participants', 1))
         
         if not all([course_id, booking_date, tee_id]):
             return Response({
@@ -2106,10 +2262,24 @@ class BookingViewSet(viewsets.ModelViewSet):
                             break
                         check_time += dt.timedelta(minutes=8)
                 
+                # Calculate slot status and available spots
+                slot_participants = 0
+                if slot_time in booked_slots:
+                    slot_participants = sum(booking['participants'] for booking in booked_slots[slot_time])
+                
+                available_spots = max(0, 4 - slot_participants)
+                slot_status = 'available' if slot_participants == 0 else 'partially_available' if slot_participants < 4 else 'booked'
+                
+                # Only show slots that have enough space for requested participants
+                can_accommodate = available_spots >= participants
+                
                 slot_data = {
                     'time': slot_time.strftime('%H:%M'),
-                    'available': is_available,
-                    'formatted_time': slot_time.strftime('%I:%M %p')
+                    'available': is_available and can_accommodate,
+                    'formatted_time': slot_time.strftime('%I:%M %p'),
+                    'slot_status': slot_status,
+                    'available_spots': available_spots,
+                    'total_participants': slot_participants
                 }
                 
                 # Add booking details if slot is booked
@@ -2142,6 +2312,89 @@ class BookingViewSet(viewsets.ModelViewSet):
             return Response({
                 'code': 0,
                 'message': f'Error retrieving slots: {str(e)}'
+            }, status=400)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing notifications"""
+    serializer_class = NotificationSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = NotificationModel.objects.select_related('recipient', 'sender', 'related_booking')
+        
+        # Filter by current member if authenticated
+        if hasattr(self.request, 'user') and self.request.user.is_authenticated:
+            try:
+                member = MemberModel.objects.get(email=self.request.user.email)
+                queryset = queryset.filter(recipient=member)
+            except MemberModel.DoesNotExist:
+                queryset = queryset.none()
+        
+        return queryset
+    
+    @action(detail=False, methods=['GET'])
+    def unread_count(self, request):
+        """Get count of unread notifications"""
+        try:
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                member = MemberModel.objects.get(email=request.user.email)
+                count = NotificationModel.objects.filter(
+                    recipient=member,
+                    is_read=False,
+                    hideStatus=0
+                ).count()
+                
+                return Response({
+                    'code': 1,
+                    'data': {'unread_count': count},
+                    'message': 'Unread count retrieved successfully'
+                })
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=400)
+    
+    @action(detail=True, methods=['POST'])
+    def mark_as_read(self, request, pk=None):
+        """Mark notification as read"""
+        try:
+            notification = self.get_object()
+            notification.mark_as_read()
+            
+            return Response({
+                'code': 1,
+                'data': NotificationSerializer(notification).data,
+                'message': 'Notification marked as read'
+            })
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error marking notification as read: {str(e)}'
+            }, status=400)
+    
+    @action(detail=False, methods=['POST'])
+    def mark_all_as_read(self, request):
+        """Mark all notifications as read"""
+        try:
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                member = MemberModel.objects.get(email=request.user.email)
+                NotificationModel.objects.filter(
+                    recipient=member,
+                    is_read=False,
+                    hideStatus=0
+                ).update(is_read=True)
+                
+                return Response({
+                    'code': 1,
+                    'message': 'All notifications marked as read'
+                })
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
             }, status=400)
 
 

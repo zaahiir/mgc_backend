@@ -142,25 +142,31 @@
                   <button *ngFor="let slot of currentTimeSlots"
                           class="time-slot"
                           [class.selected]="selectedTime === slot.time"
-                          [class.unavailable]="slot.bookings && slot.bookings.length > 0"
-                          [disabled]="slot.bookings && slot.bookings.length > 0"
+                          [class.slot-available]="slot.slot_status === 'available'"
+                          [class.slot-partial]="slot.slot_status === 'partially_available'"
+                          [class.slot-booked]="slot.slot_status === 'booked'"
+                          [disabled]="slot.slot_status === 'booked' || !slot.available"
                           (click)="selectTime(slot.time)"
                           [title]="getSlotTooltip(slot)">
                     <div class="time-slot-content">
                       <span class="time">{{slot.time}}</span>
-                      <div class="golf-ball" [class.available]="!(slot.bookings && slot.bookings.length > 0)">
+                      <div class="golf-ball" [class.available]="slot.slot_status === 'available'">
                         <div class="dimples">
                           <div class="dimple"></div>
                           <div class="dimple"></div>
                           <div class="dimple"></div>
                         </div>
                       </div>
-                      <!-- Show booking count if slot has bookings -->
-                      <div class="booking-indicator" *ngIf="slot.booking_count && slot.booking_count > 0">
-                        <span class="booking-count">{{slot.booking_count}}</span>
+                      <!-- Show available spots for partially available slots -->
+                      <div class="spots-indicator" *ngIf="slot.slot_status === 'partially_available'">
+                        <span class="spots-count">{{slot.available_spots}} spots</span>
+                      </div>
+                      <!-- Show total participants for partially available slots -->
+                      <div class="participants-indicator" *ngIf="slot.slot_status === 'partially_available'">
+                        <span class="participants-count">{{slot.total_participants}}/4</span>
                       </div>
                     </div>
-                    <!-- Show booking details on hover for booked slots -->
+                    <!-- Show booking details on hover for partially available slots -->
                     <div class="booking-details" *ngIf="slot.bookings && slot.bookings.length > 0">
                       <div class="booking-detail" *ngFor="let booking of slot.bookings">
                         <div class="booking-info">
@@ -210,7 +216,7 @@
                     [disabled]="!canBook()"
                     [class.loading]="isLoading"
                     (click)="bookTeeTime()">
-              {{isLoading ? 'Booking...' : 'Book Now'}}
+              {{isLoading ? 'Booking...' : (isJoinRequest() ? 'Request to Join' : 'Book Now')}}
             </button>
             
             <!-- Login prompt for unauthenticated users -->

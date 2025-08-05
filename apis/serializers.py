@@ -460,17 +460,27 @@ class BookingSerializer(serializers.ModelSerializer):
     canCancel = serializers.BooleanField(source='can_cancel', read_only=True)
     endTime = serializers.TimeField(source='end_time', read_only=True)
     formattedDate = serializers.SerializerMethodField(read_only=True)
+    slotStatus = serializers.CharField(source='slot_status', read_only=True)
+    availableSpots = serializers.IntegerField(source='available_spots', read_only=True)
+    slotParticipantCount = serializers.IntegerField(source='slot_participant_count', read_only=True)
+    canJoinSlot = serializers.SerializerMethodField(read_only=True)
+    joinRequests = serializers.SerializerMethodField(read_only=True)
+    originalBookingInfo = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = BookingModel
         fields = [
             'id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
             'tee', 'teeInfo', 'bookingDate', 'formattedDate', 'bookingTime', 'endTime',
-            'participants', 'totalPrice', 'status', 'notes', 'canCancel'
+            'participants', 'totalPrice', 'status', 'notes', 'canCancel',
+            'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
+            'joinRequests', 'originalBookingInfo', 'is_join_request', 'original_booking'
         ]
         extra_kwargs = {
             'member': {'required': False},  # Will be set automatically from authentication
-            'totalPrice': {'required': False}
+            'totalPrice': {'required': False},
+            'is_join_request': {'required': False, 'default': False},
+            'original_booking': {'required': False}
         }
     
     def get_memberFullName(self, obj):
@@ -482,6 +492,52 @@ class BookingSerializer(serializers.ModelSerializer):
     def get_formattedDate(self, obj):
         return obj.bookingDate.strftime('%B %d, %Y')
     
+    def get_canJoinSlot(self, obj):
+        """Check if current member can join this slot"""
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return False
+        
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            # Don't allow joining your own booking
+            if obj.member == member:
+                return False
+            
+            # Check if member has already requested to join this slot
+            existing_request = BookingModel.objects.filter(
+                member=member,
+                original_booking=obj,
+                is_join_request=True,
+                status__in=['pending_approval', 'approved']
+            ).exists()
+            
+            if existing_request:
+                return False
+            
+            # Check if slot has available spots
+            return obj.available_spots > 0
+        except MemberModel.DoesNotExist:
+            return False
+    
+    def get_joinRequests(self, obj):
+        """Get join requests for this booking"""
+        if not obj.is_join_request:  # Only for original bookings
+            requests = obj.get_join_requests()
+            return BookingSerializer(requests, many=True, context=self.context).data
+        return []
+    
+    def get_originalBookingInfo(self, obj):
+        """Get original booking info for join requests"""
+        if obj.is_join_request and obj.original_booking:
+            return {
+                'id': obj.original_booking.id,
+                'memberName': f"{obj.original_booking.member.firstName} {obj.original_booking.member.lastName}",
+                'participants': obj.original_booking.participants,
+                'status': obj.original_booking.status
+            }
+        return None
+    
     def validate_bookingDate(self, value):
         if value < timezone.now().date():
             raise serializers.ValidationError("Cannot book for past dates")
@@ -491,6 +547,68 @@ class BookingSerializer(serializers.ModelSerializer):
         if value < 1 or value > 4:
             raise serializers.ValidationError("Participants must be between 1 and 4")
         return value
+    
+    def validate(self, data):
+        """Custom validation for join requests"""
+        if data.get('is_join_request', False):
+            original_booking = data.get('original_booking')
+            if not original_booking:
+                raise serializers.ValidationError("Original booking is required for join requests")
+            
+            # Check if slot has enough available spots
+            requested_participants = data.get('participants', 1)
+            if not original_booking.can_join_slot(requested_participants):
+                raise serializers.ValidationError("Not enough available spots in this slot")
+            
+            # Check if member has already requested to join this slot
+            member = data.get('member')
+            if member:
+                existing_request = BookingModel.objects.filter(
+                    member=member,
+                    original_booking=original_booking,
+                    is_join_request=True,
+                    status__in=['pending_approval', 'approved']
+                ).exists()
+                
+                if existing_request:
+                    raise serializers.ValidationError("You have already requested to join this slot")
+        
+        return data
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for notifications"""
+    senderName = serializers.SerializerMethodField(read_only=True)
+    recipientName = serializers.SerializerMethodField(read_only=True)
+    relatedBookingInfo = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = NotificationModel
+        fields = [
+            'id', 'recipient', 'recipientName', 'sender', 'senderName',
+            'notification_type', 'title', 'message', 'related_booking',
+            'relatedBookingInfo', 'is_read', 'is_new', 'createdAt'
+        ]
+        read_only_fields = ['createdAt', 'updatedAt']
+    
+    def get_senderName(self, obj):
+        if obj.sender:
+            return f"{obj.sender.firstName} {obj.sender.lastName}"
+        return None
+    
+    def get_recipientName(self, obj):
+        return f"{obj.recipient.firstName} {obj.recipient.lastName}"
+    
+    def get_relatedBookingInfo(self, obj):
+        if obj.related_booking:
+            return {
+                'id': obj.related_booking.id,
+                'courseName': obj.related_booking.course.courseName,
+                'bookingDate': obj.related_booking.bookingDate.strftime('%B %d, %Y'),
+                'bookingTime': obj.related_booking.bookingTime.strftime('%I:%M %p'),
+                'participants': obj.related_booking.participants
+            }
+        return None
 
 
 

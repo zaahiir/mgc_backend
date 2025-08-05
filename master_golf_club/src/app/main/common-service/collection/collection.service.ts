@@ -34,13 +34,63 @@ interface BookingData {
   bookingTime: string;
   participants: number;
   totalPrice: number;
-  status?: 'pending' | 'confirmed' | 'cancelled';
+  status?: 'pending' | 'confirmed' | 'cancelled' | 'pending_approval' | 'approved' | 'rejected';
+  is_join_request?: boolean;
+  original_booking?: number;
+}
+
+interface BookingDetail {
+  booking_id: number;
+  member_name: string;
+  participants: number;
+  status: string;
+  hole_number: number;
+  start_time: string;
+  end_time: string;
 }
 
 interface TimeSlot {
   time: string;
   available: boolean;
   formatted_time: string;
+  slot_status?: 'available' | 'partially_available' | 'booked';
+  available_spots?: number;
+  total_participants?: number;
+  bookings?: BookingDetail[];
+  booking_count?: number;
+}
+
+interface Notification {
+  id: number;
+  recipient: number;
+  recipientName: string;
+  sender?: number;
+  senderName?: string;
+  notification_type: 'join_request' | 'join_approved' | 'join_rejected' | 'booking_confirmed' | 'booking_cancelled';
+  title: string;
+  message: string;
+  related_booking?: number;
+  relatedBookingInfo?: any;
+  is_read: boolean;
+  is_new: boolean;
+  createdAt: string;
+}
+
+interface BookingWithDetails extends BookingData {
+  id: number;
+  memberName: string;
+  memberFullName: string;
+  courseName: string;
+  teeInfo: string;
+  canCancel: boolean;
+  endTime: string;
+  formattedDate: string;
+  slotStatus: string;
+  availableSpots: number;
+  slotParticipantCount: number;
+  canJoinSlot: boolean;
+  joinRequests: BookingWithDetails[];
+  originalBookingInfo?: any;
 }
 
 @Injectable({
@@ -109,6 +159,21 @@ export class CollectionService {
     return axios.post(url, bookingData, config);
   }
 
+  getBookings() {
+    const url = `${this.apiUrl}booking/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
   getAvailableSlots(courseId: number, date: string, teeId: number) {
     const url = `${this.apiUrl}booking/available_slots/`;
     const config: any = { 
@@ -128,6 +193,135 @@ export class CollectionService {
     }
     
     return axios.get(url, config);
+  }
+
+  getAvailableSlotsWithParticipants(courseId: number, date: string, teeId: number, participants: number) {
+    const url = `${this.apiUrl}booking/available_slots/`;
+    const config: any = { 
+      params: { 
+        course_id: courseId,
+        date: date,
+        tee_id: teeId,
+        participants: participants
+      } 
+    };
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  // Join request methods
+  createJoinRequest(bookingData: BookingData) {
+    const url = `${this.apiUrl}booking/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, bookingData, config);
+  }
+
+  approveJoinRequest(bookingId: number, joinRequestId: number) {
+    const url = `${this.apiUrl}booking/${bookingId}/approve_join_request/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, { join_request_id: joinRequestId }, config);
+  }
+
+  rejectJoinRequest(bookingId: number, joinRequestId: number) {
+    const url = `${this.apiUrl}booking/${bookingId}/reject_join_request/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, { join_request_id: joinRequestId }, config);
+  }
+
+  // Notification methods
+  getNotifications() {
+    const url = `${this.apiUrl}notification/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  getUnreadNotificationCount() {
+    const url = `${this.apiUrl}notification/unread_count/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  markNotificationAsRead(notificationId: number) {
+    const url = `${this.apiUrl}notification/${notificationId}/mark_as_read/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, {}, config);
+  }
+
+  markAllNotificationsAsRead() {
+    const url = `${this.apiUrl}notification/mark_all_as_read/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, {}, config);
   }
 
   // Course Management API endpoints (admin)

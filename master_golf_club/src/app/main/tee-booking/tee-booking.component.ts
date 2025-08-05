@@ -50,6 +50,9 @@ interface TimeSlot {
   formatted_time: string;
   bookings?: BookingDetail[];
   booking_count?: number;
+  slot_status?: 'available' | 'partially_available' | 'booked';
+  available_spots?: number;
+  total_participants?: number;
 }
 
 interface BookingDetail {
@@ -383,45 +386,45 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // Time slot management
   async loadAvailableTimeSlots(): Promise<void> {
     if (!this.selectedTee || !this.selectedDate) {
-      console.log('Missing required data for loading time slots:', {
-        selectedTee: this.selectedTee,
-        selectedDate: this.selectedDate
-      });
+      this.currentTimeSlots = [];
       return;
     }
 
     this.isLoading = true;
     this.errorMessage = '';
-    const dateString = this.selectedDate.toISOString().split('T')[0];
-    
-    console.log('Loading time slots for:', {
-      courseId: this.course.id,
-      date: dateString,
-      teeId: this.selectedTee.id
-    });
-    
+
     try {
-      const response = await this.collectionService.getAvailableSlots(
-        this.course.id, 
-        dateString, 
-        this.selectedTee.id
+      const dateStr = this.selectedDate.toISOString().split('T')[0];
+      
+      // Use the new method that includes participant count filtering
+      const response = await this.collectionService.getAvailableSlotsWithParticipants(
+        this.course.id,
+        dateStr,
+        this.selectedTee.id,
+        this.participantCount
       );
-      
-      console.log('Time slots response:', response);
-      
-      this.isLoading = false;
-      if (response.data.code === 1 && response.data.data) {
-        // Backend now handles filtering for today's slots
-        this.currentTimeSlots = response.data.data;
-        console.log('Time slots loaded:', this.currentTimeSlots);
+
+      if (response && response.data && response.data.code === 1) {
+        this.currentTimeSlots = response.data.data.map((slot: any) => ({
+          time: slot.time,
+          available: slot.available,
+          formatted_time: slot.formatted_time,
+          slot_status: slot.slot_status,
+          available_spots: slot.available_spots,
+          total_participants: slot.total_participants,
+          bookings: slot.bookings || [],
+          booking_count: slot.booking_count || 0
+        }));
       } else {
-        console.error('Failed to load time slots:', response.data);
-        this.errorMessage = response.data.message || 'Failed to load available time slots';
+        this.currentTimeSlots = [];
+        this.errorMessage = response?.data?.message || 'Failed to load time slots';
       }
     } catch (error) {
-      this.isLoading = false;
       console.error('Error loading time slots:', error);
-      this.errorMessage = 'Failed to load available time slots';
+      this.currentTimeSlots = [];
+      this.errorMessage = 'Failed to load time slots. Please try again.';
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -452,68 +455,59 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   async bookTeeTime(): Promise<void> {
     if (!this.canBook()) {
-      this.errorMessage = 'Please complete all booking details';
-      return;
-    }
-
-    // Check if user is authenticated
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      this.errorMessage = 'Please log in to book a tee time';
-      // Redirect to login page
-      this.router.navigate(['/login']);
+      this.errorMessage = 'Please fill in all required fields';
       return;
     }
 
     this.isLoading = true;
     this.errorMessage = '';
-    this.successMessage = '';
-
-    const bookingData = {
-      course: this.course.id,
-      tee: this.selectedTee!.id,
-      bookingDate: this.selectedDate.toISOString().split('T')[0], // Ensure proper date format
-      bookingTime: this.selectedTime,
-      participants: this.participantCount,
-      totalPrice: this.getTotalPrice(),
-      status: 'pending' as const
-    };
 
     try {
-      const response = await this.collectionService.createBooking(bookingData);
+      const dateStr = this.selectedDate.toISOString().split('T')[0];
       
-      this.isLoading = false;
-      if (response.data.code === 1) {
-        // Store booking confirmation data for modal
-        this.bookingConfirmationData = {
-          bookingId: response.data.data.id,
-          courseName: this.course.name,
-          teeLabel: this.selectedTee!.label,
-          date: this.selectedDate.toISOString().split('T')[0],
-          time: this.selectedTime,
-          participants: this.participantCount,
-          status: 'pending'
-        };
+      // Check if this is a join request (slot has existing bookings)
+      const selectedSlot = this.currentTimeSlots.find(slot => slot.time === this.selectedTime);
+      const isJoinRequest = selectedSlot && selectedSlot.total_participants !== undefined && selectedSlot.total_participants > 0;
+      
+      const bookingData: any = {
+        course: this.course.id,
+        tee: this.selectedTee!.id,
+        bookingDate: dateStr,
+        bookingTime: this.selectedTime,
+        participants: this.participantCount,
+        totalPrice: this.getTotalPrice()
+      };
+
+      if (isJoinRequest) {
+        // This is a join request - find the original booking
+        const originalBooking = selectedSlot?.bookings?.[0];
+        if (originalBooking) {
+          bookingData.is_join_request = true;
+          bookingData.original_booking = originalBooking.booking_id;
+          bookingData.status = 'pending_approval';
+        }
+      }
+
+      const response = await this.collectionService.createBooking(bookingData);
+
+      if (response && response.data && response.data.code === 1) {
+        this.successMessage = isJoinRequest 
+          ? 'Join request sent successfully! You will be notified when the original member responds.'
+          : 'Booking created successfully!';
         
-        // Show confirmation modal
+        this.bookingConfirmationData = response.data.data;
         this.showBookingModal = true;
         
-        // Reset form after successful booking
+        // Reset form
         this.resetBookingForm();
       } else {
-        this.errorMessage = response.data.message || 'Booking failed';
+        this.errorMessage = response?.data?.message || 'Failed to create booking';
       }
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      this.errorMessage = 'Failed to create booking. Please try again.';
+    } finally {
       this.isLoading = false;
-      console.error('Booking error:', error);
-      
-      // Handle authentication errors
-      if (error.response?.status === 401) {
-        this.errorMessage = 'Please log in to book a tee time';
-        this.router.navigate(['/login']);
-      } else {
-        this.errorMessage = error.response?.data?.message || 'Failed to create booking';
-      }
     }
   }
 
@@ -578,7 +572,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Authentication helper
   isAuthenticated(): boolean { 
-    return !!localStorage.getItem('access_token'); 
+    return !!localStorage.getItem('access_token');
+  }
+
+  isJoinRequest(): boolean {
+    if (!this.selectedTime) return false;
+    const selectedSlot = this.currentTimeSlots.find(slot => slot.time === this.selectedTime);
+    return selectedSlot ? (selectedSlot.total_participants !== undefined && selectedSlot.total_participants > 0) : false;
   }
 
   getSlotTooltip(slot: TimeSlot): string {
