@@ -38,7 +38,27 @@ class GenderModelSerializer(serializers.ModelSerializer):
 
 
 
+class PlanFeatureSerializer(serializers.ModelSerializer):
+    """Serializer for plan features"""
+    plan = serializers.PrimaryKeyRelatedField(queryset=PlanModel.objects.all())
+    
+    class Meta:
+        model = PlanFeatureModel
+        fields = ['id', 'plan', 'featureName', 'isIncluded', 'order', 'hideStatus', 'createdAt', 'updatedAt']
+        extra_kwargs = {
+            'featureName': {'required': True},
+            'isIncluded': {'required': True},
+        }
+
+    def validate_featureName(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Feature name cannot be empty")
+        return value.strip()
+
+
 class PlanModelSerializers(serializers.ModelSerializer):
+    features = PlanFeatureSerializer(many=True, read_only=True)
+    
     class Meta:
         model = PlanModel
         fields = '__all__'

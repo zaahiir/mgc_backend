@@ -50,14 +50,25 @@ export class MembershipComponent implements OnInit {
       const plans = await this.planService.getActivePlans();
       
                     // Transform plans to the format needed for display
-        this.membershipPlans = plans.map((plan: any) => ({
-          id: plan.id,
-          title: plan.planName,
-          price: parseFloat(plan.planPrice),
-          period: plan.planDuration === 1 ? 'Per Month' : 'Per Year',
-          duration: plan.planDuration,
-          description: plan.planDescription,
-          features: this.generateDefaultFeatures(plan.planDuration)
+        this.membershipPlans = await Promise.all(plans.map(async (plan: any) => {
+          // Get features for this plan
+          const features = await this.planService.getPlanFeatures(plan.id);
+          
+          // Transform features to the format expected by the template
+          const transformedFeatures = features.map((feature: any) => ({
+            name: feature.featureName,
+            included: feature.isIncluded
+          }));
+
+          return {
+            id: plan.id,
+            title: plan.planName,
+            price: parseFloat(plan.planPrice),
+            period: plan.planDuration === 1 ? 'Per Month' : 'Per Year',
+            duration: plan.planDuration,
+            description: plan.planDescription,
+            features: transformedFeatures.length > 0 ? transformedFeatures : this.generateDefaultFeatures(plan.planDuration)
+          };
         }));
     } catch (error) {
       console.error('Error loading plans:', error);

@@ -626,6 +626,52 @@ class GenderViewSet(viewsets.ModelViewSet):
 
 
 
+class PlanFeatureViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing plan features"""
+    queryset = PlanFeatureModel.objects.filter(hideStatus=0)
+    serializer_class = PlanFeatureSerializer
+
+    @action(detail=True, methods=['GET'])
+    def listing(self, request, pk=None):
+        if pk == "0":
+            # Get features for all plans
+            serializer = PlanFeatureSerializer(PlanFeatureModel.objects.filter(hideStatus=0).order_by('plan__id', 'order'), many=True)
+        else:
+            # Get features for specific plan
+            serializer = PlanFeatureSerializer(PlanFeatureModel.objects.filter(hideStatus=0, plan_id=pk).order_by('order'), many=True)
+        response = {'code': 1, 'data': serializer.data, 'message': "All Retrieved"}
+        return Response(response)
+
+    @action(detail=True, methods=['POST'])
+    def processing(self, request, pk=None):
+        try:
+            if pk == "0":
+                # Creating a new feature
+                serializer = PlanFeatureSerializer(data=request.data)
+            else:
+                # Updating an existing feature
+                try:
+                    instance = PlanFeatureModel.objects.get(id=pk)
+                    serializer = PlanFeatureSerializer(instance=instance, data=request.data)
+                except PlanFeatureModel.DoesNotExist:
+                    return Response({'code': 0, 'message': "Feature not found"}, status=404)
+            
+            if serializer.is_valid():
+                serializer.save()
+                response = {'code': 1, 'message': "Done Successfully"}
+            else:
+                response = {'code': 0, 'message': "Unable to Process Request", 'errors': serializer.errors}
+            return Response(response)
+        except Exception as e:
+            return Response({'code': 0, 'message': f"Error: {str(e)}"}, status=500)
+
+    @action(detail=True, methods=['GET'])
+    def deletion(self, request, pk=None):
+        PlanFeatureModel.objects.filter(id=pk).update(hideStatus=1)
+        response = {'code': 1, 'message': "Done Successfully"}
+        return Response(response)
+
+
 class PlanViewSet(viewsets.ModelViewSet):
     queryset = PlanModel.objects.filter(hideStatus=0)
     serializer_class = PlanModelSerializers
@@ -646,8 +692,8 @@ class PlanViewSet(viewsets.ModelViewSet):
         else:
             serializer = PlanModelSerializers(instance=PlanModel.objects.get(id=pk), data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            response = {'code': 1, 'message': "Done Successfully"}
+            plan = serializer.save()
+            response = {'code': 1, 'message': "Done Successfully", 'data': serializer.data}
         else:
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)

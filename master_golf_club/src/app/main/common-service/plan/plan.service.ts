@@ -58,6 +58,53 @@ export class PlanService {
     }
   }
 
+  // Get plan features
+  async getPlanFeatures(planId: string): Promise<any> {
+    try {
+      const response = await axios.get(this.apiUrl + `planFeature/${planId}/listing/`);
+      if (response.data && response.data.data) {
+        return response.data.data.filter((feature: any) => feature.hideStatus === 0);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching plan features:', error);
+      return [];
+    }
+  }
+
+  // Create plan feature
+  async createPlanFeature(data: any): Promise<any> {
+    try {
+      const response = await axios.post(this.apiUrl + 'planFeature/0/processing/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating plan feature:', error);
+      throw error;
+    }
+  }
+
+  // Update plan feature
+  async updatePlanFeature(featureId: string, data: any): Promise<any> {
+    try {
+      const response = await axios.post(this.apiUrl + `planFeature/${featureId}/processing/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating plan feature:', error);
+      throw error;
+    }
+  }
+
+  // Delete plan feature
+  async deletePlanFeature(featureId: string): Promise<any> {
+    try {
+      const response = await axios.get(this.apiUrl + `planFeature/${featureId}/deletion/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting plan feature:', error);
+      throw error;
+    }
+  }
+
   // Get plan by ID
   async getPlanById(planId: number): Promise<any> {
     try {

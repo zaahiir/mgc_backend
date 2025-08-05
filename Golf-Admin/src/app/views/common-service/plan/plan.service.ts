@@ -29,4 +29,21 @@ export class PlanService {
   deletePlan(id: string) {
     return axios.get(this.deletion.replace('0', id));
   }
+
+  // Plan Features Methods
+  getPlanFeatures(planId: string) {
+    return axios.get(this.apiUrl + `planFeature/${planId}/listing/`);
+  }
+
+  createPlanFeature(data: any) {
+    return axios.post(this.apiUrl + 'planFeature/0/processing/', data);
+  }
+
+  updatePlanFeature(featureId: string, data: any) {
+    return axios.post(this.apiUrl + `planFeature/${featureId}/processing/`, data);
+  }
+
+  deletePlanFeature(featureId: string) {
+    return axios.get(this.apiUrl + `planFeature/${featureId}/deletion/`);
+  }
 }

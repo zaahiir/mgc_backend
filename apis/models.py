@@ -74,6 +74,26 @@ class PlanModel(models.Model):
         verbose_name_plural = 'Plans'
 
 
+class PlanFeatureModel(models.Model):
+    """Model for managing plan features"""
+    id = models.AutoField(primary_key=True)
+    plan = models.ForeignKey(PlanModel, on_delete=models.CASCADE, related_name='features')
+    featureName = models.CharField(max_length=255, help_text="Feature name")
+    isIncluded = models.BooleanField(default=True, help_text="Whether this feature is included in the plan")
+    order = models.IntegerField(default=0, help_text="Display order of the feature")
+    hideStatus = models.IntegerField(default=0)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'featureName']
+        verbose_name = 'Plan Feature'
+        verbose_name_plural = 'Plan Features'
+
+    def __str__(self):
+        return f"{self.plan.planName} - {self.featureName}"
+
+
 class MemberModel(models.Model): 
     id = models.AutoField(primary_key=True)
     firstName = models.CharField(max_length=150)  # Required

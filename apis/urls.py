@@ -14,6 +14,7 @@ router.register('paymentStatus', PaymentStatusViewSet, basename='paymentStatus')
 
 router.register('amenities', AmenitiesViewSet, basename='amenities')
 router.register('plan', PlanViewSet, basename='plan')
+router.register('planFeature', PlanFeatureViewSet, basename='planFeature')
 router.register('member', MemberViewSet, basename='member')
 router.register('collection', CollectionViewSet, basename='collection')
 router.register('course', CourseManagementViewSet, basename='course')

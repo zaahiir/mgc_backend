@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { NgForOf, NgIf, CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { RowComponent, ColComponent, TextColorDirective, CardComponent, CardHeaderComponent, CardBodyComponent, FormFloatingDirective, FormDirective, FormLabelDirective, FormControlDirective, FormFeedbackComponent, InputGroupComponent, InputGroupTextDirective, FormSelectDirective, ButtonDirective } from '@coreui/angular';
 import Swal from 'sweetalert2';
 import { Router } from '@angular/router';
@@ -34,7 +34,8 @@ export class CreatePlanComponent implements OnInit {
       planName: ['', [Validators.required]],
       planDescription: ['', [Validators.required]],
       planDuration: ['', [Validators.required, Validators.min(1)]],
-      planPrice: ['', [Validators.required, Validators.min(0)]]
+      planPrice: ['', [Validators.required, Validators.min(0)]],
+      features: this.fb.array([])
     });
   }
 
@@ -43,6 +44,10 @@ export class CreatePlanComponent implements OnInit {
   }
 
   get f() { return this.planForm.controls; }
+  
+  get featuresArray() {
+    return this.planForm.get('features') as FormArray;
+  }
 
   async onSubmit(): Promise<void> {
     this.submitted = true;
@@ -68,6 +73,30 @@ export class CreatePlanComponent implements OnInit {
       const response = await this.planService.processPlan(formData, '0');
 
       if (response.data?.code === 1) {
+        // Get the created plan ID from the response
+        const planId = response.data?.data?.id;
+        
+        if (planId) {
+          // Create features for the plan
+          if (this.featuresArray.length > 0) {
+            try {
+              for (const feature of this.featuresArray.value) {
+                await this.planService.createPlanFeature({
+                  plan: parseInt(planId),
+                  featureName: feature.featureName,
+                  isIncluded: feature.isIncluded,
+                  order: feature.order || 0
+                });
+              }
+            } catch (error) {
+              console.error('Error creating features:', error);
+              // Still show success for plan creation, but log feature creation error
+            }
+          }
+        } else {
+          console.error('No plan ID received from response');
+        }
+
         await Swal.fire({
           title: 'Success!',
           text: 'Plan has been created successfully',
@@ -88,10 +117,28 @@ export class CreatePlanComponent implements OnInit {
   onReset(): void {
     this.submitted = false;
     this.planForm.reset();
+    this.featuresArray.clear();
     Object.keys(this.planForm.controls).forEach(key => {
       const control = this.planForm.get(key);
       control?.setErrors(null);
     });
+  }
+
+  addFeature(): void {
+    const featureGroup = this.fb.group({
+      featureName: ['', [Validators.required]],
+      isIncluded: [true],
+      order: [this.featuresArray.length]
+    });
+    this.featuresArray.push(featureGroup);
+  }
+
+  removeFeature(index: number): void {
+    this.featuresArray.removeAt(index);
+    // Update order for remaining features
+    for (let i = 0; i < this.featuresArray.length; i++) {
+      this.featuresArray.at(i).patchValue({ order: i });
+    }
   }
 
   private async showError(message: string): Promise<void> {
