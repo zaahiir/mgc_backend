@@ -82,10 +82,10 @@
 
           <!-- Course Content -->
           <div class="course-content">
-            <span class="post-date" *ngIf="course.timing">
+            <!-- <span class="post-date" *ngIf="course.timing">
               <i class="date-icon"><fa-icon [icon]="faCalendarWeek"></fa-icon></i>
               {{ course.timing }}
-            </span>
+            </span> -->
 
             <h3 class="course-title mt-2 mb-3">
               <a href="#" (click)="viewCourseDetails(course.id, $event)">{{ course.name }}</a>
@@ -105,7 +105,7 @@
             </div>
 
             <!-- Booking Dates -->
-            <div class="date-container d-flex justify-content-between mb-4">
+            <!-- <div class="date-container d-flex justify-content-between mb-4">
               <div
                 *ngFor="let dateInfo of getNextSevenDates()"
                 class="date-chip"
@@ -115,7 +115,7 @@
                 <div class="date-number">{{ dateInfo.date | date: 'dd' }}</div>
                 <div class="date-day">{{ dateInfo.date | date: 'EEE' }}</div>
               </div>
-            </div>
+            </div> -->
 
             <!-- Action Buttons -->
             <div class="action-buttons d-flex justify-content-between">
