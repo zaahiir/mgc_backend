@@ -220,14 +220,20 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   incrementParticipants(): void {
     if (this.participantCount < this.maxParticipants) {
       this.participantCount++;
-      this.updateTotalPrice();
+      // Reload time slots when participant count changes
+      if (this.selectedTee && this.selectedDate) {
+        this.loadAvailableTimeSlots();
+      }
     }
   }
 
   decrementParticipants(): void {
     if (this.participantCount > 1) {
       this.participantCount--;
-      this.updateTotalPrice();
+      // Reload time slots when participant count changes
+      if (this.selectedTee && this.selectedDate) {
+        this.loadAvailableTimeSlots();
+      }
     }
   }
 
@@ -263,12 +269,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.selectedTee = tee;
     this.selectedTime = '';
     
-    // Load time slots if date is already selected
-    if (this.selectedDate) {
-      console.log('Loading time slots for selected tee and date');
+    // Load time slots if date is already selected and participants are selected
+    if (this.selectedDate && this.participantCount > 0) {
+      console.log('Loading time slots for selected tee, date, and participants');
       this.loadAvailableTimeSlots();
     } else {
-      console.log('No date selected yet, time slots will be loaded when date is selected');
+      console.log('No date or participants selected yet, time slots will be loaded when both are selected');
     }
   }
 
@@ -351,7 +357,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.selectedTime = '';
       }
       
-      this.loadAvailableTimeSlots();
+      // Load time slots if tee and participants are already selected
+      if (this.selectedTee && this.participantCount > 0) {
+        this.loadAvailableTimeSlots();
+      }
     }
   }
 
@@ -385,7 +394,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Time slot management
   async loadAvailableTimeSlots(): Promise<void> {
-    if (!this.selectedTee || !this.selectedDate) {
+    if (!this.selectedTee || !this.selectedDate || this.participantCount === 0) {
       this.currentTimeSlots = [];
       return;
     }
@@ -441,7 +450,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       this.selectedTee &&
       this.selectedDate &&
       this.selectedTime &&
-      !this.isLoading
+      !this.isLoading &&
+      this.isAuthenticated()
     );
   }
 

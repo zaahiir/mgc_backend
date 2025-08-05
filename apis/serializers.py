@@ -470,7 +470,7 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookingModel
         fields = [
-            'id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
+            'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
             'tee', 'teeInfo', 'bookingDate', 'formattedDate', 'bookingTime', 'endTime',
             'participants', 'totalPrice', 'status', 'notes', 'canCancel',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',

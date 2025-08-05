@@ -7,20 +7,20 @@
       <p class="card-content">Overview of your recent booking activity</p>
       <div class="stats-grid">
         <div class="stat-item">
-          <div class="stat-value">8</div>
+          <div class="stat-value">{{bookings.length}}</div>
           <div class="stat-label">Total Bookings</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">$850</div>
-          <div class="stat-label">Total Amount</div>
+          <div class="stat-value">{{getConfirmedBookings()}}</div>
+          <div class="stat-label">Confirmed</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">2</div>
-          <div class="stat-label">Upcoming</div>
+          <div class="stat-value">{{getPendingBookings()}}</div>
+          <div class="stat-label">Pending</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">6</div>
-          <div class="stat-label">Completed</div>
+          <div class="stat-value">{{getJoinRequests()}}</div>
+          <div class="stat-label">Join Requests</div>
         </div>
       </div>
     </div>
@@ -31,49 +31,77 @@
       <thead>
         <tr>
           <th>Booking ID</th>
+          <th>Course</th>
+          <th>Date & Time</th>
+          <th>Participants</th>
           <th>Status</th>
-          <th>Amount</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td>BK12345</td>
-          <td><span class="status-badge status-completed">Completed</span></td>
-          <td>$250.00</td>
+        <tr *ngFor="let booking of bookings" class="booking-row">
+          <td>{{booking.booking_id || 'N/A'}}</td>
+          <td>{{booking.courseName}}</td>
           <td>
-            <button class="btn btn-primary">View</button>
-            <button class="btn btn-secondary">Download PDF</button>
+            <div class="date-time">
+              <div class="date">{{booking.bookingDate | date:'MMM d, yyyy'}}</div>
+              <div class="time">{{booking.bookingTime}}</div>
+            </div>
+          </td>
+          <td>{{booking.participants}}</td>
+          <td>
+            <span class="status-badge" [class]="getStatusClass(booking.status)">
+              {{getStatusText(booking.status)}}
+            </span>
+            <span *ngIf="booking.is_join_request" class="join-request-badge">Join Request</span>
+          </td>
+          <td>
+            <button class="btn btn-primary" (click)="viewBill(booking.id.toString())">
+              View
+            </button>
           </td>
         </tr>
-        <tr>
-          <td>BK12346</td>
-          <td><span class="status-badge status-pending">Pending</span></td>
-          <td>$150.00</td>
-          <td>
-            <button class="btn btn-primary">View</button>
-            <button class="btn btn-secondary">Download PDF</button>
-          </td>
-        </tr>
-        <tr>
-          <td>BK12347</td>
-          <td><span class="status-badge status-processing">Processing</span></td>
-          <td>$350.00</td>
-          <td>
-            <button class="btn btn-primary">View</button>
-            <button class="btn btn-secondary">Download PDF</button>
-          </td>
-        </tr>
-        <tr>
-          <td>BK12348</td>
-          <td><span class="status-badge status-completed">Completed</span></td>
-          <td>$200.00</td>
-          <td>
-            <button class="btn btn-primary">View</button>
-            <button class="btn btn-secondary">Download PDF</button>
+        
+        <!-- Show join requests for original bookings -->
+        <tr *ngFor="let booking of getBookingsWithJoinRequests()" class="join-requests-row">
+          <td colspan="6">
+            <div class="join-requests-section">
+              <h4>Join Requests for {{booking.courseName}} - {{booking.bookingDate | date:'MMM d'}} at {{booking.bookingTime}}</h4>
+              <div class="join-requests-list">
+                <div *ngFor="let request of booking.joinRequests" class="join-request-item">
+                  <div class="request-info">
+                    <span class="member-name">{{request.memberName}}</span>
+                    <span class="participants">{{request.participants}} participants</span>
+                    <span class="status" [class]="getStatusClass(request.status)">
+                      {{getStatusText(request.status)}}
+                    </span>
+                  </div>
+                  <div class="request-actions" *ngIf="request.status === 'pending_approval'">
+                    <button class="btn btn-success" (click)="approveJoinRequest(booking.id, request.id)">
+                      Approve
+                    </button>
+                    <button class="btn btn-danger" (click)="rejectJoinRequest(booking.id, request.id)">
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </td>
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="loading-spinner">
+      <p>Loading bookings...</p>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!isLoading && bookings.length === 0" class="empty-state">
+    <p>No bookings found.</p>
   </div>
 </div>

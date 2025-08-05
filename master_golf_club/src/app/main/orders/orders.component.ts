@@ -4,6 +4,8 @@ import { CollectionService } from '../common-service/collection/collection.servi
 
 interface Booking {
   id: number;
+  booking_id: string;
+  memberName: string;
   courseName: string;
   bookingDate: string;
   bookingTime: string;
@@ -151,5 +153,26 @@ export class OrdersComponent implements OnInit {
   downloadBill(orderId: string) {
     alert(`Downloading PDF bill for Order ID: ${orderId}`);
     // Here you would add logic to generate or fetch the PDF for download
+  }
+
+  // Helper methods for statistics
+  getConfirmedBookings(): number {
+    return this.bookings.filter(booking => booking.status === 'confirmed').length;
+  }
+
+  getPendingBookings(): number {
+    return this.bookings.filter(booking => 
+      booking.status === 'pending' || booking.status === 'pending_approval'
+    ).length;
+  }
+
+  getJoinRequests(): number {
+    return this.bookings.filter(booking => booking.is_join_request).length;
+  }
+
+  getBookingsWithJoinRequests(): Booking[] {
+    return this.bookings.filter(booking => 
+      booking.joinRequests && booking.joinRequests.length > 0
+    );
   }
 }

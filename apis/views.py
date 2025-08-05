@@ -1926,99 +1926,107 @@ class BookingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = BookingModel.objects.select_related('member', 'course', 'tee').order_by('-bookingDate', '-bookingTime')
-        
-        # Filter by current member if authenticated
-        if hasattr(self.request, 'user') and self.request.user.is_authenticated:
-            try:
-                member = MemberModel.objects.get(email=self.request.user.email)
-                queryset = queryset.filter(member=member)
-            except MemberModel.DoesNotExist:
-                queryset = queryset.none()
-        
-        # Filter by member if provided (for admin purposes)
-        member_id = self.request.query_params.get('member_id')
-        if member_id:
-            queryset = queryset.filter(member_id=member_id)
-        
-        # Filter by date range
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
-        if start_date:
-            queryset = queryset.filter(bookingDate__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(bookingDate__lte=end_date)
-        
-        return queryset
-    
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                # Get current member from authentication
-                if hasattr(request, 'user') and request.user.is_authenticated:
-                    try:
-                        member = MemberModel.objects.get(email=request.user.email)
-                        serializer.validated_data['member'] = member
-                    except MemberModel.DoesNotExist:
-                        return Response({
-                            'code': 0,
-                            'message': 'Member not found for current user'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    return Response({
-                        'code': 0,
-                        'message': 'Authentication required'
-                    }, status=status.HTTP_401_UNAUTHORIZED)
-                
-                # Set total price to 0 since pricing is removed
-                serializer.validated_data['totalPrice'] = Decimal('0')
-                
-                # Handle join requests
-                is_join_request = serializer.validated_data.get('is_join_request', False)
-                if is_join_request:
-                    original_booking = serializer.validated_data.get('original_booking')
-                    if original_booking:
-                        # Set status to pending approval for join requests
-                        serializer.validated_data['status'] = 'pending_approval'
-                        
-                        # Create notification for original booking member
-                        NotificationModel.create_join_request_notification(
-                            recipient=original_booking.member,
-                            sender=member,
-                            booking=original_booking,
-                            join_request=serializer.validated_data
-                        )
-                
-                instance = serializer.save()
-                return Response({
-                    'code': 1,
-                    'data': BookingSerializer(instance).data,
-                    'message': 'Booking created successfully'
-                }, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                return Response({
-                    'code': 0,
-                    'message': f'Error creating booking: {str(e)}'
-                }, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({
-            'code': 0,
-            'errors': serializer.errors,
-            'message': 'Validation failed'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
+        """Get bookings for the authenticated member"""
+        try:
+            member = MemberModel.objects.get(email=self.request.user.email)
+            return BookingModel.objects.filter(
+                member=member,
+                hideStatus=0
+            ).order_by('-createdAt')
+        except MemberModel.DoesNotExist:
+            return BookingModel.objects.none()
 
-    
+    def create(self, request, *args, **kwargs):
+        """Create a new booking with automatic member assignment and booking ID generation"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Generate unique booking ID
+            booking_id = self.generate_booking_id()
+            
+            # Add member and booking ID to request data
+            data = request.data.copy()
+            data['member'] = member.id
+            data['booking_id'] = booking_id
+            
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            
+            # Create the booking
+            booking = serializer.save()
+            
+            # If this is a join request, create notification for original booker
+            if booking.is_join_request and booking.original_booking:
+                original_booking = booking.original_booking
+                NotificationModel.create_join_request_notification(
+                    recipient=original_booking.member,
+                    sender=member,
+                    booking=original_booking,
+                    join_request=booking
+                )
+            
+            return Response({
+                'code': 1,
+                'message': 'Booking created successfully',
+                'data': {
+                    'id': booking.id,
+                    'bookingId': booking_id,
+                    'courseName': booking.course.courseName,
+                    'teeLabel': f"{booking.tee.holeNumber} Holes",
+                    'date': booking.bookingDate,
+                    'time': booking.bookingTime.strftime('%I:%M %p'),
+                    'participants': booking.participants,
+                    'status': booking.status
+                }
+            }, status=201)
+            
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': str(e)
+            }, status=400)
+
+    def generate_booking_id(self):
+        """Generate unique booking ID in format: MGCBK25AUG05001"""
+        from datetime import datetime
+        import random
+        
+        now = datetime.now()
+        year_suffix = str(now.year)[-2:]  # Last 2 digits of year
+        month_abbr = now.strftime('%b').upper()  # 3-letter month
+        day = f"{now.day:02d}"  # 2-digit day
+        
+        base_id = f"MGCBK{year_suffix}{month_abbr}{day}"
+        
+        # Check if this ID already exists today
+        existing_count = BookingModel.objects.filter(
+            booking_id__startswith=base_id
+        ).count()
+        
+        if existing_count > 0:
+            # Append counter to make it unique (001, 002, etc.)
+            base_id = f"{base_id}{(existing_count + 1):03d}"
+        else:
+            # First booking of the day gets 001
+            base_id = f"{base_id}001"
+        
+        return base_id
+
     @action(detail=True, methods=['patch'])
     def cancel_booking(self, request, pk=None):
         """Cancel a booking"""
         try:
             booking = self.get_object()
+            
             if not booking.can_cancel:
                 return Response({
                     'code': 0,
-                    'message': 'Cannot cancel booking less than 24 hours before the scheduled time'
+                    'message': 'Cannot cancel booking within 24 hours of tee time'
                 }, status=400)
             
             booking.status = 'cancelled'
@@ -2026,49 +2034,33 @@ class BookingViewSet(viewsets.ModelViewSet):
             
             return Response({
                 'code': 1,
-                'data': BookingSerializer(booking).data,
                 'message': 'Booking cancelled successfully'
             })
             
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error cancelling booking: {str(e)}'
+                'message': str(e)
             }, status=400)
-    
+
     @action(detail=True, methods=['post'])
     def approve_join_request(self, request, pk=None):
         """Approve a join request"""
         try:
-            booking = self.get_object()
-            
-            # Check if current user is the original booking member
-            if hasattr(request, 'user') and request.user.is_authenticated:
-                try:
-                    member = MemberModel.objects.get(email=request.user.email)
-                    if booking.member != member:
-                        return Response({
-                            'code': 0,
-                            'message': 'Only the original booking member can approve join requests'
-                        }, status=403)
-                except MemberModel.DoesNotExist:
-                    return Response({
-                        'code': 0,
-                        'message': 'Member not found'
-                    }, status=400)
-            
-            # Find the join request to approve
+            original_booking = self.get_object()
             join_request_id = request.data.get('join_request_id')
+            
             if not join_request_id:
                 return Response({
                     'code': 0,
-                    'message': 'join_request_id is required'
+                    'message': 'Join request ID is required'
                 }, status=400)
             
+            # Get the join request
             try:
                 join_request = BookingModel.objects.get(
                     id=join_request_id,
-                    original_booking=booking,
+                    original_booking=original_booking,
                     is_join_request=True,
                     status='pending_approval'
                 )
@@ -2078,70 +2070,55 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Join request not found'
                 }, status=404)
             
-            # Check if slot still has enough space
-            if not booking.can_join_slot(join_request.participants):
+            # Check if slot can accommodate the join request
+            total_participants = original_booking.slot_participant_count + join_request.participants
+            if total_participants > 4:
                 return Response({
                     'code': 0,
-                    'message': 'Not enough available spots in this slot'
+                    'message': 'Slot cannot accommodate additional participants'
                 }, status=400)
             
             # Approve the join request
             join_request.status = 'approved'
             join_request.save()
             
-            # Create notification for the requesting member
+            # Create notification for the joining member
             NotificationModel.create_join_response_notification(
                 recipient=join_request.member,
-                sender=booking.member,
-                booking=booking,
+                sender=original_booking.member,
+                booking=original_booking,
                 is_approved=True
             )
             
             return Response({
                 'code': 1,
-                'data': BookingSerializer(join_request).data,
                 'message': 'Join request approved successfully'
             })
             
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error approving join request: {str(e)}'
+                'message': str(e)
             }, status=400)
-    
+
     @action(detail=True, methods=['post'])
     def reject_join_request(self, request, pk=None):
         """Reject a join request"""
         try:
-            booking = self.get_object()
-            
-            # Check if current user is the original booking member
-            if hasattr(request, 'user') and request.user.is_authenticated:
-                try:
-                    member = MemberModel.objects.get(email=request.user.email)
-                    if booking.member != member:
-                        return Response({
-                            'code': 0,
-                            'message': 'Only the original booking member can reject join requests'
-                        }, status=403)
-                except MemberModel.DoesNotExist:
-                    return Response({
-                        'code': 0,
-                        'message': 'Member not found'
-                    }, status=400)
-            
-            # Find the join request to reject
+            original_booking = self.get_object()
             join_request_id = request.data.get('join_request_id')
+            
             if not join_request_id:
                 return Response({
                     'code': 0,
-                    'message': 'join_request_id is required'
+                    'message': 'Join request ID is required'
                 }, status=400)
             
+            # Get the join request
             try:
                 join_request = BookingModel.objects.get(
                     id=join_request_id,
-                    original_booking=booking,
+                    original_booking=original_booking,
                     is_join_request=True,
                     status='pending_approval'
                 )
@@ -2155,164 +2132,149 @@ class BookingViewSet(viewsets.ModelViewSet):
             join_request.status = 'rejected'
             join_request.save()
             
-            # Create notification for the requesting member
+            # Create notification for the joining member
             NotificationModel.create_join_response_notification(
                 recipient=join_request.member,
-                sender=booking.member,
-                booking=booking,
+                sender=original_booking.member,
+                booking=original_booking,
                 is_approved=False
             )
             
             return Response({
                 'code': 1,
-                'data': BookingSerializer(join_request).data,
                 'message': 'Join request rejected successfully'
             })
             
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error rejecting join request: {str(e)}'
+                'message': str(e)
             }, status=400)
 
     @action(detail=False, methods=['get'], permission_classes=[])
     def available_slots(self, request):
-        """Get available time slots for a specific date and course"""
-        course_id = request.query_params.get('course_id')
-        booking_date = request.query_params.get('date')
-        tee_id = request.query_params.get('tee_id')
-        participants = int(request.query_params.get('participants', 1))
-        
-        if not all([course_id, booking_date, tee_id]):
-            return Response({
-                'code': 0,
-                'message': 'course_id, date, and tee_id parameters are required'
-            }, status=400)
-        
+        """Get available time slots for a course, date, and tee"""
         try:
-            date_obj = dt.datetime.strptime(booking_date, '%Y-%m-%d').date()
-            tee = TeeModel.objects.get(id=tee_id)
+            course_id = request.query_params.get('course_id')
+            date_str = request.query_params.get('date')
+            tee_id = request.query_params.get('tee_id')
+            participants = int(request.query_params.get('participants', 1))
             
-            # Generate time slots (6 AM to 7 PM, every 8 minutes for better UX)
-            slots = []
-            start_time = dt.datetime.strptime('06:00', '%H:%M').time()
-            end_time = dt.datetime.strptime('19:00', '%H:%M').time() # 7 PM as requested
-            current_time = dt.datetime.combine(date_obj, start_time)
-            end_datetime = dt.datetime.combine(date_obj, end_time)
+            if not all([course_id, date_str, tee_id]):
+                return Response({
+                    'code': 0,
+                    'message': 'Course ID, date, and tee ID are required'
+                }, status=400)
             
-            # Get current time for today's date
-            now = dt.datetime.now()
-            today_start = dt.datetime.combine(date_obj, dt.time(0, 0))
-            current_time_for_date = now.replace(year=date_obj.year, month=date_obj.month, day=date_obj.day)
+            # Parse date
+            from datetime import datetime
+            booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             
-            # Get existing bookings for this date and course with full details
-            existing_bookings = BookingModel.objects.filter(
-                course_id=course_id,
-                bookingDate=date_obj,
-                status__in=['pending', 'confirmed']
-            ).select_related('member', 'tee').values(
-                'id', 'bookingTime', 'tee__holeNumber', 'member__firstName', 
-                'member__lastName', 'participants', 'status'
-            )
+            # Get course and tee
+            try:
+                course = CourseModel.objects.get(id=course_id, hideStatus=0)
+                tee = TeeModel.objects.get(id=tee_id, course=course, hideStatus=0)
+            except (CourseModel.DoesNotExist, TeeModel.DoesNotExist):
+                return Response({
+                    'code': 0,
+                    'message': 'Course or tee not found'
+                }, status=404)
             
-            # Create a mapping of time slots to booking details
-            booked_slots = {}
-            for booking in existing_bookings:
-                booking_time = booking['bookingTime']
-                hole_number = booking['tee__holeNumber']
-                duration_hours = hole_number * 0.167  # 10 minutes per hole
-                booking_start = dt.datetime.combine(date_obj, booking_time)
-                booking_end = booking_start + dt.timedelta(hours=duration_hours)
-                
-                # Block all 8-minute slots within this duration
-                slot_time = booking_start
-                while slot_time < booking_end:
-                    time_key = slot_time.time()
-                    if time_key not in booked_slots:
-                        booked_slots[time_key] = []
-                    booked_slots[time_key].append({
-                        'booking_id': booking['id'],
-                        'member_name': f"{booking['member__firstName']} {booking['member__lastName']}",
-                        'participants': booking['participants'],
-                        'status': booking['status'],
-                        'hole_number': hole_number,
-                        'start_time': booking_time.strftime('%H:%M'),
-                        'end_time': booking_end.time().strftime('%H:%M')
-                    })
-                    slot_time += dt.timedelta(minutes=8)
-            
-            while current_time <= end_datetime:
-                slot_time = current_time.time()
-                is_available = slot_time not in booked_slots
-                
-                # Only check duration if slot is not already booked
-                if is_available:
-                    duration_hours = tee.holeNumber * 0.167  # 10 minutes per hole
-                    slot_end = current_time + dt.timedelta(hours=duration_hours)
-                    
-                    # Check if the booking would extend past closing time
-                    if slot_end.time() > end_time:
-                        is_available = False
-                    else:
-                        # Check if any of the time slots within the duration are already booked
-                        check_time = current_time
-                    while check_time < slot_end:
-                        if check_time.time() in booked_slots:
-                            is_available = False
-                            break
-                        check_time += dt.timedelta(minutes=8)
-                
-                # Calculate slot status and available spots
-                slot_participants = 0
-                if slot_time in booked_slots:
-                    slot_participants = sum(booking['participants'] for booking in booked_slots[slot_time])
-                
-                available_spots = max(0, 4 - slot_participants)
-                slot_status = 'available' if slot_participants == 0 else 'partially_available' if slot_participants < 4 else 'booked'
-                
-                # Only show slots that have enough space for requested participants
-                can_accommodate = available_spots >= participants
-                
-                slot_data = {
-                    'time': slot_time.strftime('%H:%M'),
-                    'available': is_available and can_accommodate,
-                    'formatted_time': slot_time.strftime('%I:%M %p'),
-                    'slot_status': slot_status,
-                    'available_spots': available_spots,
-                    'total_participants': slot_participants
-                }
-                
-                # Add booking details if slot is booked
-                if slot_time in booked_slots:
-                    slot_data['bookings'] = booked_slots[slot_time]
-                    slot_data['booking_count'] = len(booked_slots[slot_time])
-                else:
-                    slot_data['bookings'] = []
-                    slot_data['booking_count'] = 0
-                
-                # Only add slots that are after current time for today's date
-                # For other dates, show all slots
-                if date_obj == now.date():
-                    # For today, only show slots that are at least 30 minutes in the future
-                    if current_time >= current_time_for_date + dt.timedelta(minutes=30):
-                        slots.append(slot_data)
-                else:
-                    # For other dates, show all slots
-                    slots.append(slot_data)
-                
-                current_time += dt.timedelta(minutes=8)
+            # Generate time slots
+            slots = self.generate_time_slots(course, booking_date, tee, participants)
             
             return Response({
                 'code': 1,
-                'data': slots,
-                'message': 'Available slots retrieved successfully'
+                'message': 'Time slots retrieved successfully',
+                'data': slots
             })
             
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving slots: {str(e)}'
+                'message': str(e)
             }, status=400)
+
+    def generate_time_slots(self, course, booking_date, tee, requested_participants):
+        """Generate time slots dynamically based on course opening time and slot duration"""
+        from datetime import datetime, time, timedelta
+        
+        # Course opening time (default 6:00 AM)
+        open_time = course.courseOpenFrom or time(6, 0)
+        close_time = time(19, 0)  # 7:00 PM
+        slot_duration = 8  # 8 minutes per slot
+        
+        slots = []
+        current_time = datetime.combine(booking_date, open_time)
+        end_datetime = datetime.combine(booking_date, close_time)
+        
+        # If booking for today, start from current time rounded to next slot
+        if booking_date == datetime.now().date():
+            now = datetime.now()
+            if current_time < now:
+                # Round up to next 8-minute slot
+                minutes_since_open = (now - datetime.combine(booking_date, open_time)).total_seconds() / 60
+                slots_since_open = int(minutes_since_open / slot_duration) + 1
+                current_time = datetime.combine(booking_date, open_time) + timedelta(minutes=slots_since_open * slot_duration)
+        
+        while current_time.time() <= close_time:
+            slot_time = current_time.time()
+            formatted_time = slot_time.strftime('%I:%M %p')
+            
+            # Get existing bookings for this slot
+            existing_bookings = BookingModel.objects.filter(
+                course=course,
+                bookingDate=booking_date,
+                bookingTime=slot_time,
+                status__in=['confirmed', 'pending'],
+                is_join_request=False
+            )
+            
+            # Calculate total participants in this slot
+            total_participants = sum(booking.participants for booking in existing_bookings)
+            available_spots = 4 - total_participants
+            
+            # Determine slot status
+            if total_participants == 0:
+                slot_status = 'available'
+            elif total_participants < 4:
+                slot_status = 'partially_available'
+            else:
+                slot_status = 'booked'
+            
+            # Only show slots that can accommodate the requested participants
+            can_accommodate = available_spots >= requested_participants
+            
+            if can_accommodate and slot_status != 'booked':
+                # Get booking details for partially available slots
+                booking_details = []
+                if existing_bookings.exists():
+                    for booking in existing_bookings:
+                        booking_details.append({
+                            'booking_id': booking.id,
+                            'member_name': f"{booking.member.firstName} {booking.member.lastName}",
+                            'participants': booking.participants,
+                            'status': booking.status,
+                            'hole_number': booking.tee.holeNumber,
+                            'start_time': booking.bookingTime.strftime('%I:%M %p'),
+                            'end_time': booking.end_time.strftime('%I:%M %p')
+                        })
+                
+                slots.append({
+                    'time': slot_time.strftime('%H:%M'),
+                    'available': True,
+                    'formatted_time': formatted_time,
+                    'slot_status': slot_status,
+                    'available_spots': available_spots,
+                    'total_participants': total_participants,
+                    'bookings': booking_details,
+                    'booking_count': len(booking_details)
+                })
+            
+            # Move to next slot (8 minutes later)
+            current_time += timedelta(minutes=slot_duration)
+        
+        return slots
 
 
 class NotificationViewSet(viewsets.ModelViewSet):

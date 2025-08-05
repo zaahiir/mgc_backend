@@ -49,6 +49,14 @@
               </div>
             </div>
 
+            <!-- Participant prompt -->
+            <div class="form-section" *ngIf="participantCount === 0" class="participant-prompt">
+              <div class="prompt-message">
+                <fa-icon [icon]="usersIcon" class="prompt-icon"></fa-icon>
+                <p>Please select the number of participants to see available tees and time slots.</p>
+              </div>
+            </div>
+
             <!-- Step 2: Tee Selection (only visible after participants selected) -->
             <div class="form-section" *ngIf="participantCount > 0">
               <div class="label-with-icon">
@@ -62,6 +70,7 @@
                 <button class="tee-option" 
                         *ngFor="let tee of availableTees"
                         [class.selected]="selectedTee?.id === tee.id"
+                        [disabled]="participantCount === 0"
                         (click)="selectTee(tee)">
                   <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
                 </button>
@@ -142,9 +151,9 @@
                   <button *ngFor="let slot of currentTimeSlots"
                           class="time-slot"
                           [class.selected]="selectedTime === slot.time"
-                          [class.slot-available]="slot.slot_status === 'available'"
-                          [class.slot-partial]="slot.slot_status === 'partially_available'"
-                          [class.slot-booked]="slot.slot_status === 'booked'"
+                          [class.available-slot]="slot.slot_status === 'available'"
+                          [class.partial-slot]="slot.slot_status === 'partially_available'"
+                          [class.booked-slot]="slot.slot_status === 'booked'"
                           [disabled]="slot.slot_status === 'booked' || !slot.available"
                           (click)="selectTime(slot.time)"
                           [title]="getSlotTooltip(slot)">

@@ -290,3 +290,107 @@ p {
 .border-theme {
   border-color: var(--theme-color) !important;
 }
+
+/* Slot color classes for tee booking */
+.available-slot {
+  background-color: #4CAF50 !important;
+  color: white !important;
+}
+
+.partial-slot {
+  background-color: #FFC107 !important;
+  color: #333 !important;
+}
+
+.selected-slot {
+  background-color: #2196F3 !important;
+  color: white !important;
+}
+
+.booked-slot {
+  background-color: #f44336 !important;
+  color: white !important;
+}
+
+/* Join request styles */
+.join-request-badge {
+  background-color: #FF9800;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin-left: 8px;
+}
+
+/* Notification styles */
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #f44336;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-item.unread {
+  background-color: #f0f8ff;
+  border-left: 3px solid #2196F3;
+}
+
+/* Booking status styles */
+.status-confirmed {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.status-pending {
+  background-color: #FFC107;
+  color: #333;
+}
+
+.status-pending-approval {
+  background-color: #FF9800;
+  color: white;
+}
+
+.status-approved {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.status-rejected {
+  background-color: #f44336;
+  color: white;
+}
+
+.status-cancelled {
+  background-color: #9E9E9E;
+  color: white;
+}
+
+/* Participant prompt styles */
+.participant-prompt {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.prompt-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #6c757d;
+}
+
+.prompt-icon {
+  color: #007bff;
+  font-size: 1.2rem;
+}
