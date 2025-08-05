@@ -297,30 +297,14 @@ p {
   color: white !important;
 }
 
-.partial-slot {
-  background-color: #FFC107 !important;
-  color: #333 !important;
-}
 
-.selected-slot {
-  background-color: #2196F3 !important;
-  color: white !important;
-}
 
 .booked-slot {
   background-color: #f44336 !important;
   color: white !important;
 }
 
-/* Join request styles */
-.join-request-badge {
-  background-color: #FF9800;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  margin-left: 8px;
-}
+
 
 /* Notification styles */
 .notification-badge {
@@ -349,15 +333,7 @@ p {
   color: white;
 }
 
-.status-pending {
-  background-color: #FFC107;
-  color: #333;
-}
 
-.status-pending-approval {
-  background-color: #FF9800;
-  color: white;
-}
 
 .status-approved {
   background-color: #4CAF50;

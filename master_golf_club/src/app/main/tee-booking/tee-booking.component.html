@@ -165,10 +165,7 @@
                         </div>
                       </div>
 
-                      <!-- Interaction indicator -->
-                      <div class="slot-interaction-indicator" *ngIf="getSlotInteractionIndicator(slot)">
-                        {{getSlotInteractionIndicator(slot)}}
-                      </div>
+
                     </div>
 
                   </button>
@@ -181,66 +178,13 @@
               </div>
             </div>
 
-            <!-- Slot Summary Panel -->
-            <div class="slot-summary-panel" *ngIf="slotSummary">
-              <div class="slot-summary-header">
-                <h4 class="slot-summary-title">Selected Slots Summary</h4>
-                <span class="slot-summary-status" [class]="slotSummary.status">
-                  {{slotSummary.status}}
-                </span>
-              </div>
-              <div class="slot-summary-details">
-                <div class="slot-summary-item">
-                  <div class="slot-summary-icon">
-                    <fa-icon [icon]="calendarIcon"></fa-icon>
-                  </div>
-                  <div class="slot-summary-content">
-                    <div class="slot-summary-label">Date</div>
-                    <div class="slot-summary-value">{{slotSummary.date | date:'MMM d, yyyy'}}</div>
-                  </div>
-                </div>
-                <div class="slot-summary-item">
-                  <div class="slot-summary-icon">
-                    <fa-icon [icon]="golfIcon"></fa-icon>
-                  </div>
-                  <div class="slot-summary-content">
-                    <div class="slot-summary-label">Tee</div>
-                    <div class="slot-summary-value">{{slotSummary.tee?.label}}</div>
-                  </div>
-                </div>
-                <div class="slot-summary-item">
-                  <div class="slot-summary-icon">
-                    <fa-icon [icon]="clockIcon"></fa-icon>
-                  </div>
-                  <div class="slot-summary-content">
-                    <div class="slot-summary-label">Selected Slots</div>
-                    <div class="slot-summary-value">{{slotSummary.selectedSlots.length}} slot{{slotSummary.selectedSlots.length > 1 ? 's' : ''}}</div>
-                  </div>
-                </div>
-                <div class="slot-summary-item">
-                  <div class="slot-summary-icon">
-                    <fa-icon [icon]="usersIcon"></fa-icon>
-                  </div>
-                  <div class="slot-summary-content">
-                    <div class="slot-summary-label">Total Participants</div>
-                    <div class="slot-summary-value">{{slotSummary.totalParticipants}}</div>
-                  </div>
-                </div>
-              </div>
-              <div class="slot-summary-times">
-                <div class="slot-summary-label">Selected Times:</div>
-                <div class="slot-times-list">
-                  <span class="slot-time-item" *ngFor="let slot of slotSummary.selectedSlots">
-                    {{slot.time}}
-                  </span>
-                </div>
-              </div>
-            </div>
-
             <!-- Booking Summary (only visible when all steps completed) -->
             <div class="booking-summary" *ngIf="canBook()">
               <div class="summary-header">
                 <h4>Booking Summary</h4>
+                <span class="summary-status" *ngIf="slotSummary" [class]="slotSummary.status">
+                  {{slotSummary.status}}
+                </span>
               </div>
               <div class="summary-details">
                 <div class="summary-item">
@@ -251,25 +195,25 @@
                   <span class="label">Date:</span>
                   <span class="value">{{selectedDate | date:'MMM d, yyyy'}}</span>
                 </div>
-                                 <div class="summary-item" *ngIf="selectedSlots.length === 0">
-                   <span class="label">Time:</span>
-                   <span class="value">{{selectedTime}}</span>
-                 </div>
-                 <div class="summary-item" *ngIf="selectedSlots.length > 0">
-                   <span class="label">Selected Slots:</span>
-                   <span class="value">{{selectedSlots.length}} slot{{selectedSlots.length > 1 ? 's' : ''}}</span>
-                 </div>
+                <div class="summary-item" *ngIf="selectedSlots.length === 0">
+                  <span class="label">Time:</span>
+                  <span class="value">{{selectedTime}}</span>
+                </div>
+                <div class="summary-item" *ngIf="selectedSlots.length > 0">
+                  <span class="label">Selected Slots:</span>
+                  <span class="value">{{selectedSlots.length}} slot{{selectedSlots.length > 1 ? 's' : ''}}</span>
+                </div>
                 <div class="summary-item">
                   <span class="label">Participants:</span>
                   <span class="value">{{participantCount}}</span>
                 </div>
-                                 <div class="summary-item total" *ngIf="selectedSlots.length > 0">
-                   <span class="label">Total Participants:</span>
-                   <span class="value">{{selectedSlots.length * participantCount}}</span>
-                 </div>
+                <div class="summary-item total" *ngIf="selectedSlots.length > 0">
+                  <span class="label">Total Participants:</span>
+                  <span class="value">{{selectedSlots.length * participantCount}}</span>
+                </div>
               </div>
-                             <!-- Show selected times for multi-select -->
-               <div class="selected-times" *ngIf="selectedSlots.length > 0">
+              <!-- Show selected times for multi-select -->
+              <div class="selected-times" *ngIf="selectedSlots.length > 0">
                 <div class="selected-times-label">Selected Times:</div>
                 <div class="selected-times-list">
                   <span class="time-item" *ngFor="let slot of selectedSlots">

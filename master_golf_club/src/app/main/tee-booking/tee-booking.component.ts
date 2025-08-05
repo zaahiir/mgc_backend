@@ -157,7 +157,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   showSlotModal: boolean = false;
   slotModalData: SlotModalData | null = null;
   slotSummary: SlotSummary | null = null;
-  maxSelectedSlots: number = 3; // Maximum number of slots that can be selected
+  maxSelectedSlots: number = 999; // No limitation for multi select
 
   private destroy$ = new Subject<void>();
 
@@ -556,13 +556,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       slot.isMultiSelected = false;
       this.selectedSlots = this.selectedSlots.filter(s => s.time !== slot.time);
     } else {
-      // Check if we can add more slots
-      if (this.selectedSlots.length >= this.maxSelectedSlots) {
-        this.errorMessage = `You can only select up to ${this.maxSelectedSlots} slots at a time.`;
-        return;
-      }
-      
-      // Select slot
+      // Select slot - no limitation
       slot.isMultiSelected = true;
       this.selectedSlots.push(slot);
     }
@@ -649,11 +643,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
     
     if (slot.isSelected) {
-      return 'selected-slot';
+      return 'selected'; // Changed from 'selected-slot' to 'selected' to match CSS
     }
     
     if (slot.isMultiSelected) {
-      return 'multi-selected-slot';
+      return 'multi-selected'; // Changed from 'multi-selected-slot' to 'multi-selected' to match CSS
     }
     
     if (slot.slot_status === 'partially_available') {
@@ -663,15 +657,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     return 'available-slot';
   }
 
-  getSlotInteractionIndicator(slot: TimeSlot): string {
-    if (slot.slot_status === 'partially_available') {
-      return '!';
-    }
-    if (slot.isMultiSelected) {
-      return '✓';
-    }
-    return '';
-  }
+
 
   // Booking validation and submission
   canBook(): boolean {
