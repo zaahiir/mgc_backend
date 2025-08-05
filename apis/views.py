@@ -2249,9 +2249,10 @@ class BookingViewSet(viewsets.ModelViewSet):
             slot_time = current_time.time()
             formatted_time = slot_time.strftime('%I:%M %p')
             
-            # Get existing bookings for this slot
+            # Get existing bookings for this slot and specific tee
             existing_bookings = BookingModel.objects.filter(
                 course=course,
+                tee=tee,
                 bookingDate=booking_date,
                 bookingTime=slot_time,
                 status__in=['confirmed', 'pending'],
