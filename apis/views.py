@@ -2216,6 +2216,10 @@ class BookingViewSet(viewsets.ModelViewSet):
                 minutes_since_open = (now - datetime.combine(booking_date, open_time)).total_seconds() / 60
                 slots_since_open = int(minutes_since_open / slot_duration) + 1
                 current_time = datetime.combine(booking_date, open_time) + timedelta(minutes=slots_since_open * slot_duration)
+                
+                # Ensure we don't start before the open time
+                if current_time.time() < open_time:
+                    current_time = datetime.combine(booking_date, open_time)
         
         while current_time.time() <= close_time:
             slot_time = current_time.time()

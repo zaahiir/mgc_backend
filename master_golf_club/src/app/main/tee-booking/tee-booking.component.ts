@@ -414,7 +414,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       );
 
       if (response && response.data && response.data.code === 1) {
-        this.currentTimeSlots = response.data.data.map((slot: any) => ({
+        // Filter slots based on current date vs other dates
+        const filteredSlots = this.filterTimeSlotsForDate(response.data.data);
+        
+        this.currentTimeSlots = filteredSlots.map((slot: any) => ({
           time: slot.time,
           available: slot.available,
           formatted_time: slot.formatted_time,
@@ -435,6 +438,33 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  // Filter time slots based on current date vs other dates
+  filterTimeSlotsForDate(slots: any[]): any[] {
+    const today = new Date();
+    const selectedDate = new Date(this.selectedDate);
+    const isToday = selectedDate.toDateString() === today.toDateString();
+    
+    if (!isToday) {
+      // For other dates, show all slots from open time
+      return slots;
+    }
+    
+    // For today, filter out slots that have already passed
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
+    
+    return slots.filter((slot: any) => {
+      const [hours, minutes] = slot.time.split(':').map(Number);
+      const slotTimeInMinutes = hours * 60 + minutes;
+      
+      // Round up to next 8-minute slot
+      const slotDuration = 8;
+      const roundedCurrentTime = Math.ceil(currentTime / slotDuration) * slotDuration;
+      
+      return slotTimeInMinutes >= roundedCurrentTime;
+    });
   }
 
 
@@ -508,8 +538,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.bookingConfirmationData = response.data.data;
         this.showBookingModal = true;
         
-        // Reset form
-        this.resetBookingForm();
+        // Don't reset form immediately - let user see confirmation first
+        // The form will be reset when modal is closed and page reloads
       } else {
         this.errorMessage = response?.data?.message || 'Failed to create booking';
       }
@@ -525,6 +555,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   closeBookingModal(): void {
     this.showBookingModal = false;
     this.bookingConfirmationData = null;
+    
+    // Force a complete page reload to ensure all data is fresh
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   }
 
   resetBookingForm(): void {
@@ -534,6 +569,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.selectedTime = '';
     this.currentTimeSlots = [];
     this.showCalendar = false;
+    
+    // Reload course data to ensure fresh state
+    this.loadCourseData();
   }
 
   // Contact actions
