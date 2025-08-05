@@ -53,6 +53,8 @@ interface TimeSlot {
   slot_status?: 'available' | 'partially_available' | 'booked';
   available_spots?: number;
   total_participants?: number;
+  isSelected?: boolean;
+  isMultiSelected?: boolean;
 }
 
 interface BookingDetail {
@@ -63,6 +65,22 @@ interface BookingDetail {
   hole_number: number;
   start_time: string;
   end_time: string;
+}
+
+interface SlotSummary {
+  date: Date;
+  tee: Tee | null;
+  selectedSlots: TimeSlot[];
+  totalParticipants: number;
+  status: 'available' | 'partial' | 'booked';
+}
+
+interface SlotModalData {
+  slot: TimeSlot;
+  bookings: BookingDetail[];
+  availableSpots: number;
+  totalParticipants: number;
+  requestedParticipants: number;
 }
 
 interface CalendarDay {
@@ -133,6 +151,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // Add booking confirmation modal properties
   showBookingModal: boolean = false;
   bookingConfirmationData: any = null;
+
+  // Enhanced slot functionality
+  selectedSlots: TimeSlot[] = [];
+  showSlotModal: boolean = false;
+  slotModalData: SlotModalData | null = null;
+  slotSummary: SlotSummary | null = null;
+  maxSelectedSlots: number = 3; // Maximum number of slots that can be selected
 
   private destroy$ = new Subject<void>();
 
@@ -477,16 +502,201 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.selectedTime = time;
   }
 
+  // Enhanced slot selection methods
+  selectSlot(slot: TimeSlot): void {
+    if (slot.slot_status === 'booked' || !slot.available) {
+      return;
+    }
+
+    if (slot.slot_status === 'partially_available') {
+      this.openSlotModal(slot);
+      return;
+    }
+
+    // Check if slot is already selected
+    const isAlreadySelected = this.selectedSlots.some(selectedSlot => 
+      selectedSlot.time === slot.time
+    );
+
+    if (isAlreadySelected) {
+      // Unselect the slot
+      this.selectedSlots = this.selectedSlots.filter(selectedSlot => 
+        selectedSlot.time !== slot.time
+      );
+      slot.isSelected = false;
+      slot.isMultiSelected = false;
+    } else {
+      // Add to multi-select if we have slots selected, otherwise single select
+      if (this.selectedSlots.length > 0) {
+        this.toggleMultiSelectSlot(slot);
+      } else {
+        this.selectSingleSlot(slot);
+      }
+    }
+
+    this.updateSlotSummary();
+  }
+
+  selectSingleSlot(slot: TimeSlot): void {
+    // Clear previous selections
+    this.currentTimeSlots.forEach(s => {
+      s.isSelected = false;
+      s.isMultiSelected = false;
+    });
+    
+    slot.isSelected = true;
+    this.selectedTime = slot.time;
+    this.selectedSlots = [slot];
+    this.updateSlotSummary();
+  }
+
+  toggleMultiSelectSlot(slot: TimeSlot): void {
+    if (slot.isMultiSelected) {
+      // Deselect slot
+      slot.isMultiSelected = false;
+      this.selectedSlots = this.selectedSlots.filter(s => s.time !== slot.time);
+    } else {
+      // Check if we can add more slots
+      if (this.selectedSlots.length >= this.maxSelectedSlots) {
+        this.errorMessage = `You can only select up to ${this.maxSelectedSlots} slots at a time.`;
+        return;
+      }
+      
+      // Select slot
+      slot.isMultiSelected = true;
+      this.selectedSlots.push(slot);
+    }
+    
+    this.updateSlotSummary();
+  }
+
+  openSlotModal(slot: TimeSlot): void {
+    this.slotModalData = {
+      slot: slot,
+      bookings: slot.bookings || [],
+      availableSpots: slot.available_spots || 0,
+      totalParticipants: slot.total_participants || 0,
+      requestedParticipants: this.participantCount
+    };
+    this.showSlotModal = true;
+  }
+
+  closeSlotModal(): void {
+    this.showSlotModal = false;
+    this.slotModalData = null;
+  }
+
+  confirmSlotSelection(): void {
+    if (this.slotModalData) {
+      const slot = this.slotModalData.slot;
+      
+      // Add to multi-select if we have slots selected, otherwise single select
+      if (this.selectedSlots.length > 0) {
+        this.toggleMultiSelectSlot(slot);
+      } else {
+        this.selectSingleSlot(slot);
+      }
+      
+      this.closeSlotModal();
+    }
+  }
+
+  updateSlotSummary(): void {
+    if (this.selectedSlots.length === 0) {
+      this.slotSummary = null;
+      return;
+    }
+
+    const totalParticipants = this.selectedSlots.reduce((sum, slot) => sum + this.participantCount, 0);
+    const status = this.getSlotSummaryStatus();
+
+    this.slotSummary = {
+      date: this.selectedDate,
+      tee: this.selectedTee,
+      selectedSlots: this.selectedSlots,
+      totalParticipants: totalParticipants,
+      status: status
+    };
+  }
+
+  getSlotSummaryStatus(): 'available' | 'partial' | 'booked' {
+    const hasPartial = this.selectedSlots.some(slot => slot.slot_status === 'partially_available');
+    const hasBooked = this.selectedSlots.some(slot => slot.slot_status === 'booked');
+    
+    if (hasBooked) return 'booked';
+    if (hasPartial) return 'partial';
+    return 'available';
+  }
+
+  toggleMultiSelect(): void {
+    // This method is no longer needed as we use continuous clicking
+    // Keeping it for backward compatibility but it does nothing
+  }
+
+  clearSelectedSlots(): void {
+    this.selectedSlots = [];
+    this.currentTimeSlots.forEach(slot => {
+      slot.isSelected = false;
+      slot.isMultiSelected = false;
+    });
+    this.selectedTime = '';
+    this.updateSlotSummary();
+  }
+
+  getSlotClass(slot: TimeSlot): string {
+    if (slot.slot_status === 'booked' || !slot.available) {
+      return 'booked-slot';
+    }
+    
+    if (slot.isSelected) {
+      return 'selected-slot';
+    }
+    
+    if (slot.isMultiSelected) {
+      return 'multi-selected-slot';
+    }
+    
+    if (slot.slot_status === 'partially_available') {
+      return 'partial-slot-theme';
+    }
+    
+    return 'available-slot';
+  }
+
+  getSlotInteractionIndicator(slot: TimeSlot): string {
+    if (slot.slot_status === 'partially_available') {
+      return '!';
+    }
+    if (slot.isMultiSelected) {
+      return '✓';
+    }
+    return '';
+  }
+
   // Booking validation and submission
   canBook(): boolean {
-    return !!(
-      this.participantCount > 0 &&
-      this.selectedTee &&
-      this.selectedDate &&
-      this.selectedTime &&
-      !this.isLoading &&
-      this.isAuthenticated()
-    );
+    // Check if we have multiple slots selected or single slot
+    if (this.selectedSlots.length > 0) {
+      // For multi-select mode, check if any slots are selected
+      return !!(
+        this.participantCount > 0 &&
+        this.selectedTee &&
+        this.selectedDate &&
+        this.selectedSlots.length > 0 &&
+        !this.isLoading &&
+        this.isAuthenticated()
+      );
+    } else {
+      // For single select mode, check if a time is selected
+      return !!(
+        this.participantCount > 0 &&
+        this.selectedTee &&
+        this.selectedDate &&
+        this.selectedTime &&
+        !this.isLoading &&
+        this.isAuthenticated()
+      );
+    }
   }
 
   updateTotalPrice(): void {
@@ -509,22 +719,74 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     try {
       const dateStr = this.selectedDate.toISOString().split('T')[0];
       
-      // Check if this is a join request (slot has existing bookings)
-      const selectedSlot = this.currentTimeSlots.find(slot => slot.time === this.selectedTime);
-      const isJoinRequest = selectedSlot && selectedSlot.total_participants !== undefined && selectedSlot.total_participants > 0;
+      if (this.selectedSlots.length > 0) {
+        // Handle multi-select bookings
+        await this.createMultiBookings(dateStr);
+      } else {
+        // Handle single booking
+        await this.createSingleBooking(dateStr);
+      }
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      this.errorMessage = 'Failed to create booking. Please try again.';
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private async createSingleBooking(dateStr: string): Promise<void> {
+    // Check if this is a join request (slot has existing bookings)
+    const selectedSlot = this.currentTimeSlots.find(slot => slot.time === this.selectedTime);
+    const isJoinRequest = selectedSlot && selectedSlot.total_participants !== undefined && selectedSlot.total_participants > 0;
+    
+    const bookingData: any = {
+      course: this.course.id,
+      tee: this.selectedTee!.id,
+      bookingDate: dateStr,
+      bookingTime: this.selectedTime,
+      participants: this.participantCount,
+      totalPrice: this.getTotalPrice()
+    };
+
+    if (isJoinRequest) {
+      // This is a join request - find the original booking
+      const originalBooking = selectedSlot?.bookings?.[0];
+      if (originalBooking) {
+        bookingData.is_join_request = true;
+        bookingData.original_booking = originalBooking.booking_id;
+        bookingData.status = 'pending_approval';
+      }
+    }
+
+    const response = await this.collectionService.createBooking(bookingData);
+
+    if (response && response.data && response.data.code === 1) {
+      this.successMessage = isJoinRequest 
+        ? 'Join request sent successfully! You will be notified when the original member responds.'
+        : 'Booking created successfully!';
       
+      this.bookingConfirmationData = response.data.data;
+      this.showBookingModal = true;
+    } else {
+      this.errorMessage = response?.data?.message || 'Failed to create booking';
+    }
+  }
+
+  private async createMultiBookings(dateStr: string): Promise<void> {
+    const bookingPromises = this.selectedSlots.map(async (slot) => {
       const bookingData: any = {
         course: this.course.id,
         tee: this.selectedTee!.id,
         bookingDate: dateStr,
-        bookingTime: this.selectedTime,
+        bookingTime: slot.time,
         participants: this.participantCount,
         totalPrice: this.getTotalPrice()
       };
 
+      // Check if this is a join request
+      const isJoinRequest = slot.total_participants !== undefined && slot.total_participants > 0;
       if (isJoinRequest) {
-        // This is a join request - find the original booking
-        const originalBooking = selectedSlot?.bookings?.[0];
+        const originalBooking = slot.bookings?.[0];
         if (originalBooking) {
           bookingData.is_join_request = true;
           bookingData.original_booking = originalBooking.booking_id;
@@ -532,26 +794,24 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         }
       }
 
-      const response = await this.collectionService.createBooking(bookingData);
+      return this.collectionService.createBooking(bookingData);
+    });
 
-      if (response && response.data && response.data.code === 1) {
-        this.successMessage = isJoinRequest 
-          ? 'Join request sent successfully! You will be notified when the original member responds.'
-          : 'Booking created successfully!';
-        
-        this.bookingConfirmationData = response.data.data;
-        this.showBookingModal = true;
-        
-        // Don't reset form immediately - let user see confirmation first
-        // The form will be reset when modal is closed and page reloads
-      } else {
-        this.errorMessage = response?.data?.message || 'Failed to create booking';
-      }
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      this.errorMessage = 'Failed to create booking. Please try again.';
-    } finally {
-      this.isLoading = false;
+    const responses = await Promise.all(bookingPromises);
+    const successfulBookings = responses.filter(response => 
+      response && response.data && response.data.code === 1
+    );
+
+    if (successfulBookings.length === this.selectedSlots.length) {
+      this.successMessage = `Successfully created ${successfulBookings.length} booking${successfulBookings.length > 1 ? 's' : ''}!`;
+      this.bookingConfirmationData = {
+        totalBookings: successfulBookings.length,
+        selectedSlots: this.selectedSlots.map(slot => slot.time)
+      };
+      this.showBookingModal = true;
+    } else {
+      const failedCount = this.selectedSlots.length - successfulBookings.length;
+      this.errorMessage = `Failed to create ${failedCount} booking${failedCount > 1 ? 's' : ''}. Please try again.`;
     }
   }
 
@@ -573,6 +833,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.selectedTime = '';
     this.currentTimeSlots = [];
     this.showCalendar = false;
+    
+    // Clear multi-select properties
+    this.selectedSlots = [];
+    this.slotSummary = null;
+    this.showSlotModal = false;
+    this.slotModalData = null;
+    
+    // Clear slot selections
+    this.currentTimeSlots.forEach(slot => {
+      slot.isSelected = false;
+      slot.isMultiSelected = false;
+    });
     
     // Reload course data to ensure fresh state
     this.loadCourseData();
