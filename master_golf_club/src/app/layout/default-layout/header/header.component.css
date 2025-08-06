@@ -361,6 +361,7 @@ ul, li {
 .notification-icon {
   fill: var(--theme-color);
   transition: fill 0.3s ease;
+  text-decoration: none;
 }
 
 .notification-icon-wrapper:hover .notification-icon {

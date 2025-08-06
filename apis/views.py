@@ -1902,6 +1902,10 @@ class BookingViewSet(viewsets.ModelViewSet):
             data['member'] = member.id
             data['booking_id'] = booking_id
             
+            # Set status to 'confirmed' for direct bookings (non-join requests)
+            if not data.get('is_join_request', False):
+                data['status'] = 'confirmed'
+            
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             
@@ -2032,7 +2036,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 }, status=400)
             
             # Approve the join request
-            join_request.status = 'approved'
+            join_request.status = 'confirmed'
             join_request.save()
             
             # Create notification for the joining member

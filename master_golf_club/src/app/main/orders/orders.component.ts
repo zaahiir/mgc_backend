@@ -46,8 +46,6 @@ interface Notification {
   styleUrl: './orders.component.css'
 })
 export class OrdersComponent implements OnInit {
-  showModal = false;
-  selectedOrderId: string | null = null;
   bookings: Booking[] = [];
   notifications: Notification[] = [];
   unreadCount = 0;
@@ -352,20 +350,7 @@ export class OrdersComponent implements OnInit {
     return !!(booking.availableSpots && booking.availableSpots > 0 && booking.status === 'confirmed');
   }
 
-  viewBill(orderId: string) {
-    this.selectedOrderId = orderId;
-    this.showModal = true;
-  }
 
-  closeModal() {
-    this.showModal = false;
-    this.selectedOrderId = null;
-  }
-
-  downloadBill(orderId: string) {
-    alert(`Downloading PDF bill for Order ID: ${orderId}`);
-    // Here you would add logic to generate or fetch the PDF for download
-  }
 
   private showSuccessMessage(message: string) {
     // Implement toast or alert for success message

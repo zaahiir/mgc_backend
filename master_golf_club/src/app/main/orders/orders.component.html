@@ -36,7 +36,9 @@
         <tr>
           <th>Booking ID</th>
           <th>Course</th>
-          <th>Date & Time</th>
+          <th>Tee</th>
+          <th>Date</th>
+          <th>Slot Time</th>
           <th>Participants</th>
           <th>Status</th>
           <th>Actions</th>
@@ -53,13 +55,21 @@
           <td>
             <div class="course-info">
               <div class="course-name">{{booking.courseName}}</div>
-              <div *ngIf="booking.teeInfo" class="tee-info">{{booking.teeInfo}}</div>
             </div>
           </td>
           <td>
-            <div class="date-time">
-              <div class="date">{{booking.formattedDate || (booking.bookingDate | date:'MMM d, yyyy')}}</div>
-              <div class="time">{{booking.bookingTime}} - {{booking.endTime || 'TBD'}}</div>
+            <div class="tee-info">
+              {{booking.teeInfo || 'N/A'}}
+            </div>
+          </td>
+          <td>
+            <div class="date">
+              {{booking.formattedDate || (booking.bookingDate | date:'MMM d, yyyy')}}
+            </div>
+          </td>
+          <td>
+            <div class="slot-time">
+              {{booking.bookingTime}}
             </div>
           </td>
           <td>
@@ -74,9 +84,6 @@
             <div class="status-container">
               <span class="status-badge" [class]="getStatusClass(booking.status)">
                 {{getStatusText(booking.status)}}
-              </span>
-              <span *ngIf="booking.totalPrice" class="price-info">
-                ${{booking.totalPrice}}
               </span>
             </div>
           </td>
@@ -97,7 +104,7 @@
         
         <!-- Show join requests for original bookings -->
         <tr *ngFor="let booking of getBookingsWithJoinRequests()" class="join-requests-row">
-          <td colspan="6">
+          <td colspan="8">
             <div class="join-requests-section">
               <h4>Join Requests for {{booking.courseName}} - {{booking.bookingDate | date:'MMM d'}} at {{booking.bookingTime}}</h4>
               <div class="join-requests-list">
@@ -181,10 +188,7 @@
               {{getStatusText(selectedBooking.status)}}
             </span>
           </div>
-          <div class="detail-item" *ngIf="selectedBooking.totalPrice">
-            <label>Total Price:</label>
-            <span class="price">${{selectedBooking.totalPrice}}</span>
-          </div>
+
           <div class="detail-item" *ngIf="selectedBooking.teeInfo">
             <label>Tee Information:</label>
             <span>{{selectedBooking.teeInfo}}</span>
@@ -231,12 +235,6 @@
           </button>
           <button *ngIf="selectedBooking.canJoinSlot" class="btn btn-success">
             Join Slot
-          </button>
-          <button class="btn btn-secondary" (click)="viewBill(selectedBooking.id.toString())">
-            View Bill
-          </button>
-          <button class="btn btn-primary" (click)="downloadBill(selectedBooking.id.toString())">
-            Download Bill
           </button>
         </div>
       </div>
