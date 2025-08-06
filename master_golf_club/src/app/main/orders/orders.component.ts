@@ -88,19 +88,69 @@ export class OrdersComponent implements OnInit {
 
   async loadBookings() {
     this.isLoading = true;
+    this.errorMessage = '';
     try {
+      console.log('Loading bookings...');
       const response = await this.collectionService.getBookings();
-      if (response && response.data && response.data.code === 1) {
-        this.bookings = response.data.data.map((booking: any) => ({
-          ...booking,
-          formattedDate: this.formatDate(booking.bookingDate),
-          canCancel: this.canCancelBooking(booking),
-          canJoinSlot: this.canJoinSlot(booking)
-        }));
+      console.log('Bookings response:', response);
+      
+      if (response && response.data) {
+        console.log('Response data:', response.data);
+        
+        // Check if response.data is an array (direct API response)
+        if (Array.isArray(response.data)) {
+          console.log('Raw booking data from API (array format):', response.data);
+          
+          this.bookings = response.data.map((booking: any) => {
+            console.log('Processing booking:', booking);
+            console.log('Booking date:', booking.bookingDate);
+            console.log('Formatted date from API:', booking.formattedDate);
+            
+            const processedBooking = {
+              ...booking,
+              formattedDate: this.formatDate(booking.bookingDate || booking.formattedDate),
+              canCancel: this.canCancelBooking(booking),
+              canJoinSlot: this.canJoinSlot(booking)
+            };
+            
+            console.log('Processed booking:', processedBooking);
+            return processedBooking;
+          });
+          
+          console.log('Final processed bookings:', this.bookings);
+        } 
+        // Check if response.data has the expected code/data structure
+        else if (response.data.code === 1) {
+          console.log('Raw booking data from API (code/data format):', response.data.data);
+          
+          this.bookings = response.data.data.map((booking: any) => {
+            console.log('Processing booking:', booking);
+            console.log('Booking date:', booking.bookingDate);
+            console.log('Formatted date from API:', booking.formattedDate);
+            
+            const processedBooking = {
+              ...booking,
+              formattedDate: this.formatDate(booking.bookingDate || booking.formattedDate),
+              canCancel: this.canCancelBooking(booking),
+              canJoinSlot: this.canJoinSlot(booking)
+            };
+            
+            console.log('Processed booking:', processedBooking);
+            return processedBooking;
+          });
+          
+          console.log('Final processed bookings:', this.bookings);
+        } else {
+          console.error('API returned error code:', response.data.code);
+          this.errorMessage = response.data.message || 'Failed to load bookings';
+        }
+      } else {
+        console.error('Invalid response format:', response);
+        this.errorMessage = 'Invalid response from server';
       }
     } catch (error) {
       console.error('Error loading bookings:', error);
-      this.errorMessage = 'Failed to load bookings';
+      this.errorMessage = 'Failed to load bookings. Please check your connection.';
     } finally {
       this.isLoading = false;
     }
@@ -109,8 +159,23 @@ export class OrdersComponent implements OnInit {
   async loadNotifications() {
     try {
       const response = await this.collectionService.getNotifications();
-      if (response && response.data && response.data.code === 1) {
-        this.notifications = response.data.data;
+      console.log('Notifications response:', response);
+      
+      if (response && response.data) {
+        // Check if response.data is an array (direct API response)
+        if (Array.isArray(response.data)) {
+          console.log('Raw notifications data from API (array format):', response.data);
+          this.notifications = response.data;
+        } 
+        // Check if response.data has the expected code/data structure
+        else if (response.data.code === 1) {
+          console.log('Raw notifications data from API (code/data format):', response.data.data);
+          this.notifications = response.data.data;
+        } else {
+          console.error('Failed to load notifications:', response);
+        }
+      } else {
+        console.error('Invalid notifications response:', response);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -120,8 +185,23 @@ export class OrdersComponent implements OnInit {
   async loadUnreadCount() {
     try {
       const response = await this.collectionService.getUnreadNotificationCount();
-      if (response && response.data && response.data.code === 1) {
-        this.unreadCount = response.data.data.unread_count;
+      console.log('Unread count response:', response);
+      
+      if (response && response.data) {
+        // Check if response.data has the expected code/data structure
+        if (response.data.code === 1) {
+          this.unreadCount = response.data.data.unread_count;
+        } 
+        // Check if response.data is a direct number or object
+        else if (typeof response.data === 'number') {
+          this.unreadCount = response.data;
+        } else if (response.data.unread_count !== undefined) {
+          this.unreadCount = response.data.unread_count;
+        } else {
+          console.error('Failed to load unread count:', response);
+        }
+      } else {
+        console.error('Invalid unread count response:', response);
       }
     } catch (error) {
       console.error('Error loading unread count:', error);
@@ -227,13 +307,35 @@ export class OrdersComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      console.log('formatDate input:', dateString);
+      
+      if (!dateString) {
+        console.warn('No date string provided to formatDate');
+        return 'Date not available';
+      }
+      
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string:', dateString);
+        return 'Invalid date';
+      }
+      
+      const formattedDate = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      console.log('Formatted date result:', formattedDate);
+      return formattedDate;
+    } catch (error) {
+      console.error('Error formatting date:', error, 'Input:', dateString);
+      return 'Date formatting error';
+    }
   }
 
   canCancelBooking(booking: Booking): boolean {

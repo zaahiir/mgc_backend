@@ -47,8 +47,23 @@ export class HeaderComponent implements OnInit {
   async loadUnreadNotificationCount() {
     try {
       const response = await this.collectionService.getUnreadNotificationCount();
-      if (response && response.data && response.data.code === 1) {
-        this.unreadNotifications = response.data.data.unread_count;
+      console.log('Header unread count response:', response);
+      
+      if (response && response.data) {
+        // Check if response.data has the expected code/data structure
+        if (response.data.code === 1) {
+          this.unreadNotifications = response.data.data.unread_count;
+        } 
+        // Check if response.data is a direct number or object
+        else if (typeof response.data === 'number') {
+          this.unreadNotifications = response.data;
+        } else if (response.data.unread_count !== undefined) {
+          this.unreadNotifications = response.data.unread_count;
+        } else {
+          console.error('Failed to load unread count:', response);
+        }
+      } else {
+        console.error('Invalid unread count response:', response);
       }
     } catch (error) {
       console.error('Error loading unread notification count:', error);
@@ -58,8 +73,23 @@ export class HeaderComponent implements OnInit {
   async loadNotifications() {
     try {
       const response = await this.collectionService.getNotifications();
-      if (response && response.data && response.data.code === 1) {
-        this.notifications = response.data.data.slice(0, 5); // Show only latest 5
+      console.log('Header notifications response:', response);
+      
+      if (response && response.data) {
+        // Check if response.data is an array (direct API response)
+        if (Array.isArray(response.data)) {
+          console.log('Raw notifications data from API (array format):', response.data);
+          this.notifications = response.data;
+        } 
+        // Check if response.data has the expected code/data structure
+        else if (response.data.code === 1) {
+          console.log('Raw notifications data from API (code/data format):', response.data.data);
+          this.notifications = response.data.data;
+        } else {
+          console.error('Failed to load notifications:', response);
+        }
+      } else {
+        console.error('Invalid notifications response:', response);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -98,6 +128,14 @@ export class HeaderComponent implements OnInit {
     this.showNotificationDropdown = !this.showNotificationDropdown;
   }
 
+  toggleUserDropdown(): void {
+    this.isUserDropdownOpen = !this.isUserDropdownOpen;
+  }
+
+  closeUserDropdown(): void {
+    this.isUserDropdownOpen = false;
+  }
+
   private initializeDOMEvents(): void {
     // Use setTimeout to ensure DOM is ready
     setTimeout(() => {
@@ -123,10 +161,6 @@ export class HeaderComponent implements OnInit {
 
       window.addEventListener('scroll', handleScroll);
     }, 0);
-  }
-
-  toggleUserDropdown(): void {
-    this.isUserDropdownOpen = !this.isUserDropdownOpen;
   }
 
   // Close dropdown when clicking outside

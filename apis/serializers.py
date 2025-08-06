@@ -511,7 +511,8 @@ class BookingSerializer(serializers.ModelSerializer):
         return f"{obj.tee.holeNumber} Holes"
     
     def get_formattedDate(self, obj):
-        return obj.bookingDate.strftime('%B %d, %Y')
+        # Return date in ISO format for frontend compatibility
+        return obj.bookingDate.isoformat()
     
     def get_canJoinSlot(self, obj):
         """Check if current member can join this slot"""
