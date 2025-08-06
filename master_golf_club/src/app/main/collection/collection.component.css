@@ -6,10 +6,10 @@
 
 /* Event Card Styles */
 .event-card {
-  background: #fff;
-  border-radius: 12px;
+  background-color: #fff;
+  border-radius: 75px 30px 30px 30px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
@@ -18,7 +18,7 @@
 
 .event-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
 .event-image-container {
