@@ -508,7 +508,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (slot.slot_status === 'partially_available') {
+    // Open modal for both available and partially_available slots
+    if (slot.slot_status === 'available' || slot.slot_status === 'partially_available') {
       this.openSlotModal(slot);
       return;
     }
@@ -565,12 +566,15 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   openSlotModal(slot: TimeSlot): void {
+    // Default requestedParticipants to current participantCount, but clamp to availableSpots
+    const maxAllowed = Math.min(slot.available_spots || 4, 4);
+    const requestedParticipants = Math.min(this.participantCount, maxAllowed);
     this.slotModalData = {
       slot: slot,
       bookings: slot.bookings || [],
       availableSpots: slot.available_spots || 0,
       totalParticipants: slot.total_participants || 0,
-      requestedParticipants: this.participantCount
+      requestedParticipants: requestedParticipants
     };
     this.showSlotModal = true;
   }
@@ -580,17 +584,32 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.slotModalData = null;
   }
 
+  incrementModalParticipants(): void {
+    if (this.slotModalData) {
+      const maxAllowed = Math.min(this.slotModalData.availableSpots, 4);
+      if (this.slotModalData.requestedParticipants < maxAllowed) {
+        this.slotModalData.requestedParticipants++;
+      }
+    }
+  }
+
+  decrementModalParticipants(): void {
+    if (this.slotModalData && this.slotModalData.requestedParticipants > 1) {
+      this.slotModalData.requestedParticipants--;
+    }
+  }
+
   confirmSlotSelection(): void {
     if (this.slotModalData) {
       const slot = this.slotModalData.slot;
-      
+      // Set the global participantCount to the modal's requestedParticipants for this booking
+      this.participantCount = this.slotModalData.requestedParticipants;
       // Add to multi-select if we have slots selected, otherwise single select
       if (this.selectedSlots.length > 0) {
         this.toggleMultiSelectSlot(slot);
       } else {
         this.selectSingleSlot(slot);
       }
-      
       this.closeSlotModal();
     }
   }
@@ -940,5 +959,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
     
     return this.wifiIcon; // Default to WiFi icon
+  }
+
+  getMaxModalParticipants(): number {
+    if (!this.slotModalData) return 1;
+    return Math.min(this.slotModalData.availableSpots, 4);
   }
 }

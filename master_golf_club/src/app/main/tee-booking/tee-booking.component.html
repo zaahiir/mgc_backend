@@ -496,7 +496,9 @@
       <div class="slot-availability-info">
         <div class="slot-availability-header">
           <h4 class="slot-availability-title">Slot Availability</h4>
-          <span class="slot-availability-status">Partially Available</span>
+          <span class="slot-availability-status">
+            {{ slotModalData.slot.slot_status === 'available' ? 'Available' : (slotModalData.slot.slot_status === 'partially_available' ? 'Partially Available' : slotModalData.slot.slot_status) }}
+          </span>
         </div>
         <div class="slot-availability-details">
           <div class="slot-availability-item">
@@ -515,14 +517,24 @@
               Current Participants: {{slotModalData.totalParticipants}}/4
             </div>
           </div>
-          <div class="slot-availability-item">
-            <div class="slot-availability-icon">
-              <fa-icon [icon]="usersIcon"></fa-icon>
-            </div>
-            <div class="slot-availability-text">
-              Your Request: {{slotModalData.requestedParticipants}} participants
-            </div>
+        </div>
+      </div>
+
+      <!-- Participant Selector in Modal -->
+      <div class="slot-modal-section">
+        <div class="slot-modal-section-title">
+          <div class="slot-modal-section-icon">
+            <fa-icon [icon]="usersIcon"></fa-icon>
           </div>
+          Add Participants
+        </div>
+        <div class="player-selector modal-player-selector">
+          <button class="circle-btn" (click)="decrementModalParticipants()" [disabled]="slotModalData.requestedParticipants === 1">-</button>
+          <span class="player-count">{{slotModalData.requestedParticipants}}</span>
+          <button class="circle-btn" (click)="incrementModalParticipants()" [disabled]="slotModalData.requestedParticipants === getMaxModalParticipants()">+</button>
+        </div>
+        <div class="slot-availability-text small-text">
+          (Max: {{getMaxModalParticipants()}} participants)
         </div>
       </div>
 
