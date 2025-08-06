@@ -78,6 +78,11 @@
               <span *ngIf="booking.availableSpots" class="available-spots">
                 ({{booking.availableSpots}} spots available)
               </span>
+              <button class="btn-book-participants" 
+                      *ngIf="booking.availableSpots && booking.availableSpots > 0 && booking.status === 'confirmed'"
+                      (click)="openParticipantBookingModal(booking)">
+                Book Participants
+              </button>
             </div>
           </td>
           <td>
@@ -176,7 +181,7 @@
           </div>
           <div class="detail-item">
             <label>Time:</label>
-            <span>{{selectedBooking.bookingTime}} - {{selectedBooking.endTime || 'TBD'}}</span>
+            <span>{{selectedBooking.bookingTime}} - {{selectedBooking.endTime || 'TBD'}} (8 minutes duration)</span>
           </div>
           <div class="detail-item">
             <label>Participants:</label>
@@ -237,6 +242,57 @@
             Join Slot
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Participant Booking Modal -->
+<div *ngIf="showParticipantModal && selectedBookingForParticipants" class="modal-overlay" (click)="closeParticipantBookingModal()">
+  <div class="modal-content participant-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Book Additional Participants</h3>
+      <button class="close-btn" (click)="closeParticipantBookingModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="participant-booking-info">
+        <div class="info-item">
+          <label>Course:</label>
+          <span>{{selectedBookingForParticipants.courseName}}</span>
+        </div>
+        <div class="info-item">
+          <label>Date:</label>
+          <span>{{selectedBookingForParticipants.formattedDate}}</span>
+        </div>
+        <div class="info-item">
+          <label>Time:</label>
+          <span>{{selectedBookingForParticipants.bookingTime}} (8 minutes duration)</span>
+        </div>
+        <div class="info-item">
+          <label>Available Spots:</label>
+          <span>{{selectedBookingForParticipants.availableSpots}} spots</span>
+        </div>
+      </div>
+      
+      <div class="participant-selector-section">
+        <label>Number of Participants:</label>
+        <div class="participant-selector">
+          <button class="circle-btn" (click)="decrementParticipants()" [disabled]="requestedParticipants === 1">-</button>
+          <span class="participant-count">{{requestedParticipants}}</span>
+          <button class="circle-btn" (click)="incrementParticipants()" [disabled]="requestedParticipants >= (selectedBookingForParticipants.availableSpots || 0)">+</button>
+        </div>
+        <div class="participant-hint">
+          Maximum: {{selectedBookingForParticipants.availableSpots}} participants
+        </div>
+      </div>
+      
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="closeParticipantBookingModal()">Cancel</button>
+        <button class="btn btn-primary" 
+                (click)="confirmParticipantBooking()"
+                [disabled]="requestedParticipants > (selectedBookingForParticipants.availableSpots || 0)">
+          Book Participants
+        </button>
       </div>
     </div>
   </div>

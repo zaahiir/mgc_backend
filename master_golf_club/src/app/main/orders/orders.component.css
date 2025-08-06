@@ -190,6 +190,108 @@ body {
   color: var(--theme-color);
 }
 
+.btn-book-participants {
+  background-color: var(--theme-color);
+  color: var(--text-color-one);
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-book-participants:hover {
+  background-color: var(--secondary-color);
+}
+
+/* Participant Booking Modal */
+.participant-modal {
+  max-width: 500px;
+}
+
+.participant-booking-info {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-item label {
+  font-weight: 600;
+  color: var(--title-color);
+}
+
+.participant-selector-section {
+  margin-bottom: 20px;
+}
+
+.participant-selector-section label {
+  display: block;
+  font-weight: 600;
+  color: var(--title-color);
+  margin-bottom: 10px;
+}
+
+.participant-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 8px;
+}
+
+.circle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-color);
+  background-color: white;
+  color: var(--theme-color);
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.circle-btn:hover:not(:disabled) {
+  background-color: var(--theme-color);
+  color: var(--text-color-one);
+}
+
+.circle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.participant-count {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--title-color);
+  min-width: 30px;
+  text-align: center;
+}
+
+.participant-hint {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
 /* Status Container */
 .status-container {
   display: flex;

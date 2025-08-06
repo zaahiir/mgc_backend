@@ -1949,30 +1949,36 @@ class BookingViewSet(viewsets.ModelViewSet):
             }, status=400)
 
     def generate_booking_id(self):
-        """Generate unique booking ID in format: MGCBK25AUG05001"""
+        """Generate unique booking ID in format: MGCBK25AUG00010"""
         from datetime import datetime
-        import random
         
         now = datetime.now()
         year_suffix = str(now.year)[-2:]  # Last 2 digits of year
         month_abbr = now.strftime('%b').upper()  # 3-letter month
-        day = f"{now.day:02d}"  # 2-digit day
         
-        base_id = f"MGCBK{year_suffix}{month_abbr}{day}"
+        base_id = f"MGCBK{year_suffix}{month_abbr}"
         
-        # Check if this ID already exists today
-        existing_count = BookingModel.objects.filter(
+        # Get the next sequential number for this month
+        existing_bookings = BookingModel.objects.filter(
             booking_id__startswith=base_id
-        ).count()
+        ).order_by('-booking_id')
         
-        if existing_count > 0:
-            # Append counter to make it unique (001, 002, etc.)
-            base_id = f"{base_id}{(existing_count + 1):03d}"
+        if existing_bookings.exists():
+            # Extract the last number and increment
+            last_booking_id = existing_bookings.first().booking_id
+            try:
+                # Extract the number part (last 5 digits)
+                last_number = int(last_booking_id[-5:])
+                next_number = last_number + 1
+            except (ValueError, IndexError):
+                next_number = 1
         else:
-            # First booking of the day gets 001
-            base_id = f"{base_id}001"
+            next_number = 1
         
-        return base_id
+        # Format with leading zeros (5 digits)
+        booking_id = f"{base_id}{next_number:05d}"
+        
+        return booking_id
 
     @action(detail=True, methods=['patch'])
     def cancel_booking(self, request, pk=None):

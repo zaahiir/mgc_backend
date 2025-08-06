@@ -336,9 +336,8 @@ class BookingModel(models.Model):
     
     @property
     def duration_hours(self):
-        # Calculate hours based on hole number: approximately 10 minutes per hole
-        hours_per_hole = 0.167
-        return self.tee.holeNumber * hours_per_hole
+        # Fixed 8 minutes duration for all slots
+        return 8 / 60  # 8 minutes in hours
     
     @property
     def end_time(self):

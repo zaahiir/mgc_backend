@@ -9,6 +9,8 @@ interface Booking {
   memberName: string;
   memberFullName?: string;
   courseName: string;
+  course?: number;
+  tee?: number;
   bookingDate: string;
   bookingTime: string;
   endTime?: string;
@@ -53,6 +55,9 @@ export class OrdersComponent implements OnInit {
   errorMessage = '';
   selectedBooking: Booking | null = null;
   showBookingDetails = false;
+  selectedBookingForParticipants: Booking | null = null;
+  showParticipantModal = false;
+  requestedParticipants = 1;
 
   constructor(
     private collectionService: CollectionService,
@@ -322,10 +327,8 @@ export class OrdersComponent implements OnInit {
       }
       
       const formattedDate = date.toLocaleDateString('en-US', {
-        weekday: 'long',
         year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        month: 'long'
       });
       
       console.log('Formatted date result:', formattedDate);
@@ -389,5 +392,61 @@ export class OrdersComponent implements OnInit {
 
   getCancelledBookings(): number {
     return this.bookings.filter(booking => booking.status === 'cancelled').length;
+  }
+
+  // Participant Booking Modal Methods
+  openParticipantBookingModal(booking: Booking) {
+    this.selectedBookingForParticipants = booking;
+    this.requestedParticipants = 1;
+    this.showParticipantModal = true;
+  }
+
+  closeParticipantBookingModal() {
+    this.showParticipantModal = false;
+    this.selectedBookingForParticipants = null;
+    this.requestedParticipants = 1;
+  }
+
+  incrementParticipants() {
+    if (this.selectedBookingForParticipants && this.selectedBookingForParticipants.availableSpots && this.requestedParticipants < this.selectedBookingForParticipants.availableSpots) {
+      this.requestedParticipants++;
+    }
+  }
+
+  decrementParticipants() {
+    if (this.requestedParticipants > 1) {
+      this.requestedParticipants--;
+    }
+  }
+
+  async confirmParticipantBooking() {
+    if (!this.selectedBookingForParticipants) return;
+
+    try {
+      // Create a new booking for the additional participants
+      const bookingData = {
+        course: this.selectedBookingForParticipants.course || 0,
+        tee: this.selectedBookingForParticipants.tee || 0,
+        bookingDate: this.selectedBookingForParticipants.bookingDate,
+        bookingTime: this.selectedBookingForParticipants.bookingTime,
+        participants: this.requestedParticipants,
+        totalPrice: 0, // Add required totalPrice field
+        is_join_request: true,
+        original_booking: this.selectedBookingForParticipants.id
+      };
+
+      const response = await this.collectionService.createBooking(bookingData);
+      
+      if (response && response.data && response.data.code === 1) {
+        this.showSuccessMessage('Participants booked successfully!');
+        this.closeParticipantBookingModal();
+        this.loadBookings(); // Refresh the bookings list
+      } else {
+        this.showErrorMessage(response?.data?.message || 'Failed to book participants');
+      }
+    } catch (error) {
+      console.error('Error booking participants:', error);
+      this.showErrorMessage('Failed to book participants. Please try again.');
+    }
   }
 }
