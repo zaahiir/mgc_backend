@@ -6,17 +6,19 @@
 
 /* Event Card Styles */
 .event-card {
-  background-color: #fff;
-  border-radius: 75px 30px 30px 30px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 
 .event-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .event-image-container {
@@ -73,6 +75,9 @@
 
 .course-content {
   padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .post-date {
@@ -320,7 +325,8 @@
 
 /* Action Buttons */
 .action-buttons {
-  margin-top: 20px;
+  margin-top: auto;
+  padding-top: 20px;
 }
 
 .btn-theme {
