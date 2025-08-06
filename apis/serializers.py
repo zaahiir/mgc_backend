@@ -339,7 +339,7 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
                         try:
                             filtered_value.append(int(item))
                         except (ValueError, TypeError):
-                            raise serializers.ValidationError(f"Invalid amenity ID: {item}")
+                            continue
                 
                 if filtered_value:
                     existing_ids = set(AmenitiesModel.objects.filter(

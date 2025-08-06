@@ -485,12 +485,11 @@ export class UpdateCoursesComponent implements OnInit {
 
       // Add amenities as array
       if (this.selectedAmenities.length > 0) {
-        this.selectedAmenities.forEach((amenityId, index) => {
-          formData.append(`courseAmenities[${index}]`, amenityId.toString());
-        });
+        // Send amenities as a JSON string instead of individual form fields
+        formData.append('courseAmenities', JSON.stringify(this.selectedAmenities));
       } else {
         // Send empty array if no amenities selected
-        formData.append('courseAmenities[]', '');
+        formData.append('courseAmenities', JSON.stringify([]));
       }
 
       // Add tees

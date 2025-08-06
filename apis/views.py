@@ -1671,11 +1671,19 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
                 data = request.data.copy()
 
             # Parse amenities if it's a JSON string
-            if 'courseAmenities' in data and isinstance(data['courseAmenities'], str):
-                try:
-                    data['courseAmenities'] = json.loads(data['courseAmenities'])
-                except json.JSONDecodeError:
+            if 'courseAmenities' in data:
+                if isinstance(data['courseAmenities'], str):
+                    try:
+                        data['courseAmenities'] = json.loads(data['courseAmenities'])
+                    except json.JSONDecodeError:
+                        data['courseAmenities'] = []
+                elif isinstance(data['courseAmenities'], list):
+                    # Ensure all items are integers
+                    data['courseAmenities'] = [int(x) for x in data['courseAmenities'] if str(x).isdigit()]
+                else:
                     data['courseAmenities'] = []
+            else:
+                data['courseAmenities'] = []
 
             # Handle legacy field names for backward compatibility
             if 'amenities' in data and 'courseAmenities' not in data:
