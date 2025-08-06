@@ -239,12 +239,20 @@ export class ListAmenitiesComponent implements OnInit {
 
         // Add width and height attributes if missing
         if (!processedSvg.includes('width=') && !processedSvg.includes('height=')) {
-          processedSvg = processedSvg.replace('<svg', '<svg width="24" height="24"');
+          processedSvg = processedSvg.replace('<svg', '<svg width="32" height="32"');
         }
 
-        // Add CSS class for styling
+        // Add CSS class for styling and ensure proper display
         if (!processedSvg.includes('class=')) {
           processedSvg = processedSvg.replace('<svg', '<svg class="amenity-icon-svg"');
+        } else {
+          // Add our class to existing classes
+          processedSvg = processedSvg.replace('class="', 'class="amenity-icon-svg ');
+        }
+
+        // Ensure SVG has proper viewBox if missing
+        if (!processedSvg.includes('viewBox=')) {
+          processedSvg = processedSvg.replace('<svg', '<svg viewBox="0 0 24 24"');
         }
 
         return this.sanitizer.bypassSecurityTrustHtml(processedSvg);
