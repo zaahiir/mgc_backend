@@ -90,8 +90,8 @@ export class CollectionComponent implements OnInit, AfterViewInit, OnDestroy {
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  // Priority order for displaying amenities
-  priorityAmenities: number[] = [1, 2, 3, 4, 5, 6];
+  // Remove priority amenities array - no longer needed
+  // priorityAmenities: number[] = [1, 2, 3, 4, 5, 6];
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
@@ -259,20 +259,14 @@ export class CollectionComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // Get only 6 amenities for display
+  // Get all amenities for display (no limit, no priority)
   getDisplayedAmenityIds(course: GolfCourse): number[] {
     if (!course.amenities || course.amenities.length === 0) {
       return [];
     }
 
-    // First, get amenities that the course has (matched with priority)
-    const matchedAmenities = this.priorityAmenities.filter(id => course.amenities.includes(id));
-
-    // Then, get remaining course amenities not in priority list
-    const otherAmenities = course.amenities.filter(id => !this.priorityAmenities.includes(id));
-
-    // Combine and limit to 6 items
-    return [...matchedAmenities, ...otherAmenities].slice(0, 6);
+    // Return all amenities without any limit or priority
+    return course.amenities;
   }
 
   getAmenityIcon(amenityId: number): SafeHtml {
