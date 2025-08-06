@@ -47,6 +47,13 @@ interface AmenityInterface {
   icon_file?: string;
   icon_svg?: string;
   icon_path?: string;
+  // Icon size properties from backend
+  icon_width?: number;
+  icon_height?: number;
+  icon_size?: number;
+  amenity_icon_width?: number;
+  amenity_icon_height?: number;
+  amenity_icon_size?: number;
 }
 
 @Component({
@@ -80,7 +87,6 @@ export class ListAmenitiesComponent implements OnInit {
   icons = { cilPen, cilTrash };
   tooltipEditText = 'Edit Amenity';
   tooltipDeleteText = 'Delete Amenity';
-  Math = Math; // Make Math available in template
 
   amenityList: AmenityInterface[] = [];
   pageRange: number[] = [];
@@ -100,25 +106,18 @@ export class ListAmenitiesComponent implements OnInit {
 
   updatePageRange() {
     const totalPages = this.totalPages;
-    if (totalPages <= 1) {
-      this.pageRange = [];
-      return;
-    }
+    let start = Math.max(1, this.currentPage - 1);
+    let end = Math.min(totalPages, start + 2);
 
-    const maxPagesToShow = 5;
-    let start = Math.max(1, this.currentPage - Math.floor(maxPagesToShow / 2));
-    let end = Math.min(totalPages, start + maxPagesToShow - 1);
-
-    // Adjust start if we're near the end
     if (end === totalPages) {
-      start = Math.max(1, totalPages - maxPagesToShow + 1);
+      start = Math.max(1, totalPages - 2);
     }
 
-    this.pageRange = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    this.pageRange = Array.from({length: Math.min(3, totalPages)}, (_, i) => start + i);
   }
 
   changePage(page: number) {
-    if (page >= 1 && page <= this.totalPages && !this.isLoading && page !== this.currentPage) {
+    if (page >= 1 && page <= this.totalPages && !this.isLoading) {
       this.currentPage = page;
       this.updatePageRange();
     }
@@ -134,11 +133,6 @@ export class ListAmenitiesComponent implements OnInit {
     if (this.currentPage > 1 && !this.isLoading) {
       this.changePage(this.currentPage - 1);
     }
-  }
-
-  onItemsPerPageChange() {
-    this.currentPage = 1;
-    this.updatePageRange();
   }
 
   async loadAmenityList() {
@@ -157,7 +151,6 @@ export class ListAmenitiesComponent implements OnInit {
 
       if (response.data.code === 1) {
         this.amenityList = response.data.data;
-        this.currentPage = 1;
         this.updatePageRange();
       } else {
         throw new Error(response.data.message || 'Failed to load amenities');
@@ -185,33 +178,38 @@ export class ListAmenitiesComponent implements OnInit {
     this.search();
   }
 
-  get filteredAmenities() {
-    if (!this.searchTerm) {
-      return this.amenityList;
-    }
-
-    const searchTermLower = this.searchTerm.toLowerCase();
-    return this.amenityList.filter(amenity => {
-      const name = amenity.title || amenity.amenityName || '';
-      const tooltip = amenity.tooltip || amenity.amenityTooltip || '';
-
-      return name.toLowerCase().includes(searchTermLower) ||
-             tooltip.toLowerCase().includes(searchTermLower);
-    });
-  }
-
-  get filteredAmenityCount() {
-    return this.filteredAmenities.length;
-  }
-
   get paginatedAmenityList() {
-    const filtered = this.filteredAmenities;
+    let filtered = this.amenityList;
+    if (this.searchTerm) {
+      const searchTermLower = this.searchTerm.toLowerCase();
+      filtered = this.amenityList.filter(amenity => {
+        const name = amenity.title || amenity.amenityName || '';
+        const tooltip = amenity.tooltip || amenity.amenityTooltip || '';
+        const description = amenity.description || amenity.amenitiesDescription || '';
+
+        return name.toLowerCase().includes(searchTermLower) ||
+               tooltip.toLowerCase().includes(searchTermLower) ||
+               description.toLowerCase().includes(searchTermLower);
+      });
+    }
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
     return filtered.slice(startIndex, startIndex + this.itemsPerPage);
   }
 
   get totalPages() {
-    return Math.ceil(this.filteredAmenityCount / this.itemsPerPage);
+    const filteredLength = this.searchTerm ?
+      this.amenityList.filter(amenity => {
+        const name = amenity.title || amenity.amenityName || '';
+        const tooltip = amenity.tooltip || amenity.amenityTooltip || '';
+        const description = amenity.description || amenity.amenitiesDescription || '';
+        const searchTermLower = this.searchTerm.toLowerCase();
+
+        return name.toLowerCase().includes(searchTermLower) ||
+               tooltip.toLowerCase().includes(searchTermLower) ||
+               description.toLowerCase().includes(searchTermLower);
+      }).length :
+      this.amenityList.length;
+    return Math.ceil(filteredLength / this.itemsPerPage);
   }
 
   onImageError(event: any, amenity: AmenityInterface) {
@@ -237,17 +235,22 @@ export class ListAmenitiesComponent implements OnInit {
         // Ensure the SVG has proper dimensions for display
         let processedSvg = sanitizedSvg;
 
+        // Get dynamic dimensions from backend
+        const iconWidth = this.getIconWidth(amenity);
+        const iconHeight = this.getIconHeight(amenity);
+
         // Add width and height attributes if missing
         if (!processedSvg.includes('width=') && !processedSvg.includes('height=')) {
-          processedSvg = processedSvg.replace('<svg', '<svg width="32" height="32"');
+          processedSvg = processedSvg.replace('<svg', `<svg width="${iconWidth}" height="${iconHeight}"`);
         }
 
         // Add CSS class for styling and ensure proper display
+        const sizeClass = this.getIconSizeClass(amenity);
         if (!processedSvg.includes('class=')) {
-          processedSvg = processedSvg.replace('<svg', '<svg class="amenity-icon-svg"');
+          processedSvg = processedSvg.replace('<svg', `<svg class="amenity-icon-svg ${sizeClass}"`);
         } else {
           // Add our class to existing classes
-          processedSvg = processedSvg.replace('class="', 'class="amenity-icon-svg ');
+          processedSvg = processedSvg.replace('class="', `class="amenity-icon-svg ${sizeClass} `);
         }
 
         // Ensure SVG has proper viewBox if missing
@@ -285,6 +288,53 @@ export class ListAmenitiesComponent implements OnInit {
       amenity.amenity_icon_url ||
       amenity.amenityIcon
     );
+  }
+
+  // Get icon size from backend data
+  getIconSize(amenity: AmenityInterface): number {
+    return amenity.icon_size || 
+           amenity.amenity_icon_size || 
+           amenity.icon_width || 
+           amenity.amenity_icon_width || 
+           32; // Default size
+  }
+
+  // Get icon width from backend data
+  getIconWidth(amenity: AmenityInterface): number {
+    return amenity.icon_width || 
+           amenity.amenity_icon_width || 
+           this.getIconSize(amenity);
+  }
+
+  // Get icon height from backend data
+  getIconHeight(amenity: AmenityInterface): number {
+    return amenity.icon_height || 
+           amenity.amenity_icon_height || 
+           this.getIconSize(amenity);
+  }
+
+  // Get dynamic CSS class based on icon size
+  getIconSizeClass(amenity: AmenityInterface): string {
+    const size = this.getIconSize(amenity);
+    
+    if (size <= 16) return 'icon-size-xs';
+    if (size <= 24) return 'icon-size-sm';
+    if (size <= 32) return 'icon-size-md';
+    if (size <= 48) return 'icon-size-lg';
+    if (size <= 64) return 'icon-size-xl';
+    return 'icon-size-xxl';
+  }
+
+  // Get dynamic container size based on icon size
+  getContainerSizeClass(amenity: AmenityInterface): string {
+    const size = this.getIconSize(amenity);
+    
+    if (size <= 16) return 'container-size-xs';
+    if (size <= 24) return 'container-size-sm';
+    if (size <= 32) return 'container-size-md';
+    if (size <= 48) return 'container-size-lg';
+    if (size <= 64) return 'container-size-xl';
+    return 'container-size-xxl';
   }
 
   async deleteAmenity(id: number) {
