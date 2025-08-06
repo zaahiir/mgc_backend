@@ -701,7 +701,7 @@
 
 /* Updated selected and multi-selected styles to work with golf ball */
 .time-slot.selected .golf-ball {
-    background: var(--secondary-color) !important;
+    background: var(--theme-color) !important;
 }
 
 .time-slot.selected .time {
@@ -710,7 +710,7 @@
 }
 
 .time-slot.multi-selected .golf-ball {
-    background: var(--secondary-color) !important;
+    background: var(--theme-color) !important;
 }
 
 .time-slot.multi-selected .time {
@@ -720,7 +720,7 @@
 
 /* Partial slot theme styles */
 .partial-slot-theme .golf-ball {
-    background: var(--theme-color) !important;
+    background: var(--secondary-color) !important;
 }
 
 .partial-slot-theme .time {
