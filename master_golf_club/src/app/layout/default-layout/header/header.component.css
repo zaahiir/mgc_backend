@@ -100,36 +100,36 @@ ul, li {
 }
 
 .main-menu .navigation > li.dropdown > a:after {
+  content: '\f107';
   font-family: 'Font Awesome 5 Free';
   font-weight: 900;
   position: absolute;
   right: 0;
-  top: 25px;
-  color: var(--text-color);
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all 500ms ease;
 }
 
 .main-menu .navigation > li > a:hover,
-.main-menu .navigation > li.active > a {
+.main-menu .navigation > li.current > a {
   color: var(--theme-color);
 }
 
-/* Dropdown styles for main menu */
 .main-menu .navigation > li > .dropdown-menu {
   position: absolute;
-  left: 0;
   top: 100%;
-  width: 230px;
-  padding: 15px 25px;
+  left: 0;
+  min-width: 200px;
+  padding: 15px 0;
   background: #fff;
   border: none;
-  border-bottom: 3px solid var(--theme-color);
   border-radius: 5px;
   box-shadow: 0 0 30px 0 rgba(0, 0, 0, 0.10);
   opacity: 0;
   visibility: hidden;
   transform: translateY(20px);
-  transition: all 500ms ease;
-  display: block !important;
+  transition: all 300ms ease;
+  z-index: 1001;
 }
 
 .main-menu .navigation > li:hover > .dropdown-menu {
@@ -139,37 +139,34 @@ ul, li {
 }
 
 .main-menu .dropdown-item {
-  padding: 5px 0;
+  padding: 8px 25px;
   font-weight: 500;
   font-size: 15px;
   font-family: var(--font-poppins);
   color: var(--text-color);
-  text-align: left;
-  background: transparent;
-  transition: all 500ms ease;
+  transition: all 300ms ease;
+  border-radius: 4px;
 }
 
 .main-menu .dropdown-item:hover {
   color: var(--theme-color);
-  letter-spacing: 1px;
-  background: transparent;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding-left: 30px;
 }
 
-/* Mobile menu toggle */
+/* Mobile Navigation Toggler */
 .mobile-nav-toggler {
-  float: right;
-  cursor: pointer;
-  background: var(--theme-color);
-  padding: 10px;
   display: none;
+  cursor: pointer;
+  padding: 10px;
 }
 
 .mobile-nav-toggler .icon-bar {
-  height: 2px;
-  width: 30px;
-  background-color: #fff;
   display: block;
-  margin-bottom: 5px;
+  width: 25px;
+  height: 3px;
+  background-color: var(--theme-color);
+  margin: 5px 0;
   transition: all 300ms ease;
 }
 
@@ -177,26 +174,28 @@ ul, li {
   margin-bottom: 0;
 }
 
-/* User dropdown styles */
+/* Menu Right Content */
 .menu-right-content {
   display: flex;
   align-items: center;
+  gap: 15px;
 }
 
+/* User Profile Dropdown */
 .user-profile-dropdown {
   position: relative;
 }
 
-/* Clickable user icon wrapper */
 .user-profile-dropdown .user-icon-wrapper {
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  padding: 25px 0;
-  font-size: 16px;
-  line-height: 26px;
-  transition: all 300ms ease;
+  width: 40px;
+  height: 40px;
   border-radius: 4px;
 }
 
@@ -302,36 +301,33 @@ ul, li {
 
 @media only screen and (max-width: 768px) {
   .main-header .outer-container {
-    padding-right: 10px;
+    padding-right: 15px;
   }
 
   .main-header .outer-container .left-column .logo-box {
     padding: 10px 20px;
-    margin-right: 10px;
+    margin-right: 15px;
   }
 
   .user-profile-dropdown .dropdown-menu {
+    right: 0;
     width: 160px;
-    padding: 10px 20px;
   }
 
   .user-profile-dropdown .dropdown-item {
-    font-size: 14px;
     padding: 6px 0;
+    font-size: 14px;
   }
 }
 
-/* Spin animation for logo */
 @keyframes spinPause {
   0% { transform: rotate(0deg); }
-  10% { transform: rotate(360deg); }
-  10.1% { transform: rotate(0deg); }
-  100% { transform: rotate(0deg); }
+  50% { transform: rotate(180deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* Additional enhancement for better UX */
 .user-profile-dropdown .user-icon-wrapper.active {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .user-profile-dropdown .user-icon-wrapper.active .user-icon {
@@ -350,15 +346,26 @@ ul, li {
   padding: 8px;
   border-radius: 50%;
   transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
 }
 
 .notification-icon-wrapper:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .notification-icon {
-  fill: #ffffff;
+  fill: var(--theme-color);
   transition: fill 0.3s ease;
+}
+
+.notification-icon-wrapper:hover .notification-icon {
+  fill: var(--theme-color);
+  transform: scale(1.1);
 }
 
 .notification-badge {
@@ -381,7 +388,7 @@ ul, li {
   position: absolute;
   top: 100%;
   right: 0;
-  min-width: 300px;
+  min-width: 320px;
   max-height: 400px;
   overflow-y: auto;
   background: white;
@@ -390,10 +397,16 @@ ul, li {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   margin-top: 5px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px);
+  transition: all 300ms ease;
 }
 
 .notification-menu.show {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .dropdown-header {
@@ -404,6 +417,7 @@ ul, li {
   align-items: center;
   font-weight: bold;
   color: #333;
+  background-color: #f8f9fa;
 }
 
 .unread-count {
@@ -451,9 +465,46 @@ ul, li {
   font-size: 11px;
 }
 
+.notification-action {
+  color: var(--theme-color);
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
 .no-notifications {
   padding: 20px;
   text-align: center;
   color: #999;
   font-style: italic;
+}
+
+.notification-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+  text-align: center;
+  background-color: #f8f9fa;
+}
+
+.notification-footer a {
+  color: var(--theme-color);
+  font-weight: 500;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.notification-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive notification styles */
+@media only screen and (max-width: 768px) {
+  .notification-menu {
+    min-width: 280px;
+    right: -10px;
+  }
+  
+  .notification-dropdown {
+    margin-right: 10px;
+  }
 }

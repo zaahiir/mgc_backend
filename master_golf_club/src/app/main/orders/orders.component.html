@@ -7,7 +7,7 @@
       <p class="card-content">Overview of your recent booking activity</p>
       <div class="stats-grid">
         <div class="stat-item">
-          <div class="stat-value">{{bookings.length}}</div>
+          <div class="stat-value">{{getTotalBookings()}}</div>
           <div class="stat-label">Total Bookings</div>
         </div>
         <div class="stat-item">
@@ -21,6 +21,10 @@
         <div class="stat-item">
           <div class="stat-value">{{getJoinRequests()}}</div>
           <div class="stat-label">Join Requests</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{getCancelledBookings()}}</div>
+          <div class="stat-label">Cancelled</div>
         </div>
       </div>
     </div>
@@ -39,26 +43,55 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let booking of bookings" class="booking-row">
-          <td>{{booking.booking_id || 'N/A'}}</td>
-          <td>{{booking.courseName}}</td>
+        <tr *ngFor="let booking of bookings" class="booking-row" [class.join-request]="booking.is_join_request">
           <td>
-            <div class="date-time">
-              <div class="date">{{booking.bookingDate | date:'MMM d, yyyy'}}</div>
-              <div class="time">{{booking.bookingTime}}</div>
+            <div class="booking-id">
+              <span class="id-text">{{booking.booking_id || 'N/A'}}</span>
+              <span *ngIf="booking.is_join_request" class="join-request-indicator">Join Request</span>
             </div>
           </td>
-          <td>{{booking.participants}}</td>
           <td>
-            <span class="status-badge" [class]="getStatusClass(booking.status)">
-              {{getStatusText(booking.status)}}
-            </span>
-            <span *ngIf="booking.is_join_request" class="join-request-badge">Join Request</span>
+            <div class="course-info">
+              <div class="course-name">{{booking.courseName}}</div>
+              <div *ngIf="booking.teeInfo" class="tee-info">{{booking.teeInfo}}</div>
+            </div>
           </td>
           <td>
-            <button class="btn btn-primary" (click)="viewBill(booking.id.toString())">
-              View
-            </button>
+            <div class="date-time">
+              <div class="date">{{booking.formattedDate || (booking.bookingDate | date:'MMM d, yyyy')}}</div>
+              <div class="time">{{booking.bookingTime}} - {{booking.endTime || 'TBD'}}</div>
+            </div>
+          </td>
+          <td>
+            <div class="participants-info">
+              <span class="participants-count">{{booking.participants}}</span>
+              <span *ngIf="booking.availableSpots" class="available-spots">
+                ({{booking.availableSpots}} spots available)
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="status-container">
+              <span class="status-badge" [class]="getStatusClass(booking.status)">
+                {{getStatusText(booking.status)}}
+              </span>
+              <span *ngIf="booking.totalPrice" class="price-info">
+                ${{booking.totalPrice}}
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn btn-primary btn-sm" (click)="showBookingDetail(booking)">
+                Details
+              </button>
+              <button *ngIf="booking.canCancel" class="btn btn-danger btn-sm" (click)="cancelBooking(booking.id)">
+                Cancel
+              </button>
+              <button *ngIf="booking.canJoinSlot" class="btn btn-success btn-sm">
+                Join
+              </button>
+            </div>
           </td>
         </tr>
         
@@ -70,18 +103,23 @@
               <div class="join-requests-list">
                 <div *ngFor="let request of booking.joinRequests" class="join-request-item">
                   <div class="request-info">
-                    <span class="member-name">{{request.memberName}}</span>
-                    <span class="participants">{{request.participants}} participants</span>
-                    <span class="status" [class]="getStatusClass(request.status)">
-                      {{getStatusText(request.status)}}
-                    </span>
+                    <div class="member-details">
+                      <span class="member-name">{{request.memberName}}</span>
+                      <span class="member-full-name" *ngIf="request.memberFullName">({{request.memberFullName}})</span>
+                    </div>
+                    <div class="request-details">
+                      <span class="participants">{{request.participants}} participants</span>
+                      <span class="status" [class]="getStatusClass(request.status)">
+                        {{getStatusText(request.status)}}
+                      </span>
+                    </div>
                   </div>
                   <div class="request-actions" *ngIf="request.status === 'pending_approval'">
-                    <button class="btn btn-success" (click)="approveJoinRequest(booking.id, request.id)">
-                      Approve
+                    <button class="btn btn-success btn-sm" (click)="approveJoinRequest(booking.id, request.id)">
+                      <i class="fas fa-check"></i> Approve
                     </button>
-                    <button class="btn btn-danger" (click)="rejectJoinRequest(booking.id, request.id)">
-                      Reject
+                    <button class="btn btn-danger btn-sm" (click)="rejectJoinRequest(booking.id, request.id)">
+                      <i class="fas fa-times"></i> Reject
                     </button>
                   </div>
                 </div>
@@ -102,6 +140,106 @@
 
   <!-- Empty state -->
   <div *ngIf="!isLoading && bookings.length === 0" class="empty-state">
-    <p>No bookings found.</p>
+    <div class="empty-icon">📅</div>
+    <h3>No bookings found</h3>
+    <p>You haven't made any bookings yet. Start by exploring our golf courses!</p>
+    <button class="btn btn-primary" routerLink="/collection">Browse Courses</button>
+  </div>
+
+  <!-- Booking Details Modal -->
+  <div *ngIf="showBookingDetails && selectedBooking" class="modal-overlay" (click)="closeBookingDetail()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Booking Details</h3>
+        <button class="close-btn" (click)="closeBookingDetail()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="booking-detail-grid">
+          <div class="detail-item">
+            <label>Booking ID:</label>
+            <span>{{selectedBooking.booking_id}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Course:</label>
+            <span>{{selectedBooking.courseName}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Date:</label>
+            <span>{{selectedBooking.formattedDate}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Time:</label>
+            <span>{{selectedBooking.bookingTime}} - {{selectedBooking.endTime || 'TBD'}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Participants:</label>
+            <span>{{selectedBooking.participants}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Status:</label>
+            <span class="status-badge" [class]="getStatusClass(selectedBooking.status)">
+              {{getStatusText(selectedBooking.status)}}
+            </span>
+          </div>
+          <div class="detail-item" *ngIf="selectedBooking.totalPrice">
+            <label>Total Price:</label>
+            <span class="price">${{selectedBooking.totalPrice}}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedBooking.teeInfo">
+            <label>Tee Information:</label>
+            <span>{{selectedBooking.teeInfo}}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedBooking.availableSpots">
+            <label>Available Spots:</label>
+            <span>{{selectedBooking.availableSpots}}</span>
+          </div>
+        </div>
+
+        <!-- Join Requests Section -->
+        <div *ngIf="selectedBooking.joinRequests && selectedBooking.joinRequests.length > 0" class="join-requests-detail">
+          <h4>Join Requests</h4>
+          <div class="join-requests-list">
+            <div *ngFor="let request of selectedBooking.joinRequests" class="join-request-detail-item">
+              <div class="request-member">
+                <strong>{{request.memberName}}</strong>
+                <span *ngIf="request.memberFullName">({{request.memberFullName}})</span>
+              </div>
+              <div class="request-status">
+                <span class="status-badge" [class]="getStatusClass(request.status)">
+                  {{getStatusText(request.status)}}
+                </span>
+              </div>
+              <div class="request-participants">
+                {{request.participants}} participants
+              </div>
+              <div *ngIf="request.status === 'pending_approval'" class="request-actions">
+                <button class="btn btn-success btn-sm" (click)="approveJoinRequest(selectedBooking.id, request.id)">
+                  Approve
+                </button>
+                <button class="btn btn-danger btn-sm" (click)="rejectJoinRequest(selectedBooking.id, request.id)">
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="modal-actions">
+          <button *ngIf="selectedBooking.canCancel" class="btn btn-danger" (click)="cancelBooking(selectedBooking.id)">
+            Cancel Booking
+          </button>
+          <button *ngIf="selectedBooking.canJoinSlot" class="btn btn-success">
+            Join Slot
+          </button>
+          <button class="btn btn-secondary" (click)="viewBill(selectedBooking.id.toString())">
+            View Bill
+          </button>
+          <button class="btn btn-primary" (click)="downloadBill(selectedBooking.id.toString())">
+            Download Bill
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

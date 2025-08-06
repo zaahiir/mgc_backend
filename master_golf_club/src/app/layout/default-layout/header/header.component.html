@@ -56,15 +56,21 @@
             <li *ngFor="let notification of notifications" 
                 class="notification-item"
                 [class.unread]="!notification.is_read"
-                (click)="markNotificationAsRead(notification.id)">
+                (click)="handleNotificationClick(notification)">
               <div class="notification-content">
                 <div class="notification-title">{{notification.title}}</div>
                 <div class="notification-message">{{notification.message}}</div>
                 <div class="notification-time">{{notification.createdAt | date:'short'}}</div>
+                <div *ngIf="notification.related_booking" class="notification-action">
+                  Click to view booking details
+                </div>
               </div>
             </li>
             <li *ngIf="notifications.length === 0" class="no-notifications">
               <span>No notifications</span>
+            </li>
+            <li class="notification-footer" *ngIf="notifications.length > 0">
+              <a routerLink="/orders" (click)="showNotificationDropdown = false">View All Notifications</a>
             </li>
           </ul>
         </div>

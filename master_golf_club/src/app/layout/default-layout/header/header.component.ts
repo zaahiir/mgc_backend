@@ -76,6 +76,24 @@ export class HeaderComponent implements OnInit {
     }
   }
 
+  handleNotificationClick(notification: any) {
+    // Mark notification as read
+    this.markNotificationAsRead(notification.id);
+    
+    // Close notification dropdown
+    this.showNotificationDropdown = false;
+    
+    // Navigate to orders page with notification ID
+    if (notification.related_booking) {
+      this.router.navigate(['/orders'], { 
+        queryParams: { notification: notification.id } 
+      });
+    } else {
+      // If no related booking, just go to orders page
+      this.router.navigate(['/orders']);
+    }
+  }
+
   toggleNotificationDropdown() {
     this.showNotificationDropdown = !this.showNotificationDropdown;
   }

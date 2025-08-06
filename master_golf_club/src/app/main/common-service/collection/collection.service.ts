@@ -268,6 +268,22 @@ export class CollectionService {
     return axios.post(url, { join_request_id: joinRequestId }, config);
   }
 
+  // Cancel booking method
+  cancelBooking(bookingId: number) {
+    const url = `${this.apiUrl}booking/${bookingId}/cancel/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, {}, config);
+  }
+
   // Notification methods
   getNotifications() {
     const url = `${this.apiUrl}notification/`;
