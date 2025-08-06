@@ -633,7 +633,7 @@
 
 /* Time Slots Styles - Optimized for 4 rows with scroll */
 .time-slots-container {
-    max-height: 200px;
+    max-height: 268px;
     overflow-y: auto;
     padding-right: 8px;
     margin-right: -8px;
@@ -2160,7 +2160,6 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  margin-bottom: 15px !important;
 }
 
 /* Slot summary panel styles */
@@ -2538,6 +2537,78 @@
   
   .slot-modal-actions {
     flex-direction: column;
+  }
+}
+
+/* Time Slot Color Legend Styles */
+.time-slot-legend {
+  /* margin-top: 20px; */
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.legend-color.available-color {
+  background: #e6f2e7;
+  border-color: #dee2e6;
+}
+
+.legend-color.selected-color {
+  background: var(--theme-color);
+}
+
+.legend-color.partial-color {
+  background: var(--secondary-color);
+}
+
+.legend-text {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .time-slot-legend {
+    margin-top: 15px;
+    padding: 12px;
+  }
+  
+  .legend-items {
+    gap: 12px;
+  }
+  
+  .legend-item {
+    gap: 6px;
+  }
+  
+  .legend-color {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .legend-text {
+    font-size: 0.8rem;
   }
 }
 

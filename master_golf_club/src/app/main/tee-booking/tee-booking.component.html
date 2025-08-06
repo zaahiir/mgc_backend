@@ -143,8 +143,25 @@
                 <div class="label-group">
                   <fa-icon [icon]="clockIcon" class="section-icon"></fa-icon>
                   <label>Available Times</label>
+                </div>                
+              </div>
+
+              <!-- Color Legend for Time Slots -->
+              <div class="time-slot-legend" *ngIf="currentTimeSlots.length > 0">
+                <div class="legend-items">
+                  <div class="legend-item">
+                    <div class="legend-color available-color"></div>
+                    <span class="legend-text">Available</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color partial-color"></div>
+                    <span class="legend-text">Partially Available</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color selected-color"></div>
+                    <span class="legend-text">Selected</span>
+                  </div>
                 </div>
-                
               </div>
               
               <div class="time-slots-container">
