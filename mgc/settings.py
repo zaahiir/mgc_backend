@@ -122,9 +122,9 @@ WSGI_APPLICATION = 'mgc.wsgi.application'
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'admin_mastergolfclub',
+#         'NAME': 'admin_mgc',
 #         'USER': 'mgc_admin',
-#         'PASSWORD': '82M^97tug',
+#         'PASSWORD': '3_!Z4B3jnTimcpdx',
 #         'HOST': 'localhost',
 #         'PORT': '3306',
 #     }
