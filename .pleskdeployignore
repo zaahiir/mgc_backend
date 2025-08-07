@@ -1,5 +1,51 @@
+# Exclude Angular frontend projects
 Golf-Admin/
 master_golf_club/
-test/
-test2
-test3.txt
+
+# Exclude specific Django settings file
+mgc/settings.py
+
+# Exclude development and build artifacts
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Exclude IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Exclude OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Exclude logs
+*.log
+logs/
+
+# Exclude database files (if any)
+*.sqlite3
+*.db
+
+# Exclude media files (if you want to exclude them)
+# media/
+
+# Exclude static files (if you want to exclude them)
+# staticfiles/
