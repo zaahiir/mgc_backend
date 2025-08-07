@@ -5,34 +5,72 @@ from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-fallback-secret-key')
-DEBUG = False
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'mastergolfclub.com,admin.mastergolfclub.com,member.mastergolfclub.com').split(',')
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-$8(gz)-bl7c23oy%br2vj%z*@tn752amdlp^o-pla&ze49-f8y')
 
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = False
+
+ALLOWED_HOSTS = ['mastergolfclub.com', '217.154.58.195', 'localhost', '127.0.0.1', 'admin.mastergolfclub.com', 'member.mastergolfclub.com']
+
+# For development
+# FRONTEND_URL = 'http://localhost:4300'  # For local development
+
+# Frontend URL configuration for password reset emails
 FRONTEND_URL = 'https://member.mastergolfclub.com'
 
+# HTTPS settings
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True  # Set to True if SSL is enabled
+SECURE_SSL_REDIRECT = False
 
+# HSTS Settings
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_PRELOAD = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
+# CORS Settings
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    'https://mastergolfclub.com',
-    'https://admin.mastergolfclub.com',
-    'https://member.mastergolfclub.com',
-    'https://www.mastergolfclub.com',
+    'http://localhost:4200',  # For local development
+    'http://localhost:4300',  # For local development
+    'https://mastergolfclub.com',      # Your main domain
+    'https://admin.mastergolfclub.com',      # Your main domain
+    'https://member.mastergolfclub.com',      # Your main domain
+    'https://www.mastergolfclub.com',  # www subdomain
+    'http://217.154.58.195',   # Access via IP address
+    'https://217.154.58.195',  # HTTPS version of IP
 ]
-CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
+
+# CORS_ALLOW_ALL_ORIGINS = True
+
+# More detailed CORS settings
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 CORS_ALLOW_HEADERS = [
-    'accept', 'accept-encoding', 'authorization', 'content-type', 'dnt',
-    'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
-    'cache-control', 'pragma', 'expires',
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',  
+    'pragma',          
+    'expires',        
 ]
-CORS_PREFLIGHT_MAX_AGE = 86400
+
+# Add this to handle preflight requests
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -81,22 +119,37 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mgc.wsgi.application'
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'admin_mastergolfclub',
+#         'USER': 'mgc_admin',
+#         'PASSWORD': '82M^97tug',
+#         'HOST': 'localhost',
+#         'PORT': '3306',
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME', 'admin_mastergolfclub'),
-        'USER': os.getenv('DB_USER', 'mgc_admin'),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '3306'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
 
 REST_FRAMEWORK = {
@@ -110,12 +163,15 @@ REST_FRAMEWORK = {
     ],
 }
 
+# JWT Configuration for 1-hour expiry
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  
     'REFRESH_TOKEN_LIFETIME': timedelta(hours=2),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
+    # 'ACCESS_TOKEN_LIFETIME': timedelta(minutes=3),
+    # 'REFRESH_TOKEN_LIFETIME': timedelta(minutes=6),
+    'ROTATE_REFRESH_TOKENS': True,  # Rotate refresh tokens on each use
+    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist old refresh tokens
+    'UPDATE_LAST_LOGIN': True,  # Update last login time
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -127,17 +183,21 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
     'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),  
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(hours=2),
+    # 'SLIDING_TOKEN_LIFETIME': timedelta(minutes=3),
+    # 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(minutes=6),
 }
 
-ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', get_random_secret_key())
+
+ENCRYPTION_KEY = get_random_secret_key()
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'smartxoft@gmail.com')
+EMAIL_HOST_USER = 'smartxoft@gmail.com'
+# EMAIL_HOST_USER_PASSWORD = 'zyio jdww kyrq wcnw'
+EMAIL_HOST_PASSWORD = 'zyio jdww kyrq wcnw'
+DEFAULT_FROM_EMAIL = 'smartxoft@gmail.com'
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -146,9 +206,15 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/static'
+
+# STATICFILES_DIRS = [
+#     '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/staticfiles'
+# ]
+
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'staticfiles'),
 ]
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/media'
 
