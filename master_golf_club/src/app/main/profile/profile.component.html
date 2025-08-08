@@ -47,14 +47,14 @@
                         <div *ngIf="!hasValidProfileImage()" class="profile-avatar-fallback">
                           {{ getUserInitials() }}
                         </div>
-                        <div class="avatar-badge" *ngIf="memberProfile.plan">
+                        <div class="avatar-badge" *ngIf="memberProfile?.plan">
                           <fa-icon [icon]="faCrown"></fa-icon>
                         </div>
                       </div>
                       <div class="profile-header-text">
                         <ul class="profile-meta">
                           <li><fa-icon [icon]="faUser"></fa-icon>{{ getFullName() }}</li>
-                          <li><fa-icon [icon]="faIdCard"></fa-icon>Member ID: {{ memberProfile.golfClubId || memberProfile.id }}</li>
+                          <li><fa-icon [icon]="faIdCard"></fa-icon>Member ID: {{ memberProfile?.golfClubId || memberProfile?.id }}</li>
                         </ul>
                         <h1 class="profile-name">{{ getFullName() }}</h1>
                         <div class="profile-badges">
@@ -62,7 +62,7 @@
                             <fa-icon [icon]="faUserCheck"></fa-icon>
                             {{ getMembershipStatus() }}
                           </span>
-                          <span class="plan-badge" *ngIf="memberProfile.plan">
+                          <span class="plan-badge" *ngIf="memberProfile?.plan">
                             <fa-icon [icon]="faCrown"></fa-icon>
                             {{ memberProfile.plan }}
                           </span>
