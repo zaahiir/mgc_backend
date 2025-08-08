@@ -203,8 +203,8 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'smartxoft@gmail.com'
 # EMAIL_HOST_USER_PASSWORD = 'zyio jdww kyrq wcnw'
-EMAIL_HOST_PASSWORD = 'zyio jdww kyrq wcnw'
-DEFAULT_FROM_EMAIL = 'smartxoft@gmail.com'
+EMAIL_HOST_PASSWORD = 'idxv qtnw qjtg uvsi'
+DEFAULT_FROM_EMAIL = 'martinjeromeilango@gmail.com'
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
