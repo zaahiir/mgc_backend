@@ -5,11 +5,14 @@ from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Environment detection
+ENVIRONMENT = os.getenv('DJANGO_ENVIRONMENT', 'development')  # 'development' or 'production'
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-$8(gz)-bl7c23oy%br2vj%z*@tn752amdlp^o-pla&ze49-f8y')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = ENVIRONMENT == 'development'
 
 ALLOWED_HOSTS = ['mastergolfclub.com', '217.154.58.195', 'localhost', '127.0.0.1', 'admin.mastergolfclub.com', 'member.mastergolfclub.com']
 
@@ -119,23 +122,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mgc.wsgi.application'
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'admin_mgc',
-#         'USER': 'mgc_admin',
-#         'PASSWORD': '3_!Z4B3jnTimcpdx',
-#         'HOST': 'localhost',
-#         'PORT': '3306',
-#     }
-# }
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Environment-aware database settings
+if ENVIRONMENT == 'production':
+    # Production database (MySQL on Linux server)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'admin_mgc',
+            'USER': 'mgc_admin',
+            'PASSWORD': '3_!Z4B3jnTimcpdx',
+            'HOST': 'localhost',
+            'PORT': '3306',
+        }
     }
-}
+else:
+    # Development database (local SQLite)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -205,8 +212,16 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATIC_ROOT = '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/static'
-# STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+
+# Environment-aware static and media settings
+if ENVIRONMENT == 'production':
+    # Production settings (Linux server)
+    STATIC_ROOT = '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/static'
+    MEDIA_ROOT = '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/media'
+else:
+    # Development settings (local)
+    STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 # STATICFILES_DIRS = [
 #     '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/staticfiles'
@@ -217,8 +232,6 @@ STATICFILES_DIRS = [
 ]
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = '/var/www/vhosts/mastergolfclub.com/httpdocs/django/site/public/media'
-# MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
