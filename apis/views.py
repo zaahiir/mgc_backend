@@ -872,7 +872,7 @@ Master Golf Club Management
                 member = serializer.save()
                 logger.info(f"Member saved with ID: {member.id}, QR Token: {member.qr_token}")
 
-                # For new member, log credentials instead of sending email (for localhost development)
+                # For new member, send credentials email and log credentials
                 if pk == "0" and member.email and plain_password:
                     logger.info(f"=== NEW MEMBER CREATED ===")
                     logger.info(f"Email: {member.email}")
@@ -883,14 +883,31 @@ Master Golf Club Management
                     logger.info(f"Phone: {member.phoneNumber}")
                     logger.info("==========================")
                     
+                    # Send credentials email
+                    email_sent = False
+                    try:
+                        email_sent = self.send_credentials_with_qr_email(
+                            member.email, 
+                            member.golfClubId, 
+                            plain_password, 
+                            member.qr_token
+                        )
+                        if email_sent:
+                            logger.info("Credentials email sent successfully")
+                        else:
+                            logger.error("Failed to send credentials email")
+                    except Exception as email_error:
+                        logger.error(f"Error sending credentials email: {str(email_error)}")
+                    
                     response = {
                         'code': 1,
-                        'message': "Member created successfully. Check terminal for credentials.",
+                        'message': f"Member created successfully. {'Credentials have been sent to the member\'s email.' if email_sent else 'Failed to send credentials email. Please check the logs.'}",
                         'data': {
                             'member_id': member.golfClubId,
                             'email': member.email,
                             'password': plain_password,
-                            'qr_token': member.qr_token
+                            'qr_token': member.qr_token,
+                            'email_sent': email_sent
                         }
                     }
                 else:

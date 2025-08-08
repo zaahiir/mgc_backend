@@ -13,8 +13,6 @@ export class MemberService {
   private gender: string;
   private nationality: string;
   private plan: string;
-  private paymentStatus: string;
-  private paymentMethod: string;
 
   constructor() {
     this.apiUrl = new BaseAPIUrl().getUrl(baseURLType);
@@ -24,8 +22,6 @@ export class MemberService {
     this.gender = this.apiUrl + "gender/";
     this.nationality = this.apiUrl + "country/";
     this.plan = this.apiUrl + "plan/";
-    this.paymentStatus = this.apiUrl + "paymentStatus/";
-    this.paymentMethod = this.apiUrl + "paymentMethod/";
   }
 
   listMember(id: string = '0') {
@@ -50,14 +46,6 @@ export class MemberService {
 
   getPlan() {
     return axios.get(this.plan);
-  }
-
-  getPaymentStatus() {
-    return axios.get(this.paymentStatus);
-  }
-
-  getPaymentMethod() {
-    return axios.get(this.paymentMethod);
   }
 
   async getLastMemberId(year: string, month: string): Promise<string | null> {

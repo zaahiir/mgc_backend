@@ -104,6 +104,7 @@ class MemberModel(models.Model):
     hashed_password = models.TextField(null=True, blank=True)
     phoneNumber = models.CharField(max_length=20) # Required
     alternatePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
+    alternateEmail = models.EmailField(null=True, blank=True)  # New field
     dateOfBirth = models.DateField(null=True, blank=True)
     gender = models.ForeignKey('GenderModel', on_delete=models.CASCADE, null=True, blank=True,
                                related_name="memberGender")
@@ -116,10 +117,6 @@ class MemberModel(models.Model):
     emergencyContactName = models.CharField(max_length=200, null=True, blank=True)
     emergencyContactPhone = models.CharField(max_length=20, null=True, blank=True)
     emergencyContactRelation = models.CharField(max_length=100, null=True, blank=True)
-    paymentStatus = models.ForeignKey('PaymentStatusModel', on_delete=models.CASCADE, null=True, blank=True,
-                                      related_name="memberPaymentStatus")
-    paymentMethod = models.ForeignKey('PaymentMethodModel', on_delete=models.CASCADE, null=True, blank=True,
-                                      related_name="memberPaymentMethod")
     referredBy = models.CharField(max_length=200, null=True, blank=True)
     profilePhoto = models.ImageField(upload_to="member_photos/", null=True, blank=True)
     idProof = models.FileField(upload_to="member_id_proofs/", null=True, blank=True)

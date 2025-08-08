@@ -17,16 +17,6 @@ interface Country {
   countryName: string;
 }
 
-interface PaymentStatus {
-  id: number;
-  statusName: string;
-}
-
-interface PaymentMethod {
-  id: number;
-  methodName: string;
-}
-
 interface Plan {
   id: number;
   planName: string;
@@ -50,6 +40,7 @@ interface Member {
   email: string;
   phoneNumber: string;
   alternatePhoneNumber?: string;
+  alternateEmail?: string;
   dateOfBirth?: string;
   gender?: string;
   nationality?: string;
@@ -61,8 +52,6 @@ interface Member {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;
-  paymentStatus?: string;
-  paymentMethod?: string;
   referredBy?: string;
   profilePhoto?: string;
   idProof?: string;
@@ -95,8 +84,6 @@ export class UpdateMembersComponent implements OnInit {
 
   genders: Gender[] = [];
   nationalities: Country[] = [];
-  paymentStatuses: PaymentStatus[] = [];
-  paymentMethods: PaymentMethod[] = [];
   plans: Plan[] = [];
 
   memberId: string | null = null;
@@ -127,6 +114,7 @@ export class UpdateMembersComponent implements OnInit {
 
       // ALL Optional fields - NO validators
       alternatePhoneNumber: [''],
+      alternateEmail: [''],
       dateOfBirth: [''],
       gender: [''],
       nationality: [''],
@@ -137,8 +125,6 @@ export class UpdateMembersComponent implements OnInit {
       emergencyContactName: [''],
       emergencyContactPhone: [''],
       emergencyContactRelation: [''],
-      paymentStatus: [''],
-      paymentMethod: [''],
       referredBy: [''],
       profilePhoto: [''],
       idProof: [''],
@@ -240,40 +226,6 @@ export class UpdateMembersComponent implements OnInit {
       }
     }
 
-    // Handle payment status ID
-    let paymentStatusId = '';
-    if (this.memberData.paymentStatus) {
-      const statusByName = this.paymentStatuses.find(status =>
-        status.statusName.toLowerCase().trim() === this.memberData!.paymentStatus!.toLowerCase().trim()
-      );
-
-      if (statusByName) {
-        paymentStatusId = statusByName.id.toString();
-      } else {
-        const statusById = this.paymentStatuses.find(status => status.id.toString() === this.memberData!.paymentStatus);
-        if (statusById) {
-          paymentStatusId = statusById.id.toString();
-        }
-      }
-    }
-
-    // Handle payment method ID
-    let paymentMethodId = '';
-    if (this.memberData.paymentMethod) {
-      const methodByName = this.paymentMethods.find(method =>
-        method.methodName.toLowerCase().trim() === this.memberData!.paymentMethod!.toLowerCase().trim()
-      );
-
-      if (methodByName) {
-        paymentMethodId = methodByName.id.toString();
-      } else {
-        const methodById = this.paymentMethods.find(method => method.id.toString() === this.memberData!.paymentMethod);
-        if (methodById) {
-          paymentMethodId = methodById.id.toString();
-        }
-      }
-    }
-
     // Patch the form with member data
     this.memberForm.patchValue({
       firstName: this.memberData.firstName || '',
@@ -281,6 +233,7 @@ export class UpdateMembersComponent implements OnInit {
       email: this.memberData.email || '',
       phoneNumber: this.memberData.phoneNumber || '',
       alternatePhoneNumber: this.memberData.alternatePhoneNumber || '',
+      alternateEmail: this.memberData.alternateEmail || '',
       dateOfBirth: this.memberData.dateOfBirth || '',
       gender: genderId,
       nationality: nationalityId,
@@ -292,9 +245,9 @@ export class UpdateMembersComponent implements OnInit {
       emergencyContactName: this.memberData.emergencyContactName || '',
       emergencyContactPhone: this.memberData.emergencyContactPhone || '',
       emergencyContactRelation: this.memberData.emergencyContactRelation || '',
-      paymentStatus: paymentStatusId,
-      paymentMethod: paymentMethodId,
       referredBy: this.memberData.referredBy || '',
+      profilePhoto: this.memberData.profilePhoto || '',
+      idProof: this.memberData.idProof || '',
       handicap: this.memberData.handicap || false,
       enquiryId: this.memberData.enquiryId || '',
       enquiryMessage: this.memberData.enquiryMessage || ''
@@ -312,12 +265,10 @@ export class UpdateMembersComponent implements OnInit {
 
   private async loadDropdownData(): Promise<void> {
     try {
-      const [genderRes, countryRes, planRes, statusRes, methodRes] = await Promise.all([
+      const [genderRes, countryRes, planRes] = await Promise.all([
         this.memberService.getGender(),
         this.memberService.getNationality(),
-        this.memberService.getPlan(),
-        this.memberService.getPaymentStatus(),
-        this.memberService.getPaymentMethod()
+        this.memberService.getPlan()
       ]);
 
       if (genderRes?.data) {
@@ -333,16 +284,6 @@ export class UpdateMembersComponent implements OnInit {
       if (planRes?.data) {
         this.plans = Array.isArray(planRes.data) ? planRes.data :
                      planRes.data.data ? planRes.data.data : [];
-      }
-
-      if (statusRes?.data) {
-        this.paymentStatuses = Array.isArray(statusRes.data) ? statusRes.data :
-                              statusRes.data.data ? statusRes.data.data : [];
-      }
-
-      if (methodRes?.data) {
-        this.paymentMethods = Array.isArray(methodRes.data) ? methodRes.data :
-                             methodRes.data.data ? methodRes.data.data : [];
       }
     } catch (error) {
       throw error;
@@ -432,6 +373,10 @@ export class UpdateMembersComponent implements OnInit {
         formData.append('alternatePhoneNumber', formValues.alternatePhoneNumber.trim());
       }
 
+      if (formValues.alternateEmail && formValues.alternateEmail.trim()) {
+        formData.append('alternateEmail', formValues.alternateEmail.trim());
+      }
+
       if (formValues.dateOfBirth) {
         formData.append('dateOfBirth', new Date(formValues.dateOfBirth).toISOString().split('T')[0]);
       }
@@ -466,14 +411,6 @@ export class UpdateMembersComponent implements OnInit {
 
       if (formValues.emergencyContactRelation && formValues.emergencyContactRelation.trim()) {
         formData.append('emergencyContactRelation', formValues.emergencyContactRelation.trim());
-      }
-
-      if (formValues.paymentStatus && formValues.paymentStatus !== '' && formValues.paymentStatus !== 'null') {
-        formData.append('paymentStatus', formValues.paymentStatus.toString());
-      }
-
-      if (formValues.paymentMethod && formValues.paymentMethod !== '' && formValues.paymentMethod !== 'null') {
-        formData.append('paymentMethod', formValues.paymentMethod.toString());
       }
 
       if (formValues.referredBy && formValues.referredBy.trim()) {

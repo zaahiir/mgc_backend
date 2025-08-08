@@ -95,18 +95,6 @@ class MemberModelSerializers(serializers.ModelSerializer):
         allow_empty=True
     )
     plan = serializers.IntegerField(required=True)
-    paymentStatus = serializers.PrimaryKeyRelatedField(
-        queryset=PaymentStatusModel.objects.all(), 
-        required=False, 
-        allow_null=True,
-        allow_empty=True
-    )
-    paymentMethod = serializers.PrimaryKeyRelatedField(
-        queryset=PaymentMethodModel.objects.all(), 
-        required=False, 
-        allow_null=True,
-        allow_empty=True
-    )
 
     class Meta:
         model = MemberModel
@@ -123,9 +111,8 @@ class MemberModelSerializers(serializers.ModelSerializer):
             # Optional fields
             'gender': {'required': False},
             'nationality': {'required': False},
-            'paymentStatus': {'required': False},
-            'paymentMethod': {'required': False},
             'alternatePhoneNumber': {'required': False},
+            'alternateEmail': {'required': False},
             'dateOfBirth': {'required': False},
             'address': {'required': False},
             'membershipStartDate': {'required': False},
@@ -155,8 +142,6 @@ class MemberModelSerializers(serializers.ModelSerializer):
                 representation['plan'] = None
         else:
             representation['plan'] = None
-        representation['paymentStatus'] = instance.paymentStatus.statusName if instance.paymentStatus else None
-        representation['paymentMethod'] = instance.paymentMethod.methodName if instance.paymentMethod else None
         return representation
 
     def validate(self, data):
@@ -164,7 +149,7 @@ class MemberModelSerializers(serializers.ModelSerializer):
         Custom validation to handle empty string values for foreign key fields
         """
         # Convert empty strings to None for foreign key fields
-        for field in ['gender', 'nationality', 'paymentStatus', 'paymentMethod']:
+        for field in ['gender', 'nationality']:
             if field in data and (data[field] == '' or data[field] == 'null'):
                 data[field] = None
         

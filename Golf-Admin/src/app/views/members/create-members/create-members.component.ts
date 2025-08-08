@@ -17,19 +17,10 @@ interface Country {
   countryName: string;
 }
 
-interface PaymentStatus {
-  id: number;
-  statusName: string;
-}
-
-interface PaymentMethod {
-  id: number;
-  methodName: string;
-}
-
 interface Plan {
   id: number;
   planName: string;
+  planDuration?: number;
 }
 
 interface MemberEnquiry {
@@ -67,8 +58,6 @@ export class CreateMemberComponent implements OnInit {
 
   genders: Gender[] = [];
   countries: Country[] = [];
-  paymentStatuses: PaymentStatus[] = [];
-  paymentMethods: PaymentMethod[] = [];
   plans: Plan[] = [];
 
   enquiryId: string | null = null;
@@ -100,6 +89,7 @@ export class CreateMemberComponent implements OnInit {
       // ALL Optional fields - NO validators
       password: [''],
       alternatePhoneNumber: [''],
+      alternateEmail: ['', [Validators.email]], // New field
       dateOfBirth: [''],
       gender: [''],
       nationality: [''],
@@ -109,8 +99,6 @@ export class CreateMemberComponent implements OnInit {
       emergencyContactName: [''],
       emergencyContactPhone: [''],
       emergencyContactRelation: [''],
-      paymentStatus: [''],
-      paymentMethod: [''],
       referredBy: [''],
       profilePhoto: [''],
       idProof: [''],
@@ -160,9 +148,40 @@ export class CreateMemberComponent implements OnInit {
       if (this.isFromEnquiry && this.enquiryId) {
         await this.loadEnquiryData();
       }
+
+      // Add listener for membership start date changes
+      this.memberForm.get('membershipStartDate')?.valueChanges.subscribe(startDate => {
+        this.calculateMembershipEndDate(startDate);
+      });
+
+      this.memberForm.get('plan')?.valueChanges.subscribe(planId => {
+        const startDate = this.memberForm.get('membershipStartDate')?.value;
+        if (startDate) {
+          this.calculateMembershipEndDate(startDate);
+        }
+      });
     } catch (error) {
       await this.showError('Failed to load form data');
     }
+  }
+
+  private calculateMembershipEndDate(startDate: string): void {
+    if (!startDate) return;
+
+    const selectedPlanId = this.memberForm.get('plan')?.value;
+    if (!selectedPlanId) return;
+
+    const plan = this.plans.find(p => p.id.toString() === selectedPlanId.toString());
+    if (!plan) return;
+
+    // Assuming plan duration is in years
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setFullYear(endDateObj.getFullYear() + (plan.planDuration || 1));
+
+    // Format the end date for the input field
+    const endDate = endDateObj.toISOString().split('T')[0];
+    this.memberForm.patchValue({ membershipEndDate: endDate });
   }
 
   private async loadEnquiryData(): Promise<void> {
@@ -259,12 +278,10 @@ export class CreateMemberComponent implements OnInit {
 
   private async loadDropdownData(): Promise<void> {
     try {
-      const [genderRes, countryRes, planRes, statusRes, methodRes] = await Promise.all([
+      const [genderRes, countryRes, planRes] = await Promise.all([
         this.memberService.getGender(),
         this.memberService.getNationality(),
-        this.memberService.getPlan(),
-        this.memberService.getPaymentStatus(),
-        this.memberService.getPaymentMethod()
+        this.memberService.getPlan()
       ]);
 
       if (genderRes?.data) {
@@ -280,16 +297,6 @@ export class CreateMemberComponent implements OnInit {
       if (planRes?.data) {
         this.plans = Array.isArray(planRes.data) ? planRes.data :
                      planRes.data.data ? planRes.data.data : [];
-      }
-
-      if (statusRes?.data) {
-        this.paymentStatuses = Array.isArray(statusRes.data) ? statusRes.data :
-                              statusRes.data.data ? statusRes.data.data : [];
-      }
-
-      if (methodRes?.data) {
-        this.paymentMethods = Array.isArray(methodRes.data) ? methodRes.data :
-                             methodRes.data.data ? methodRes.data.data : [];
       }
     } catch (error) {
       throw error;
@@ -381,6 +388,10 @@ export class CreateMemberComponent implements OnInit {
       formData.append('alternatePhoneNumber', formValues.alternatePhoneNumber.trim());
     }
 
+    if (formValues.alternateEmail && formValues.alternateEmail.trim()) {
+      formData.append('alternateEmail', formValues.alternateEmail.trim());
+    }
+
     if (formValues.dateOfBirth) {
       formData.append('dateOfBirth', new Date(formValues.dateOfBirth).toISOString().split('T')[0]);
     }
@@ -416,15 +427,6 @@ export class CreateMemberComponent implements OnInit {
 
     if (formValues.emergencyContactRelation && formValues.emergencyContactRelation.trim()) {
       formData.append('emergencyContactRelation', formValues.emergencyContactRelation.trim());
-    }
-
-    // Only append payment fields if they have actual values
-    if (formValues.paymentStatus && formValues.paymentStatus !== '' && formValues.paymentStatus !== 'null') {
-      formData.append('paymentStatus', formValues.paymentStatus.toString());
-    }
-
-    if (formValues.paymentMethod && formValues.paymentMethod !== '' && formValues.paymentMethod !== 'null') {
-      formData.append('paymentMethod', formValues.paymentMethod.toString());
     }
 
     if (formValues.referredBy && formValues.referredBy.trim()) {
@@ -463,15 +465,16 @@ export class CreateMemberComponent implements OnInit {
       this.createdMemberCredentials = response?.data?.data || {
         member_id: generatedMemberId,
         email: formValues.email,
-        password: generatedPassword
+        password: generatedPassword,
+        qr_token: response?.data?.data?.qr_token || ''
       };
 
-      let successMessage = `Member has been created successfully with Golf Club ID: ${generatedMemberId}. Check the credentials below.`;
+      let successMessage = `Member has been created successfully with Golf Club ID: ${generatedMemberId}. Credentials have been sent to the member's email.`;
 
       if (this.isFromEnquiry && this.enquiryId) {
         try {
           await this.markEnquiryAsConverted(this.enquiryId, generatedMemberId);
-          successMessage = `Enquiry has been successfully converted to member with Golf Club ID: ${generatedMemberId}. Check the credentials below.`;
+          successMessage = `Enquiry has been successfully converted to member with Golf Club ID: ${generatedMemberId}. Credentials have been sent to the member's email.`;
         } catch (error) {
           await Swal.fire({
             title: 'Warning',

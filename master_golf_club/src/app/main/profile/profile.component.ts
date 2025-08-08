@@ -179,7 +179,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   getFullName(): string {
     if (!this.memberProfile) return '';
-    return `${this.memberProfile.firstName} ${this.memberProfile.lastName}`;
+    return `${this.memberProfile.firstName || ''} ${this.memberProfile.lastName || ''}`.trim();
   }
 
   getMembershipStatus(): string {
@@ -264,7 +264,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.imageLoading = false;
 
     // Hide the failed image
-    event.target.style.display = 'none';
+    if (event.target) {
+      event.target.style.display = 'none';
+    }
   }
 
   // New method to handle successful image load
@@ -277,28 +279,20 @@ export class ProfileComponent implements OnInit, OnDestroy {
   // Method to get user initials for avatar fallback
   getUserInitials(): string {
     if (!this.memberProfile) return '?';
-
-    const firstName = this.memberProfile.firstName?.charAt(0)?.toUpperCase() || '';
-    const lastName = this.memberProfile.lastName?.charAt(0)?.toUpperCase() || '';
-
-    if (firstName && lastName) {
-      return firstName + lastName;
-    } else if (firstName) {
-      return firstName;
-    } else if (lastName) {
-      return lastName;
-    }
-
-    // Fallback to email initial if no name available
-    return this.memberProfile.email?.charAt(0)?.toUpperCase() || '?';
+    
+    const firstName = this.memberProfile.firstName || '';
+    const lastName = this.memberProfile.lastName || '';
+    
+    const firstInitial = firstName.charAt(0).toUpperCase();
+    const lastInitial = lastName.charAt(0).toUpperCase();
+    
+    return (firstInitial + lastInitial) || '?';
   }
 
-  // Method to check if profile image exists and is valid
+  // Updated hasValidProfileImage method
   hasValidProfileImage(): boolean {
-    return !this.imageLoadError &&
-           !!(this.memberProfile?.profilePhoto &&
-              this.memberProfile.profilePhoto.trim() !== '' &&
-              this.isValidImageUrl(this.memberProfile.profilePhoto));
+    const profileImage = this.getProfileImage();
+    return profileImage !== '' && this.isValidImageUrl(profileImage);
   }
 
   // Optional: Method to retry image loading

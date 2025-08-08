@@ -55,6 +55,14 @@
           </c-col>
 
           <c-col [cFormFloating]="true" md="6">
+            <input cFormControl id="alternateEmail" formControlName="alternateEmail" type="email" placeholder="Alternate Email" />
+            <label cLabel for="alternateEmail">Alternate Email</label>
+            <c-form-feedback [valid]="false" *ngIf="isFieldInvalid('alternateEmail')">
+              {{ getErrorMessage('alternateEmail') }}
+            </c-form-feedback>
+          </c-col>
+
+          <c-col [cFormFloating]="true" md="6">
             <input cFormControl id="dateOfBirth" formControlName="dateOfBirth" type="date" placeholder="Date of Birth" />
             <label cLabel for="dateOfBirth">Date of Birth</label>
           </c-col>
@@ -98,7 +106,7 @@
           </c-col>
 
           <c-col [cFormFloating]="true" md="6">
-            <input cFormControl id="membershipEndDate" formControlName="membershipEndDate" type="date" />
+            <input cFormControl id="membershipEndDate" formControlName="membershipEndDate" type="date" [disabled]="true" />
             <label cLabel for="membershipEndDate">Membership End Date </label>
           </c-col>
 
@@ -116,23 +124,6 @@
           <c-col [cFormFloating]="true" md="6">
             <input cFormControl id="emergencyContactRelation" formControlName="emergencyContactRelation" type="text" />
             <label cLabel for="emergencyContactRelation">Emergency Contact Relation </label>
-          </c-col>
-
-          <!-- Payment Information -->
-          <c-col [cFormFloating]="true" md="6">
-            <select cSelect id="paymentStatus" formControlName="paymentStatus">
-              <option value="">Select Payment Status</option>
-              <option *ngFor="let status of paymentStatuses" [value]="status.id">{{ status.statusName }}</option>
-            </select>
-            <label cLabel for="paymentStatus">Payment Status </label>
-          </c-col>
-
-          <c-col [cFormFloating]="true" md="6">
-            <select cSelect id="paymentMethod" formControlName="paymentMethod">
-              <option value="">Select Payment Method</option>
-              <option *ngFor="let method of paymentMethods" [value]="method.id">{{ method.methodName }}</option>
-            </select>
-            <label cLabel for="paymentMethod">Payment Method </label>
           </c-col>
 
           <!-- File Uploads -->

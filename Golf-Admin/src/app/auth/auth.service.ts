@@ -18,8 +18,8 @@ export interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  // private apiUrl = 'https://mastergolfclub.com/apis/';
-  private apiUrl = 'http://localhost/apis/';
+  private apiUrl = 'https://mastergolfclub.com/apis/';
+  // private apiUrl = 'http://localhost/apis/';
   private isBrowser: boolean;
 
   // Authentication state
