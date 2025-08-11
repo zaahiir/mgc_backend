@@ -12,8 +12,10 @@ fi
 mode="${1:-preview}"  # use "push" to commit and push; default shows preview
 
 cd "$REPO"
-git pull --rebase || true
+# Get latest changes
+(git pull --rebase || true) >/dev/null 2>&1
 
+# Sync live files into repo (exclude runtime artifacts and tools)
 rsync -a --delete \
   --exclude ".git" \
   --exclude ".idea/" \
@@ -22,8 +24,12 @@ rsync -a --delete \
   --exclude "db.sqlite3" \
   --exclude "venv/" \
   --exclude ".venv/" \
+  --exclude "tools/" \
+  --exclude "__pycache__/" \
+  --exclude "*.pyc" \
   "$LIVE/" "$REPO/"
 
+# Show what would be committed
 git status -sb
 
 if [ "$mode" = "push" ]; then
