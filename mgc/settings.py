@@ -6,7 +6,8 @@ from django.core.management.utils import get_random_secret_key
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Environment detection
-ENVIRONMENT = os.getenv('DJANGO_ENVIRONMENT', 'development')  # 'development' or 'production'
+# Default to 'production' on the server; override with DJANGO_ENVIRONMENT=development locally
+ENVIRONMENT = os.getenv('DJANGO_ENVIRONMENT', 'production')  # 'development' or 'production'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-$8(gz)-bl7c23oy%br2vj%z*@tn752amdlp^o-pla&ze49-f8y')
