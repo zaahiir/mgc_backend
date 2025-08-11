@@ -2,3 +2,9 @@ venv
 .venv
 Golf-Admin/dist/
 master_golf_club/dist/
+*.backup
+*.bak
+*.orig
+*.swp
+*.swo
+*.tmp
