@@ -1,0 +1,28 @@
+[0;1;32m●[0m mariadb.service - MariaDB 10.11.13 database server
+     Loaded: loaded (]8;;file://youthful-gagarin.217-154-58-195.plesk.page/usr/lib/systemd/system/mariadb.service/usr/lib/systemd/system/mariadb.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Thu 2025-08-07 04:46:44 UTC; 1 day 10h ago
+       Docs: ]8;;man:mariadbd(8)man:mariadbd(8)]8;;
+             ]8;;https://mariadb.com/kb/en/library/systemd/https://mariadb.com/kb/en/library/systemd/]8;;
+    Process: 673 ExecStartPre=/usr/bin/install -m 755 -o mysql -g root -d /var/run/mysqld (code=exited, status=0/SUCCESS)
+    Process: 860 ExecStartPre=/bin/sh -c systemctl unset-environment _WSREP_START_POSITION (code=exited, status=0/SUCCESS)
+    Process: 955 ExecStartPre=/bin/sh -c [ ! -e /usr/bin/galera_recovery ] && VAR= ||   VAR=`/usr/bin/galera_recovery`; [ $? -eq 0 ]   && systemctl set-environment _WSREP_START_POSITION=$VAR || exit 1 (code=exited, status=0/SUCCESS)
+    Process: 1210 ExecStartPost=/bin/sh -c systemctl unset-environment _WSREP_START_POSITION (code=exited, status=0/SUCCESS)
+    Process: 1218 ExecStartPost=/etc/mysql/debian-start (code=exited, status=0/SUCCESS)
+   Main PID: 1091 (mariadbd)
+     Status: "[0;1;36mTaking your SQL requests now...[0m"
+      Tasks: 11 (limit: 30348)
+     Memory: 205.0M (peak: 205.7M)
+        CPU: 1min 17.697s
+     CGroup: /system.slice/mariadb.service
+             └─[0;38;5;245m1091 /usr/sbin/mariadbd[0m
+
+Aug 07 04:46:43 youthful-gagarin.217-154-58-195.plesk.page mariadbd[1091]: 2025-08-07  4:46:43 0 [Note] Plugin 'FEEDBACK' is disabled.
+Aug 07 04:46:43 youthful-gagarin.217-154-58-195.plesk.page mariadbd[1091]: 2025-08-07  4:46:43 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+Aug 07 04:46:43 youthful-gagarin.217-154-58-195.plesk.page mariadbd[1091]: 2025-08-07  4:46:43 0 [Note] Server socket created on IP: '127.0.0.1'.
+Aug 07 04:46:43 youthful-gagarin.217-154-58-195.plesk.page mariadbd[1091]: 2025-08-07  4:46:43 0 [Note] /usr/sbin/mariadbd: ready for connections.
+Aug 07 04:46:43 youthful-gagarin.217-154-58-195.plesk.page mariadbd[1091]: Version: '10.11.13-MariaDB-0ubuntu0.24.04.1'  socket: '/run/mysqld/mysqld.sock'  port: 3306  Ubuntu 24.04
+Aug 07 04:46:44 youthful-gagarin.217-154-58-195.plesk.page systemd[1]: Started mariadb.service - MariaDB 10.11.13 database server.
+Aug 07 04:46:44 youthful-gagarin.217-154-58-195.plesk.page /etc/mysql/debian-start[1289]: Checking for insecure root accounts.
+Aug 07 04:46:44 youthful-gagarin.217-154-58-195.plesk.page mariadbd[1091]: 2025-08-07  4:46:44 0 [Note] InnoDB: Buffer pool(s) load completed at 250807  4:46:44
+Aug 07 04:46:44 youthful-gagarin.217-154-58-195.plesk.page /etc/mysql/debian-start[1316]: Triggering myisam-recover for all MyISAM tables and aria-recover for all Aria tables
+Aug 08 00:08:06 youthful-gagarin.217-154-58-195.plesk.page mariadbd[1091]: 2025-08-08  0:08:06 4615 [Warning] Aborted connection 4615 to db: 'psa' user: 'admin' host: 'localhost' (Got an error reading communication packets)

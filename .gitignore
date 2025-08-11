@@ -2,9 +2,3 @@ venv
 .venv
 Golf-Admin/dist/
 master_golf_club/dist/
-media/
-staticfiles/
-db.sqlite3
-__pycache__/
-*.pyc
-.idea/
