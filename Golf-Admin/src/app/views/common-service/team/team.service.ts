@@ -48,20 +48,8 @@ export class TeamService {
     return this.http.get(`${this.apiUrl}protocol/${id}${this.lists}`);
   }
 
-  processProtocol(data: FormData | ProtocolData, id: string = '0'): Observable<any> {
-    // If data is FormData, send it directly
-    if (data instanceof FormData) {
-      // Don't set Content-Type header for FormData - let the browser set it with boundary
-      return this.http.post(`${this.apiUrl}protocol/${id}${this.processing}`, data);
-    }
-    // If data is a plain object, convert to FormData
-    const formData = new FormData();
-    Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
-        formData.append(key, data[key]);
-      }
-    });
-    return this.http.post(`${this.apiUrl}protocol/${id}${this.processing}`, formData);
+  processProtocol(data: ProtocolData, id: string = '0'): Observable<any> {
+    return this.http.post(`${this.apiUrl}protocol/${id}${this.processing}`, data);
   }
 
   deleteProtocol(id: string): Observable<any> {
@@ -81,24 +69,8 @@ export class TeamService {
     return this.http.get(`${this.apiUrl}instructor/${id}${this.lists}`);
   }
 
-  processInstructor(data: FormData | InstructorData, id: string = '0'): Observable<any> {
-    // If data is FormData, send it directly
-    if (data instanceof FormData) {
-      // Don't set Content-Type header for FormData - let the browser set it with boundary
-      return this.http.post(`${this.apiUrl}instructor/${id}${this.processing}`, data);
-    }
-    // If data is a plain object, convert to FormData
-    const formData = new FormData();
-    Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
-        if (key === 'instructorPhoto' && data[key] instanceof File) {
-          formData.append(key, data[key] as File);
-        } else {
-          formData.append(key, data[key]);
-        }
-      }
-    });
-    return this.http.post(`${this.apiUrl}instructor/${id}${this.processing}`, formData);
+  processInstructor(data: InstructorData, id: string = '0'): Observable<any> {
+    return this.http.post(`${this.apiUrl}instructor/${id}${this.processing}`, data);
   }
 
   deleteInstructor(id: string): Observable<any> {

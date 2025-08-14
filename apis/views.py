@@ -1,7 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
@@ -3273,9 +3272,6 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     """ViewSet for managing protocols"""
     queryset = ProtocolModel.objects.filter(hideStatus=0)
     serializer_class = ProtocolModelSerializer
-    
-    # Override parser classes to handle FormData properly
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         return ProtocolModel.objects.filter(hideStatus=0)
@@ -3306,23 +3302,9 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
         try:
-            # Log the incoming data for debugging
-            print(f"Protocol processing - Request data: {request.data}")
-            print(f"Protocol processing - Request FILES: {request.FILES}")
-            print(f"Protocol processing - Content type: {request.content_type}")
-            print(f"Protocol processing - Request method: {request.method}")
-            print(f"Protocol processing - Request headers: {dict(request.headers)}")
-            
-            # Handle both JSON and FormData
-            data = request.data
-            if hasattr(request, 'FILES') and request.FILES:
-                # If we have files, merge FILES with data
-                data = request.data.copy()
-                data.update(request.FILES)
-            
             if pk == '0':
                 # Create new protocol
-                serializer = self.get_serializer(data=data)
+                serializer = self.get_serializer(data=request.data)
                 if serializer.is_valid():
                     serializer.save()
                     return Response({
@@ -3331,7 +3313,6 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                         'data': serializer.data
                     })
                 else:
-                    print(f"Protocol validation errors: {serializer.errors}")
                     return Response({
                         'status': 'error',
                         'message': 'Validation error',
@@ -3340,7 +3321,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
             else:
                 # Update existing protocol
                 protocol = self.get_object()
-                serializer = self.get_serializer(protocol, data=data, partial=True)
+                serializer = self.get_serializer(protocol, data=request.data, partial=True)
                 if serializer.is_valid():
                     serializer.save()
                     return Response({
@@ -3349,16 +3330,12 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                         'data': serializer.data
                     })
                 else:
-                    print(f"Protocol validation errors: {serializer.errors}")
                     return Response({
                         'status': 'error',
                         'message': 'Validation error',
                         'errors': serializer.errors
                     }, status=400)
         except Exception as e:
-            print(f"Protocol processing error: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return Response({
                 'status': 'error',
                 'message': str(e)
@@ -3401,9 +3378,6 @@ class InstructorViewSet(viewsets.ModelViewSet):
     """ViewSet for managing instructors"""
     queryset = InstructorModel.objects.filter(hideStatus=0)
     serializer_class = InstructorModelSerializer
-    
-    # Override parser classes to handle FormData properly
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         return InstructorModel.objects.filter(hideStatus=0)
@@ -3434,23 +3408,9 @@ class InstructorViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['POST'])
     def processing(self, request, pk=None):
         try:
-            # Log the incoming data for debugging
-            print(f"Instructor processing - Request data: {request.data}")
-            print(f"Instructor processing - Request FILES: {request.FILES}")
-            print(f"Instructor processing - Content type: {request.content_type}")
-            print(f"Instructor processing - Request method: {request.method}")
-            print(f"Instructor processing - Request headers: {dict(request.headers)}")
-            
-            # Handle both JSON and FormData
-            data = request.data
-            if hasattr(request, 'FILES') and request.FILES:
-                # If we have files, merge FILES with data
-                data = request.data.copy()
-                data.update(request.FILES)
-            
             if pk == '0':
                 # Create new instructor
-                serializer = self.get_serializer(data=data)
+                serializer = self.get_serializer(data=request.data)
                 if serializer.is_valid():
                     serializer.save()
                     return Response({
@@ -3459,7 +3419,6 @@ class InstructorViewSet(viewsets.ModelViewSet):
                         'data': serializer.data
                     })
                 else:
-                    print(f"Instructor validation errors: {serializer.errors}")
                     return Response({
                         'status': 'error',
                         'message': 'Validation error',
@@ -3468,7 +3427,7 @@ class InstructorViewSet(viewsets.ModelViewSet):
             else:
                 # Update existing instructor
                 instructor = self.get_object()
-                serializer = self.get_serializer(instructor, data=data, partial=True)
+                serializer = self.get_serializer(instructor, data=request.data, partial=True)
                 if serializer.is_valid():
                     serializer.save()
                     return Response({
@@ -3477,16 +3436,12 @@ class InstructorViewSet(viewsets.ModelViewSet):
                         'data': serializer.data
                     })
                 else:
-                    print(f"Instructor validation errors: {serializer.errors}")
                     return Response({
                         'status': 'error',
                         'message': 'Validation error',
                         'errors': serializer.errors
                     }, status=400)
         except Exception as e:
-            print(f"Instructor processing error: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return Response({
                 'status': 'error',
                 'message': str(e)

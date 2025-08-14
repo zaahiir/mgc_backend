@@ -204,14 +204,7 @@ export class TeamComponent implements OnInit {
 
     const currentForm = this.activeTab === 'protocol' ? this.protocolForm : this.instructorForm;
     
-    // Debug: Log form status and values
-    console.log('Form valid:', currentForm.valid);
-    console.log('Form invalid:', currentForm.invalid);
-    console.log('Form values:', currentForm.value);
-    console.log('Form errors:', currentForm.errors);
-    
     if (currentForm.invalid) {
-      console.log('Form validation failed');
       return;
     }
 
@@ -223,35 +216,17 @@ export class TeamComponent implements OnInit {
 
       // Add all form fields to FormData
       Object.keys(formValue).forEach(key => {
-        // Don't filter out empty strings - send all form values
-        if (formValue[key] !== null && formValue[key] !== undefined) {
+        if (key === 'is_active') {
+          formData.append(key, formValue[key] ? 'true' : 'false');
+        } else if (formValue[key] !== null && formValue[key] !== undefined && formValue[key] !== '') {
           formData.append(key, formValue[key]);
         }
       });
 
-      // Handle instructor photo properly
-      if (this.activeTab === 'instructor') {
-        if (this.selectedFile) {
-          // If a new file is selected, use that
-          formData.set('instructorPhoto', this.selectedFile);
-        } else if (formValue.instructorPhoto && formValue.instructorPhoto instanceof File) {
-          // If form has a file, use that
-          formData.set('instructorPhoto', formValue.instructorPhoto);
-        }
+      // Add image if selected (only for instructor)
+      if (this.activeTab === 'instructor' && this.selectedFile) {
+        formData.append('instructorPhoto', this.selectedFile);
       }
-
-      // Debug: Log what's being sent
-      console.log('FormData contents:');
-      // Alternative approach that doesn't rely on entries() method
-      console.log('FormData object:', formData);
-      // Log form values directly
-      console.log('Form values being sent:', formValue);
-      
-      // Debug: Check if FormData has content
-      console.log('FormData has content:', formData.has('instructorName'));
-      console.log('FormData has instructorName:', formData.get('instructorName'));
-      console.log('FormData has instructorPosition:', formData.get('instructorPosition'));
-      console.log('FormData has instructorPhoto:', formData.get('instructorPhoto'));
 
       let response;
       if (this.activeTab === 'protocol') {
