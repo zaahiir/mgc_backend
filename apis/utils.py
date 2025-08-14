@@ -5,6 +5,11 @@ import base64
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from django.contrib.auth.hashers import make_password
+from rest_framework.views import exception_handler
+from rest_framework.response import Response
+from rest_framework import status
+from django.core.exceptions import RawPostDataException
+import traceback
 
 
 class PasswordManager:
@@ -43,3 +48,52 @@ class PasswordManager:
         except Exception as e:
             print(f"Decryption error: {e}")
             return None
+
+
+def custom_exception_handler(exc, context):
+    """
+    Custom exception handler to catch RawPostDataException and other parsing errors
+    """
+    # Call REST framework's default exception handler first
+    response = exception_handler(exc, context)
+    
+    # If it's a RawPostDataException or similar parsing error
+    if isinstance(exc, RawPostDataException) or 'RawPostDataException' in str(type(exc).__name__):
+        print(f"RawPostDataException caught: {str(exc)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        
+        return Response({
+            'status': 'error',
+            'message': 'Request data stream error. Please ensure your form submission is valid.',
+            'debug_info': {
+                'error_type': type(exc).__name__,
+                'error_message': str(exc),
+                'request_method': getattr(context.get('request'), 'method', 'unknown'),
+                'content_type': getattr(context.get('request'), 'content_type', 'unknown')
+            }
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # If it's a JSON parsing error
+    if hasattr(exc, 'detail') and 'JSON parse error' in str(exc.detail):
+        return Response({
+            'status': 'error',
+            'message': 'Invalid request format. Please ensure the request contains valid form data.',
+            'debug_info': {
+                'error_type': 'JSONParseError',
+                'error_message': str(exc.detail)
+            }
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # If it's a parsing error
+    if hasattr(exc, 'detail') and 'parsing error' in str(exc.detail).lower():
+        return Response({
+            'status': 'error',
+            'message': 'Request parsing error. Please check your form submission format.',
+            'debug_info': {
+                'error_type': 'ParsingError',
+                'error_message': str(exc.detail)
+            }
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Return the default response for other exceptions
+    return response

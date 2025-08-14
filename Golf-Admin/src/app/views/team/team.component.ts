@@ -104,15 +104,15 @@ export class TeamComponent implements OnInit {
       this.loading = true;
       
       // Load protocols
-      const protocolResponse = await this.teamService.getAllProtocols().toPromise();
-      if (protocolResponse && (protocolResponse as any).status === 'success') {
-        this.protocols = (protocolResponse as any).data || [];
+      const protocolResponse = await this.teamService.getAllProtocols();
+      if (protocolResponse && protocolResponse.data && protocolResponse.data.status === 'success') {
+        this.protocols = protocolResponse.data.data || [];
       }
 
       // Load instructors
-      const instructorResponse = await this.teamService.getAllInstructors().toPromise();
-      if (instructorResponse && (instructorResponse as any).status === 'success') {
-        this.instructors = (instructorResponse as any).data || [];
+      const instructorResponse = await this.teamService.getAllInstructors();
+      if (instructorResponse && instructorResponse.data && instructorResponse.data.status === 'success') {
+        this.instructors = instructorResponse.data.data || [];
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -135,9 +135,9 @@ export class TeamComponent implements OnInit {
       this.loading = true;
       
       if (this.activeTab === 'protocol') {
-        const response = await this.teamService.listProtocol(this.itemId!).toPromise();
-        if (response && (response as any).status === 'success' && (response as any).data) {
-          const protocolData = (response as any).data;
+        const response = await this.teamService.listProtocol(this.itemId!);
+        if (response && response.data && response.data.status === 'success' && response.data.data) {
+          const protocolData = response.data.data;
           this.protocolForm.patchValue({
             protocolTitle: protocolData.protocolTitle || '',
             protocolDescription: protocolData.protocolDescription || '',
@@ -145,9 +145,9 @@ export class TeamComponent implements OnInit {
           });
         }
       } else {
-        const response = await this.teamService.listInstructor(this.itemId!).toPromise();
-        if (response && (response as any).status === 'success' && (response as any).data) {
-          const instructorData = (response as any).data;
+        const response = await this.teamService.listInstructor(this.itemId!);
+        if (response && response.data && response.data.status === 'success' && response.data.data) {
+          const instructorData = response.data.data;
           this.instructorForm.patchValue({
             instructorName: instructorData.instructorName || '',
             instructorPosition: instructorData.instructorPosition || '',
@@ -204,7 +204,14 @@ export class TeamComponent implements OnInit {
 
     const currentForm = this.activeTab === 'protocol' ? this.protocolForm : this.instructorForm;
     
+    // Debug: Log form status and values
+    console.log('Form valid:', currentForm.valid);
+    console.log('Form invalid:', currentForm.invalid);
+    console.log('Form values:', currentForm.value);
+    console.log('Form errors:', currentForm.errors);
+    
     if (currentForm.invalid) {
+      console.log('Form validation failed');
       return;
     }
 
@@ -216,26 +223,44 @@ export class TeamComponent implements OnInit {
 
       // Add all form fields to FormData
       Object.keys(formValue).forEach(key => {
-        if (key === 'is_active') {
-          formData.append(key, formValue[key] ? 'true' : 'false');
-        } else if (formValue[key] !== null && formValue[key] !== undefined && formValue[key] !== '') {
+        // Don't filter out empty strings - send all form values
+        if (formValue[key] !== null && formValue[key] !== undefined) {
           formData.append(key, formValue[key]);
         }
       });
 
-      // Add image if selected (only for instructor)
-      if (this.activeTab === 'instructor' && this.selectedFile) {
-        formData.append('instructorPhoto', this.selectedFile);
+      // Handle instructor photo properly
+      if (this.activeTab === 'instructor') {
+        if (this.selectedFile) {
+          // If a new file is selected, use that
+          formData.set('instructorPhoto', this.selectedFile);
+        } else if (formValue.instructorPhoto && formValue.instructorPhoto instanceof File) {
+          // If form has a file, use that
+          formData.set('instructorPhoto', formValue.instructorPhoto);
+        }
       }
+
+      // Debug: Log what's being sent
+      console.log('FormData contents:');
+      // Alternative approach that doesn't rely on entries() method
+      console.log('FormData object:', formData);
+      // Log form values directly
+      console.log('Form values being sent:', formValue);
+      
+      // Debug: Check if FormData has content
+      console.log('FormData has content:', formData.has('instructorName'));
+      console.log('FormData has instructorName:', formData.get('instructorName'));
+      console.log('FormData has instructorPosition:', formData.get('instructorPosition'));
+      console.log('FormData has instructorPhoto:', formData.get('instructorPhoto'));
 
       let response;
       if (this.activeTab === 'protocol') {
-        response = await this.teamService.processProtocol(formData as any, this.itemId || '0').toPromise();
+        response = await this.teamService.processProtocol(formData as any, this.itemId || '0');
       } else {
-        response = await this.teamService.processInstructor(formData as any, this.itemId || '0').toPromise();
+        response = await this.teamService.processInstructor(formData as any, this.itemId || '0');
       }
 
-      if (response && (response as any).status === 'success') {
+      if (response && response.data && response.data.status === 'success') {
         Swal.fire({
           icon: 'success',
           title: 'Success',
@@ -373,9 +398,9 @@ export class TeamComponent implements OnInit {
     if (result.isConfirmed) {
       try {
         this.loading = true;
-        const response = await this.teamService.deleteProtocol(id.toString()).toPromise();
+        const response = await this.teamService.deleteProtocol(id.toString());
 
-        if (response && (response as any).status === 'success') {
+        if (response && response.data && response.data.status === 'success') {
           Swal.fire({
             icon: 'success',
             title: 'Deleted!',
@@ -412,9 +437,9 @@ export class TeamComponent implements OnInit {
     if (result.isConfirmed) {
       try {
         this.loading = true;
-        const response = await this.teamService.deleteInstructor(id.toString()).toPromise();
+        const response = await this.teamService.deleteInstructor(id.toString());
 
-        if (response && (response as any).status === 'success') {
+        if (response && response.data && response.data.status === 'success') {
           Swal.fire({
             icon: 'success',
             title: 'Deleted!',

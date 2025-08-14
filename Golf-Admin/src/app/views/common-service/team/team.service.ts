@@ -1,6 +1,4 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 import { BaseAPIUrl, baseURLType } from '../commom-api-url';
 import axios from 'axios';
 
@@ -35,54 +33,81 @@ export class TeamService {
   private processing: string;
   private deletion: string;
 
-  constructor(private http: HttpClient) {
-    const baseUrl = new BaseAPIUrl();
-    this.apiUrl = baseUrl.getUrl(baseURLType);
-    this.lists = '/listing/';
-    this.processing = '/processing/';
-    this.deletion = '/deletion/';
+  constructor() {
+    this.apiUrl = new BaseAPIUrl().getUrl(baseURLType);
+    this.lists = this.apiUrl + "protocol/0/listing/";
+    this.processing = this.apiUrl + "protocol/0/processing/";
+    this.deletion = this.apiUrl + "protocol/0/deletion/";
   }
 
   // Protocol methods
-  listProtocol(id: string = '0'): Observable<any> {
-    return this.http.get(`${this.apiUrl}protocol/${id}${this.lists}`);
+  listProtocol(id: string = '0') {
+    return axios.get(this.lists.replace('0', id));
   }
 
-  processProtocol(data: ProtocolData, id: string = '0'): Observable<any> {
-    return this.http.post(`${this.apiUrl}protocol/${id}${this.processing}`, data);
+  processProtocol(data: FormData | ProtocolData, id: string = '0') {
+    // If data is FormData, send it directly
+    if (data instanceof FormData) {
+      // Don't set Content-Type header for FormData - let the browser set it with boundary
+      return axios.post(this.processing.replace('0', id), data);
+    }
+    // If data is a plain object, convert to FormData
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
+        formData.append(key, data[key]);
+      }
+    });
+    return axios.post(this.processing.replace('0', id), formData);
   }
 
-  deleteProtocol(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}protocol/${id}${this.deletion}`);
+  deleteProtocol(id: string) {
+    return axios.get(this.deletion.replace('0', id));
   }
 
-  getActiveProtocols(): Observable<any> {
-    return this.http.get(`${this.apiUrl}protocol/active_protocols/`);
+  getActiveProtocols() {
+    return axios.get(this.apiUrl + "protocol/active_protocols/");
   }
 
-  getAllProtocols(): Observable<any> {
-    return this.http.get(`${this.apiUrl}protocol/0${this.lists}`);
+  getAllProtocols() {
+    return axios.get(this.apiUrl + "protocol/0/listing/");
   }
 
   // Instructor methods
-  listInstructor(id: string = '0'): Observable<any> {
-    return this.http.get(`${this.apiUrl}instructor/${id}${this.lists}`);
+  listInstructor(id: string = '0') {
+    return axios.get(this.apiUrl + `instructor/${id}/listing/`);
   }
 
-  processInstructor(data: InstructorData, id: string = '0'): Observable<any> {
-    return this.http.post(`${this.apiUrl}instructor/${id}${this.processing}`, data);
+  processInstructor(data: FormData | InstructorData, id: string = '0') {
+    // If data is FormData, send it directly
+    if (data instanceof FormData) {
+      // Don't set Content-Type header for FormData - let the browser set it with boundary
+      return axios.post(this.apiUrl + `instructor/${id}/processing/`, data);
+    }
+    // If data is a plain object, convert to FormData
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+      if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
+        if (key === 'instructorPhoto' && data[key] instanceof File) {
+          formData.append(key, data[key] as File);
+        } else {
+          formData.append(key, data[key]);
+        }
+      }
+    });
+    return axios.post(this.apiUrl + `instructor/${id}/processing/`, formData);
   }
 
-  deleteInstructor(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}instructor/${id}${this.deletion}`);
+  deleteInstructor(id: string) {
+    return axios.get(this.apiUrl + `instructor/${id}/deletion/`);
   }
 
-  getActiveInstructors(): Observable<any> {
-    return this.http.get(`${this.apiUrl}instructor/active_instructors/`);
+  getActiveInstructors() {
+    return axios.get(this.apiUrl + "instructor/active_instructors/");
   }
 
-  getAllInstructors(): Observable<any> {
-    return this.http.get(`${this.apiUrl}instructor/0${this.lists}`);
+  getAllInstructors() {
+    return axios.get(this.apiUrl + "instructor/0/listing/");
   }
 }
 

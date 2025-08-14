@@ -17,11 +17,22 @@ export const adminAuthInterceptor: HttpInterceptorFn = (
   let authReq = req;
   if (authToken && authService.isAdmin()) {
     // Only add essential headers to avoid CORS issues
+    const headers: any = {
+      'Authorization': `Bearer ${authToken}`
+    };
+    
+    // Check if this is a FormData request by looking at the request body or content type
+    const isFormData = req.body instanceof FormData || 
+                      req.headers.get('Content-Type')?.includes('multipart/form-data');
+    
+    // For FormData requests, don't set any Content-Type header
+    // For other requests, only set Content-Type if not already set
+    if (!isFormData && !req.headers.has('Content-Type')) {
+      headers['Content-Type'] = 'application/json';
+    }
+    
     authReq = req.clone({
-      setHeaders: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      }
+      setHeaders: headers
     });
   }
 
