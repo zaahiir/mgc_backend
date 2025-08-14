@@ -8,3 +8,5 @@ master_golf_club/dist/
 *.swp
 *.swo
 *.tmp
+__pycache__/
+*.pyc
