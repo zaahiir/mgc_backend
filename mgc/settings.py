@@ -15,7 +15,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-$8(gz)-bl7c23oy%br2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = ENVIRONMENT == 'development'
 
-ALLOWED_HOSTS = ['mastergolfclub.com', '217.154.58.195', 'localhost', '127.0.0.1', 'admin.mastergolfclub.com', 'member.mastergolfclub.com']
+ALLOWED_HOSTS = ['mastergolfclub.com', 'www.mastergolfclub.com', '217.154.58.195', 'localhost', '127.0.0.1', 'admin.mastergolfclub.com', 'member.mastergolfclub.com']
 
 # For development
 # FRONTEND_URL = 'http://localhost:4300'  # For local development
@@ -199,13 +199,17 @@ SIMPLE_JWT = {
 ENCRYPTION_KEY = get_random_secret_key()
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'smartxoft@gmail.com'
-# EMAIL_HOST_USER_PASSWORD = 'zyio jdww kyrq wcnw'
-EMAIL_HOST_PASSWORD = 'idxv qtnw qjtg uvsi'
-DEFAULT_FROM_EMAIL = 'martinjeromeilango@gmail.com'
+# Allow overriding SMTP settings via environment variables
+EMAIL_HOST = os.getenv('DJANGO_EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('DJANGO_EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('DJANGO_EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('DJANGO_EMAIL_HOST_USER', 'smartxoft@gmail.com')
+# Note: Use a Gmail App Password or your domain SMTP password via env var below
+EMAIL_HOST_PASSWORD = os.getenv('DJANGO_EMAIL_HOST_PASSWORD', 'qasj mbry pzpv ayus')
+# Send from the authenticated SMTP user by default to avoid provider rejections
+DEFAULT_FROM_EMAIL = os.getenv('DJANGO_DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+EMAIL_TIMEOUT = int(os.getenv('DJANGO_EMAIL_TIMEOUT', '30'))
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
