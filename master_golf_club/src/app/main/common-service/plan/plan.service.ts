@@ -162,12 +162,45 @@ export class PlanService {
         }
       };
 
-      // This would need to be implemented in the backend
-      // For now, return empty array
+      // Call the new endpoint to get current memberships
+      const response = await axios.get(`${this.apiUrl}member/current-memberships/`, config);
+      
+      if (response.data && response.data.code === 1 && response.data.data) {
+        return response.data.data;
+      }
+      
       return [];
     } catch (error) {
       console.error('Error fetching current memberships:', error);
       return [];
+    }
+  }
+
+  // Get membership details by member ID
+  async getMembershipByMemberId(memberId: number): Promise<any> {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        return null;
+      }
+
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      };
+
+      // Call the member profile endpoint
+      const response = await axios.get(`${this.apiUrl}member/${memberId}/profile/`, config);
+      
+      if (response.data && response.data.code === 1 && response.data.data) {
+        return response.data.data;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching membership details:', error);
+      return null;
     }
   }
 

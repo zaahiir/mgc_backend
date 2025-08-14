@@ -67,6 +67,37 @@
   font-weight: 700;
 }
 
+.sec-title {
+  position: relative;
+}
+
+.refresh-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--theme-color);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.refresh-btn:hover {
+  background: var(--secondary-color);
+  transform: scale(1.1);
+}
+
+.refresh-btn i {
+  font-size: 16px;
+}
+
 /* Plans Grid */
 .plans-container {
   position: relative;
@@ -316,6 +347,11 @@
   color: #dc2626;
 }
 
+.status-badge.warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
 .btn-renew {
   background: var(--theme-color);
   color: #fff;
@@ -335,6 +371,65 @@
 .btn-renew:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+/* Member ID and Name Styles */
+.member-name {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  font-weight: 400;
+}
+
+/* Days Left Styles */
+.days-left {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e8f5e8;
+  color: var(--theme-color);
+}
+
+.days-left.warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.days-left.expired {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* No Memberships Message Styles */
+.no-memberships-container {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.no-memberships-message {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.no-memberships-message i {
+  font-size: 48px;
+  color: #95a5a6;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.no-memberships-message h3 {
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.no-memberships-message p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
 }
 
 /* Benefits Section */
@@ -421,6 +516,17 @@
     font-size: 36px;
     line-height: 46px;
   }
+  
+  .refresh-btn {
+    width: 35px;
+    height: 35px;
+    top: 5px;
+    right: 5px;
+  }
+  
+  .refresh-btn i {
+    font-size: 14px;
+  }
 
   .plans-grid {
     grid-template-columns: 1fr;
@@ -436,6 +542,15 @@
   .membership-table td {
     padding: 15px 10px;
     font-size: 13px;
+  }
+  
+  .member-name {
+    font-size: 11px;
+  }
+  
+  .days-left {
+    font-size: 11px;
+    padding: 3px 6px;
   }
 
   .benefits-grid {
@@ -480,6 +595,20 @@
   .membership-table th,
   .membership-table td {
     padding: 10px 8px;
+  }
+  
+  .member-name {
+    font-size: 10px;
+  }
+  
+  .days-left {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+  
+  .status-badge {
+    font-size: 10px;
+    padding: 4px 8px;
   }
 }
 

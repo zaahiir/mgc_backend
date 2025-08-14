@@ -83,6 +83,11 @@ export class MembershipComponent implements OnInit {
   async loadCurrentMemberships() {
     try {
       this.currentMemberships = await this.planService.getCurrentMemberships();
+      
+      // If no memberships found, show appropriate message
+      if (this.currentMemberships.length === 0) {
+        console.log('No memberships found for current user');
+      }
     } catch (error) {
       console.error('Error loading current memberships:', error);
       // Fallback to default memberships if API fails
@@ -101,14 +106,22 @@ export class MembershipComponent implements OnInit {
         startDate: '2024-01-15',
         expirationDate: '2025-01-15',
         status: 'Active',
-        isActive: true
+        isActive: true,
+        daysUntilExpiry: 45,
+        memberId: 'MGC24001',
+        memberName: 'John Doe',
+        memberEmail: 'john@example.com'
       },
       {
         type: 'Regular Membership',
         startDate: '2022-05-10',
         expirationDate: '2023-05-10',
         status: 'Expired',
-        isActive: false
+        isActive: false,
+        daysUntilExpiry: 0,
+        memberId: 'MGC22001',
+        memberName: 'Jane Smith',
+        memberEmail: 'jane@example.com'
       }
     ];
   }
@@ -133,7 +146,7 @@ export class MembershipComponent implements OnInit {
       
       if (result.success) {
         alert('Membership renewed successfully!');
-        // Optionally reload current memberships
+        // Reload current memberships to get updated data
         await this.loadCurrentMemberships();
       } else {
         alert('Failed to renew membership. Please try again.');
@@ -141,6 +154,15 @@ export class MembershipComponent implements OnInit {
     } catch (error) {
       console.error('Error renewing membership:', error);
       alert('An error occurred while renewing the membership. Please try again.');
+    }
+  }
+
+  // Method to refresh membership data
+  async refreshMemberships() {
+    try {
+      await this.loadCurrentMemberships();
+    } catch (error) {
+      console.error('Error refreshing memberships:', error);
     }
   }
 }

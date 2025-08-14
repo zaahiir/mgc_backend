@@ -1496,6 +1496,94 @@ Master Golf Club Management
                 'message': f'Error generating QR code: {str(e)}'
             }, status=500)
 
+    @action(detail=False, methods=['GET'], url_path='current-memberships')
+    def get_current_memberships(self, request):
+        """
+        Get current memberships for the authenticated member
+        """
+        try:
+            # Get current user's member profile
+            user_id = request.user.id if request.user.is_authenticated else None
+            
+            if not user_id:
+                return Response({
+                    'code': 0,
+                    'message': 'User not authenticated'
+                }, status=401)
+            
+            # Find member by user ID or email
+            try:
+                member = MemberModel.objects.get(id=user_id, hideStatus=0)
+            except MemberModel.DoesNotExist:
+                # Try to find by email if user ID doesn't match
+                if hasattr(request.user, 'email'):
+                    member = MemberModel.objects.get(email=request.user.email, hideStatus=0)
+                else:
+                    raise MemberModel.DoesNotExist
+            
+            # Get plan details
+            plan = None
+            if member.plan:
+                try:
+                    plan = PlanModel.objects.get(id=member.plan, hideStatus=0)
+                except PlanModel.DoesNotExist:
+                    pass
+            
+            # Calculate membership status
+            from datetime import date
+            today = date.today()
+            is_active = False
+            status = 'Inactive'
+            
+            if member.membershipEndDate:
+                end_date = member.membershipEndDate
+                if isinstance(end_date, str):
+                    end_date = dt.datetime.strptime(end_date, '%Y-%m-%d').date()
+                
+                days_until_expiry = (end_date - today).days
+                is_active = days_until_expiry > 0
+                status = 'Active' if is_active else 'Expired'
+            else:
+                days_until_expiry = 0
+                status = 'No End Date'
+            
+            # Format dates
+            start_date = member.membershipStartDate.strftime('%Y-%m-%d') if member.membershipStartDate else None
+            end_date = member.membershipEndDate.strftime('%Y-%m-%d') if member.membershipEndDate else None
+            
+            membership_data = {
+                'id': member.id,
+                'type': plan.planName if plan else 'Unknown Plan',
+                'planId': member.plan,
+                'startDate': start_date,
+                'expirationDate': end_date,
+                'status': status,
+                'isActive': is_active,
+                'daysUntilExpiry': max(0, days_until_expiry),
+                'memberId': member.golfClubId,
+                'memberName': f"{member.firstName} {member.lastName}",
+                'memberEmail': member.email
+            }
+            
+            return Response({
+                'code': 1,
+                'message': 'Current memberships retrieved successfully',
+                'data': [membership_data]  # Return as array for consistency
+            })
+            
+        except MemberModel.DoesNotExist:
+            logger.error("Current member not found")
+            return Response({
+                'code': 0,
+                'message': 'Member profile not found'
+            }, status=404)
+        except Exception as e:
+            logger.error(f"Error retrieving current memberships: {str(e)}")
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving memberships: {str(e)}'
+            }, status=500)
+
 
 
 
