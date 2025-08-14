@@ -9,6 +9,7 @@ export interface ProtocolData {
   hideStatus?: number;
   createdAt?: string;
   updatedAt?: string;
+  [key: string]: any; // Add index signature
 }
 
 export interface InstructorData {
@@ -22,6 +23,7 @@ export interface InstructorData {
   hideStatus?: number;
   createdAt?: string;
   updatedAt?: string;
+  [key: string]: any; // Add index signature
 }
 
 @Injectable({
@@ -54,8 +56,9 @@ export class TeamService {
     // If data is a plain object, convert to FormData
     const formData = new FormData();
     Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
-        formData.append(key, data[key]);
+      const value = data[key as keyof ProtocolData];
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value);
       }
     });
     return axios.post(this.processing.replace('0', id), formData);
@@ -87,11 +90,12 @@ export class TeamService {
     // If data is a plain object, convert to FormData
     const formData = new FormData();
     Object.keys(data).forEach(key => {
-      if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
-        if (key === 'instructorPhoto' && data[key] instanceof File) {
-          formData.append(key, data[key] as File);
+      const value = data[key as keyof InstructorData];
+      if (value !== null && value !== undefined && value !== '') {
+        if (key === 'instructorPhoto' && value instanceof File) {
+          formData.append(key, value as File);
         } else {
-          formData.append(key, data[key]);
+          formData.append(key, value);
         }
       }
     });
