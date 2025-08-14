@@ -8,7 +8,6 @@ from django.contrib.auth.hashers import make_password
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
-from django.core.exceptions import RawPostDataException
 import traceback
 
 
@@ -52,22 +51,19 @@ class PasswordManager:
 
 def custom_exception_handler(exc, context):
     """
-    Custom exception handler to catch RawPostDataException and other parsing errors
+    Custom exception handler to catch parsing errors and other exceptions
     """
     # Call REST framework's default exception handler first
     response = exception_handler(exc, context)
     
-    # If it's a RawPostDataException or similar parsing error
-    if isinstance(exc, RawPostDataException) or 'RawPostDataException' in str(type(exc).__name__):
-        print(f"RawPostDataException caught: {str(exc)}")
-        print(f"Traceback: {traceback.format_exc()}")
-        
+    # If it's a parsing error or similar request data error
+    if hasattr(exc, 'detail') and any(error_type in str(exc.detail).lower() for error_type in ['parse', 'json', 'request']):
         return Response({
             'status': 'error',
             'message': 'Request data stream error. Please ensure your form submission is valid.',
             'debug_info': {
                 'error_type': type(exc).__name__,
-                'error_message': str(exc),
+                'error_message': str(exc.detail),
                 'request_method': getattr(context.get('request'), 'method', 'unknown'),
                 'content_type': getattr(context.get('request'), 'content_type', 'unknown')
             }
