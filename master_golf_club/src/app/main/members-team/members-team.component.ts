@@ -95,7 +95,7 @@ export class MembersTeamComponent implements OnInit {
 
     this.memberTeamService.getActiveProtocols()
       .then(response => {
-        if (response.data && response.data.code === 1) {
+        if (response.data && response.data.status === 'success') {
           this.protocols = response.data.data.map((protocol: any) => ({
             id: protocol.id,
             protocolTitle: protocol.protocolTitle,

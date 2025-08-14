@@ -37,7 +37,7 @@ export class MembershipComponent implements OnInit {
       //     id: plan.id,
       //     title: plan.planName,
       //     price: parseFloat(plan.planPrice),
-      //     period: plan.planDuration === 1 ? 'Per Month' : 'Per Year',
+      //     period: 'Per Year',
       //     duration: plan.planDuration,
       //     description: plan.planDescription,
       //     features: this.generateDefaultFeatures(plan.planDuration)
@@ -64,7 +64,7 @@ export class MembershipComponent implements OnInit {
             id: plan.id,
             title: plan.planName,
             price: parseFloat(plan.planPrice),
-            period: plan.planDuration === 1 ? 'Per Month' : 'Per Year',
+            period: 'Per Year',
             duration: plan.planDuration,
             description: plan.planDescription,
             features: transformedFeatures
