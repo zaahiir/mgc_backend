@@ -1,7 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { CollectionService } from '../common-service/collection/collection.service';
+import { 
+  faCalendarAlt, faSpinner, faExclamationTriangle, faTimes,
+  faCheckCircle, faUsers, faInfoCircle
+} from '@fortawesome/free-solid-svg-icons';
 
 interface Booking {
   id: number;
@@ -43,7 +48,7 @@ interface Notification {
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FontAwesomeModule],
   templateUrl: './orders.component.html',
   styleUrl: './orders.component.css'
 })
@@ -58,6 +63,15 @@ export class OrdersComponent implements OnInit {
   selectedBookingForParticipants: Booking | null = null;
   showParticipantModal = false;
   requestedParticipants = 1;
+
+  // Icons
+  calendarIcon = faCalendarAlt;
+  spinnerIcon = faSpinner;
+  exclamationTriangleIcon = faExclamationTriangle;
+  timesIcon = faTimes;
+  checkCircleIcon = faCheckCircle;
+  usersIcon = faUsers;
+  infoIcon = faInfoCircle;
 
   constructor(
     private collectionService: CollectionService,

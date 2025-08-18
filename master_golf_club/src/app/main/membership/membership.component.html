@@ -77,14 +77,16 @@
   <!-- Current Membership Status -->
   <section class="membership-status-section">
     <div class="auto-container">
-             <div class="sec-title">
-         <span class="sub-title">Account Status</span>
-         <h2>Your Current Memberships</h2>
-       </div>
+      <div class="sec-title">
+        <span class="sub-title">Account Status</span>
+        <h2>Your Current Memberships</h2>
+        <button class="refresh-btn" (click)="refreshMemberships()" title="Refresh memberships">
+          <i class="icon-refresh">🔄</i>
+        </button>
+      </div>
 
       <div class="membership-details">
-        <!-- Current Member Plan Details -->
-        <div *ngIf="memberProfile" class="table-responsive">
+        <div class="table-responsive">
           <table class="membership-table">
             <thead>
               <tr>
@@ -94,65 +96,54 @@
                 <th>Expiration Date</th>
                 <th>Status</th>
                 <th>Days Left</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
+              <tr *ngFor="let membership of currentMemberships">
                 <td>
-                  <strong>{{ memberProfile.golfClubId || memberProfile.id || 'N/A' }}</strong>
-                  <div class="member-name">{{ getFullName() || 'Unknown' }}</div>
+                  <strong>{{ membership.memberId || 'N/A' }}</strong>
+                  <div class="member-name">{{ membership.memberName || 'Unknown' }}</div>
                 </td>
-                <td>{{ memberProfile.plan || 'N/A' }}</td>
-                <td>{{ memberProfile.membershipStartDate | date:'mediumDate' || 'Not specified' }}</td>
-                <td>{{ memberProfile.membershipEndDate | date:'mediumDate' || 'Not specified' }}</td>
+                <td>{{ membership.type }}</td>
+                <td>{{ membership.startDate | date:'mediumDate' }}</td>
+                <td>{{ membership.expirationDate | date:'mediumDate' }}</td>
                 <td>
                   <span class="status-badge"
-                        [class]="getMembershipStatusClass()">
-                    {{ getMembershipStatus() }}
+                        [class.active]="membership.isActive"
+                        [class.expired]="!membership.isActive"
+                        [class.warning]="membership.daysUntilExpiry <= 30 && membership.daysUntilExpiry > 0">
+                    {{ membership.status }}
                   </span>
                 </td>
                 <td>
                   <span class="days-left"
-                        [class.warning]="getDaysUntilExpiry() <= 30 && getDaysUntilExpiry() > 0"
-                        [class.expired]="getDaysUntilExpiry() <= 0">
-                    {{ getDaysUntilExpiry() > 0 ? getDaysUntilExpiry() + ' days' : 'Expired' }}
+                        [class.warning]="membership.daysUntilExpiry <= 30 && membership.daysUntilExpiry > 0"
+                        [class.expired]="membership.daysUntilExpiry <= 0">
+                    {{ membership.daysUntilExpiry > 0 ? membership.daysUntilExpiry + ' days' : 'Expired' }}
                   </span>
+                </td>
+                <td>
+                  <button class="btn-renew"
+                          [disabled]="!membership.isActive"
+                          (click)="renewMembership(membership)">
+                    {{ membership.isActive ? 'Renew Now' : 'Renew' }}
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
         
-        <!-- Loading State -->
-        <div *ngIf="profileLoading" class="loading-container">
-          <div class="loading-spinner"></div>
-          <p>Loading member plan details...</p>
-        </div>
-
-        <!-- Error State -->
-        <div *ngIf="profileError && !profileLoading" class="error-container">
-          <div class="error-message">
-            <i class="icon-warning"></i>
-            <p>{{ profileError }}</p>
-            <button class="theme-btn btn-one" (click)="loadMemberProfile()">Try Again</button>
-          </div>
-        </div>
-
-        <!-- No Profile Message -->
-        <div *ngIf="!memberProfile && !profileLoading && !profileError" class="no-memberships-container">
+        <!-- No Memberships Message -->
+        <div *ngIf="currentMemberships.length === 0" class="no-memberships-container">
           <div class="no-memberships-message">
             <i class="icon-info"></i>
-            <h3>No Plan Details Found</h3>
-            <p>Unable to load your membership plan details. Please contact the club administration.</p>
+            <h3>No Memberships Found</h3>
+            <p>You don't have any active memberships. Please contact the club administration to set up your membership.</p>
           </div>
         </div>
       </div>
-
-
-
-
-
-
     </div>
   </section>
 

@@ -152,7 +152,9 @@
 
   <!-- Empty state -->
   <div *ngIf="!isLoading && bookings.length === 0" class="empty-state">
-    <div class="empty-icon">📅</div>
+    <div class="empty-icon">
+      <fa-icon [icon]="calendarIcon" class="empty-icon-svg"></fa-icon>
+    </div>
     <h3>No bookings found</h3>
     <p>You haven't made any bookings yet. Start by exploring our golf courses!</p>
     <button class="btn btn-primary" routerLink="/collection">Browse Courses</button>
