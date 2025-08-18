@@ -90,15 +90,6 @@
   padding: 0 8px;
 }
 
-/* Section Title Style */
-.section-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--theme-color);
-  margin-bottom: 30px;
-  text-align: center;
-}
-
 /* Using global CSS variables from styles.css */
 
 * {
