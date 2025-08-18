@@ -27,7 +27,47 @@ from django.utils import timezone
 from decimal import Decimal
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import UntypedToken
 from django.shortcuts import render
+
+class CustomJWTAuthentication(JWTAuthentication):
+    """
+    Custom JWT authentication that properly extracts member_id from token
+    """
+    def authenticate(self, request):
+        try:
+            # Get the raw token from the request
+            raw_token = self.get_raw_token(request)
+            if raw_token is None:
+                return None
+
+            # Validate the token
+            validated_token = self.get_validated_token(raw_token)
+            
+            # Extract member_id from the token
+            member_id = validated_token.get('member_id')
+            if not member_id:
+                return None
+            
+            # Create a user object with the member_id
+            from django.contrib.auth.models import AnonymousUser
+            from django.contrib.auth.models import User
+            
+            try:
+                # Try to get the Django User
+                user = User.objects.get(id=member_id)
+            except User.DoesNotExist:
+                # If Django User doesn't exist, create a minimal user object
+                user = User(id=member_id, username=f'member_{member_id}')
+                user.is_authenticated = True
+            
+            return (user, validated_token)
+            
+        except (InvalidToken, TokenError) as e:
+            return None
+        except Exception as e:
+            return None
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -708,6 +748,7 @@ class PlanViewSet(viewsets.ModelViewSet):
 class MemberViewSet(viewsets.ModelViewSet):
     queryset = MemberModel.objects.filter(hideStatus=0)
     serializer_class = MemberModelSerializers
+    authentication_classes = [CustomJWTAuthentication]
 
     def generate_qr_code(self, qr_token: str):
         """
@@ -1092,20 +1133,21 @@ Master Golf Club Management
         URL: /apis/member/current-profile/
         """
         try:
-            # Get user ID from the authenticated user
-            user_id = request.user.id if hasattr(request.user, 'id') else None
+            # Get user ID from authenticated user (primary method)
+            user_id = request.user.id if request.user.is_authenticated else None
             
-            # Alternative: Get user ID from JWT token or session
-            if not user_id:
-                user_id = request.META.get('HTTP_USER_ID')
-                if user_id:
-                    user_id = int(user_id)
-            
-            # Alternative: Get from query parameter
+            # Fallback: Get user ID from query parameter (sent by frontend)
             if not user_id:
                 user_id = request.query_params.get('user_id')
                 if user_id:
-                    user_id = int(user_id)
+                    try:
+                        user_id = int(user_id)
+                    except (ValueError, TypeError):
+                        return Response({
+                            'code': 0,
+                            'message': 'Invalid user ID format',
+                            'data': None
+                        }, status=status.HTTP_400_BAD_REQUEST)
             
             if not user_id:
                 return Response({
@@ -1429,24 +1471,35 @@ Master Golf Club Management
         Get QR code for the currently authenticated member
         """
         try:
-            # Get current user's member profile
+            # Get user ID from authenticated user (primary method)
             user_id = request.user.id if request.user.is_authenticated else None
+            
+            # Fallback: Get user ID from query parameter (sent by frontend)
+            if not user_id:
+                user_id = request.query_params.get('user_id')
+                if user_id:
+                    try:
+                        user_id = int(user_id)
+                    except (ValueError, TypeError):
+                        return Response({
+                            'code': 0,
+                            'message': 'Invalid user ID format'
+                        }, status=400)
             
             if not user_id:
                 return Response({
                     'code': 0,
-                    'message': 'User not authenticated'
+                    'message': 'User authentication required'
                 }, status=401)
             
-            # Find member by user ID or email
+            # Find member by user ID
             try:
                 member = MemberModel.objects.get(id=user_id, hideStatus=0)
             except MemberModel.DoesNotExist:
-                # Try to find by email if user ID doesn't match
-                if hasattr(request.user, 'email'):
-                    member = MemberModel.objects.get(email=request.user.email, hideStatus=0)
-                else:
-                    raise MemberModel.DoesNotExist
+                return Response({
+                    'code': 0,
+                    'message': 'Member profile not found'
+                }, status=404)
             
             if not member.qr_token:
                 logger.error(f"No QR token found for current member {member.id}")
@@ -1502,24 +1555,35 @@ Master Golf Club Management
         Get current memberships for the authenticated member
         """
         try:
-            # Get current user's member profile
+            # Get user ID from authenticated user (primary method)
             user_id = request.user.id if request.user.is_authenticated else None
+            
+            # Fallback: Get user ID from query parameter (sent by frontend)
+            if not user_id:
+                user_id = request.query_params.get('user_id')
+                if user_id:
+                    try:
+                        user_id = int(user_id)
+                    except (ValueError, TypeError):
+                        return Response({
+                            'code': 0,
+                            'message': 'Invalid user ID format'
+                        }, status=400)
             
             if not user_id:
                 return Response({
                     'code': 0,
-                    'message': 'User not authenticated'
+                    'message': 'User authentication required'
                 }, status=401)
             
-            # Find member by user ID or email
+            # Find member by user ID
             try:
                 member = MemberModel.objects.get(id=user_id, hideStatus=0)
             except MemberModel.DoesNotExist:
-                # Try to find by email if user ID doesn't match
-                if hasattr(request.user, 'email'):
-                    member = MemberModel.objects.get(email=request.user.email, hideStatus=0)
-                else:
-                    raise MemberModel.DoesNotExist
+                return Response({
+                    'code': 0,
+                    'message': 'Member profile not found'
+                }, status=404)
             
             # Get plan details
             plan = None

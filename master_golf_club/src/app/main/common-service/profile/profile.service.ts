@@ -71,18 +71,24 @@ export class ProfileService {
     const config: any = {};
 
     const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
+    if (!token) {
+      throw new Error('Authentication token not found');
     }
 
-    const userId = localStorage.getItem('user_id');
-    if (userId) {
-      config.params = { user_id: userId };
+    config.headers = {
+      'Authorization': `Bearer ${token}`
+    };
+
+    // Get user ID using the enhanced method
+    const userId = this.getCurrentUserId();
+    if (!userId) {
+      throw new Error('User ID not found. Please log in again.');
     }
 
-    return axios.get(this.currentProfileUrl, config);
+    console.log('Fetching profile for user ID:', userId);
+
+    // Use the current profile endpoint with user_id parameter
+    return axios.get(`${this.currentProfileUrl}?user_id=${userId}`, config);
   }
 
   // Update member profile by ID
@@ -104,13 +110,15 @@ export class ProfileService {
   uploadProfileImage(file: File, memberId?: string): Promise<string> {
     return new Promise(async (resolve, reject) => {
       try {
-        // Get user ID if not provided
-        const userId = memberId || localStorage.getItem('user_id');
+        // Get user ID if not provided - use current authenticated user
+        const userId = memberId || this.getCurrentUserId();
 
         if (!userId) {
-          reject(new Error('User ID not found'));
+          reject(new Error('User ID not found. Please log in again.'));
           return;
         }
+
+        console.log('Uploading profile image for user ID:', userId);
 
         // Create FormData for file upload
         const formData = new FormData();
@@ -161,11 +169,14 @@ export class ProfileService {
   // ADDED: Alternative method for uploading via update profile
   async uploadProfileImageViaUpdate(file: File, memberId?: string): Promise<string> {
     try {
-      const userId = memberId || localStorage.getItem('user_id');
+      // Get user ID if not provided - use current authenticated user
+      const userId = memberId || this.getCurrentUserId();
 
       if (!userId) {
-        throw new Error('User ID not found');
+        throw new Error('User ID not found. Please log in again.');
       }
+
+      console.log('Uploading profile image via update for user ID:', userId);
 
       // Create FormData
       const formData = new FormData();
@@ -178,9 +189,11 @@ export class ProfileService {
       };
 
       const token = localStorage.getItem('access_token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+      if (!token) {
+        throw new Error('Authentication token not found');
       }
+
+      config.headers['Authorization'] = `Bearer ${token}`;
 
       // Use the update profile endpoint with FormData
       const response = await axios.put(
@@ -190,7 +203,7 @@ export class ProfileService {
       );
 
       if (response.data && response.data.code === 1) {
-        return response.data.data?.profilePhoto || response.data.data?.imageUrl;
+        return response.data.data?.profilePhoto || response.data.data.imageUrl;
       } else {
         throw new Error(response.data?.message || 'Upload failed');
       }
@@ -203,15 +216,30 @@ export class ProfileService {
   // Helper method to get current user's profile with error handling
   async getCurrentProfile(): Promise<any> {
     try {
-      const userId = localStorage.getItem('user_id');
-
+      // Get user ID using the enhanced method
+      const userId = this.getCurrentUserId();
       if (!userId) {
-        throw new Error('User ID not found in localStorage');
+        throw new Error('User ID not found. Please log in again.');
       }
 
-      const response = await this.getMemberProfile(userId);
+      console.log('Getting current profile for user ID:', userId);
 
+      // First try to get current profile from the dedicated endpoint
+      try {
+        const response = await this.getCurrentMemberProfile();
+        if (response.data && response.data.code === 1) {
+          console.log('Profile fetched from current endpoint for user:', userId);
+          return response.data.data;
+        }
+      } catch (endpointError) {
+        console.log('Current profile endpoint not available, falling back to user_id method');
+      }
+
+      // Fallback: get profile using user ID
+      console.log('Using fallback method to get profile for user:', userId);
+      const response = await this.getMemberProfile(userId);
       if (response.data && response.data.code === 1) {
+        console.log('Profile fetched from fallback method for user:', userId);
         return response.data.data;
       } else {
         throw new Error(response.data?.message || 'Failed to fetch profile');
@@ -234,11 +262,14 @@ export class ProfileService {
   // Helper method to update current user's profile with error handling
   async updateProfile(profileData: any): Promise<any> {
     try {
-      const userId = localStorage.getItem('user_id');
+      // Get user ID using the enhanced method
+      const userId = this.getCurrentUserId();
 
       if (!userId) {
-        throw new Error('User ID not found in localStorage');
+        throw new Error('User ID not found. Please log in again.');
       }
+
+      console.log('Updating profile for user ID:', userId);
 
       const response = await this.updateMemberProfile(profileData, userId);
 
@@ -268,19 +299,50 @@ export class ProfileService {
       const config: any = {};
 
       const token = localStorage.getItem('access_token');
-      if (token) {
-        config.headers = {
-          'Authorization': `Bearer ${token}`
-        };
+      if (!token) {
+        throw new Error('Authentication required');
       }
 
-      const response = await axios.get(this.apiUrl + 'member/current-qr-code/', config);
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
 
-      if (response.data && response.data.code === 1) {
-        return response.data.data;
-      } else {
-        throw new Error(response.data?.message || 'Failed to get QR code');
+      // Get user ID using the enhanced method
+      const userId = this.getCurrentUserId();
+      if (!userId) {
+        throw new Error('User ID not found. Please log in again.');
       }
+
+      console.log('Getting QR code for user ID:', userId);
+
+      // Try to get QR code from current member endpoint with user_id
+      try {
+        const response = await axios.get(`${this.apiUrl}member/current-qr-code/?user_id=${userId}`, config);
+        if (response.data && response.data.code === 1) {
+          return response.data.data;
+        }
+      } catch (endpointError) {
+        console.log('Current QR code endpoint not available, trying alternative method');
+      }
+
+      // Fallback: get current profile and generate QR code
+      try {
+        const profileData = await this.getCurrentProfile();
+        if (profileData && profileData.golfClubId) {
+          // Generate QR code URL for verification
+          const qrUrl = `https://mastergolfclub.com/member/verify/${profileData.golfClubId}/`;
+          return {
+            qrCode: null, // Will be generated by frontend
+            memberId: profileData.golfClubId,
+            memberEmail: profileData.email,
+            qrUrl: qrUrl
+          };
+        }
+      } catch (profileError) {
+        console.error('Error getting profile for QR code:', profileError);
+      }
+
+      throw new Error('Unable to generate QR code for current member');
     } catch (error: any) {
       console.error('Error getting QR code:', error);
 
@@ -326,6 +388,118 @@ export class ProfileService {
     }
   }
 
+  // ADDED: Get current member membership details
+  async getCurrentMemberMembershipDetails(): Promise<any> {
+    try {
+      const config: any = {};
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+
+      // Get user ID using the enhanced method
+      const userId = this.getCurrentUserId();
+      if (!userId) {
+        throw new Error('User ID not found. Please log in again.');
+      }
+
+      console.log('Getting membership details for user ID:', userId);
+
+      // First try to get current profile which includes membership info
+      const profileResponse = await this.getCurrentMemberProfile();
+      
+      if (profileResponse.data && profileResponse.data.code === 1) {
+        const profileData = profileResponse.data.data;
+        
+        // Transform profile data to membership details format
+        const membershipDetails = {
+          memberId: profileData.golfClubId || profileData.id || userId,
+          memberEmail: profileData.email,
+          type: profileData.plan || 'Standard Membership',
+          startDate: profileData.membershipStartDate,
+          expirationDate: profileData.membershipEndDate,
+          status: profileData.membershipStatus || 'Active',
+          isActive: profileData.daysUntilExpiry > 0,
+          daysUntilExpiry: profileData.daysUntilExpiry || 0,
+          paymentStatus: profileData.paymentStatus,
+          paymentMethod: profileData.paymentMethod,
+          profilePhoto: profileData.profilePhoto,
+          handicap: profileData.handicap,
+          lastVisit: profileData.lastVisit,
+          totalVisits: profileData.totalVisits,
+          membershipLevel: profileData.membershipLevel
+        };
+
+        return membershipDetails;
+      } else {
+        throw new Error(profileResponse.data?.message || 'Failed to fetch membership details');
+      }
+    } catch (error: any) {
+      console.error('Error fetching current member membership details:', error);
+
+      if (error.response?.status === 401) {
+        throw new Error('Session expired. Please log in again.');
+      } else if (error.response?.status === 404) {
+        throw new Error('Membership details not found. Please contact support.');
+      } else {
+        throw new Error(error.response?.data?.message || 'Failed to fetch membership details');
+      }
+    }
+  }
+
+  // ADDED: Get current member memberships (for multiple memberships if applicable)
+  async getCurrentMemberMemberships(): Promise<any[]> {
+    try {
+      const config: any = {};
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        return [];
+      }
+
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+
+      // Get user ID using the enhanced method
+      const userId = this.getCurrentUserId();
+      if (!userId) {
+        console.error('User ID not found');
+        return [];
+      }
+
+      console.log('Getting memberships for user ID:', userId);
+
+      // Try to get current memberships from dedicated endpoint with user_id
+      try {
+        const response = await axios.get(`${this.apiUrl}member/current-memberships/?user_id=${userId}`, config);
+        
+        if (response.data && response.data.code === 1 && response.data.data) {
+          return response.data.data;
+        }
+      } catch (endpointError) {
+        console.log('Current memberships endpoint not available, falling back to profile data');
+      }
+
+      // Fallback: get membership details from current profile
+      try {
+        const membershipDetails = await this.getCurrentMemberMembershipDetails();
+        return membershipDetails ? [membershipDetails] : [];
+      } catch (profileError) {
+        console.error('Error getting membership details from profile:', profileError);
+        return [];
+      }
+    } catch (error: any) {
+      console.error('Error fetching current member memberships:', error);
+      return [];
+    }
+  }
+
   // Existing methods
   getGender() {
     return axios.get(this.gender);
@@ -349,12 +523,128 @@ export class ProfileService {
 
   async getLastMemberId(year: string, month: string): Promise<string | null> {
     try {
-      const response = await axios.get(`${this.apiUrl}member/last-member-id/${year}/${month}/`);
+      const config: any = {};
+      
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers = {
+          'Authorization': `Bearer ${token}`
+        };
+      }
+
+      const response = await axios.get(`${this.apiUrl}member/last-member-id/${year}/${month}/`, config);
       return response.data?.data?.memberId || null;
     } catch (error) {
       console.error('Error fetching last member ID:', error);
       return null;
     }
+  }
+
+  // Get current user ID from localStorage or JWT token
+  getCurrentUserId(): string | null {
+    // First try to get from localStorage
+    let userId = localStorage.getItem('user_id');
+    
+    if (!userId) {
+      // Fallback: try to extract from JWT token
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const tokenData = JSON.parse(atob(token.split('.')[1]));
+          // The backend sends member_id in the JWT token, not user_id
+          userId = tokenData.member_id || tokenData.user_id || tokenData.sub || null;
+          
+          // If found in token, store it in localStorage for future use
+          if (userId) {
+            localStorage.setItem('user_id', userId.toString());
+            console.log('Member ID extracted from token and stored:', userId);
+          }
+        } catch (error) {
+          console.error('Error parsing JWT token:', error);
+        }
+      }
+    }
+    
+    return userId;
+  }
+
+  // Refresh user ID from token (useful after login)
+  refreshUserIdFromToken(): string | null {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        const tokenData = JSON.parse(atob(token.split('.')[1]));
+        // The backend sends member_id in the JWT token, not user_id
+        const userId = tokenData.member_id || tokenData.user_id || tokenData.sub || null;
+        
+        if (userId) {
+          localStorage.setItem('user_id', userId.toString());
+          console.log('Member ID refreshed from token:', userId);
+          return userId.toString();
+        }
+      } catch (error) {
+        console.error('Error parsing JWT token for user ID refresh:', error);
+      }
+    }
+    return null;
+  }
+
+  // Clear user data and refresh from token
+  clearAndRefreshUserData(): string | null {
+    // Clear existing user ID
+    localStorage.removeItem('user_id');
+    console.log('Cleared existing member ID, refreshing from token...');
+    
+    // Refresh from token
+    return this.refreshUserIdFromToken();
+  }
+
+  // Debug method to inspect JWT token
+  debugJWTToken(): void {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        const tokenData = JSON.parse(atob(token.split('.')[1]));
+        console.log('JWT Token Data:', tokenData);
+        console.log('Available fields:', Object.keys(tokenData));
+        console.log('member_id:', tokenData.member_id);
+        console.log('user_id:', tokenData.user_id);
+        console.log('sub:', tokenData.sub);
+      } catch (error) {
+        console.error('Error parsing JWT token for debugging:', error);
+      }
+    } else {
+      console.log('No access token found in localStorage');
+    }
+  }
+
+  // Check if user is authenticated
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('access_token');
+    const userId = localStorage.getItem('user_id');
+    
+    // Check if both token and user ID exist
+    if (!token || !userId) {
+      return false;
+    }
+    
+    // Additional check: verify token is not expired (basic check)
+    try {
+      const tokenData = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      
+      if (tokenData.exp && tokenData.exp < currentTime) {
+        // Token expired, clear storage
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_id');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error parsing token:', error);
+      return false;
+    }
+    
+    return true;
   }
 
   // ADDED: Method to validate image file

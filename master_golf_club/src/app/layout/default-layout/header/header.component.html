@@ -119,9 +119,9 @@
 
           <!-- Click-to-show dropdown menu -->
           <ul class="dropdown-menu" [class.show]="isUserDropdownOpen">
-            <li><a class="dropdown-item" routerLink="/profile">Profile</a></li>
-            <li><a class="dropdown-item" routerLink="/membership">Memberships</a></li>
-            <li><a class="dropdown-item" routerLink="/orders">Bookings</a></li>
+            <li><a class="dropdown-item" routerLink="/profile" (click)="onMenuItemClick()">Profile</a></li>
+            <li><a class="dropdown-item" routerLink="/membership" (click)="onMenuItemClick()">Memberships</a></li>
+            <li><a class="dropdown-item" routerLink="/orders" (click)="onMenuItemClick()">Bookings</a></li>
             <li><a class="dropdown-item" (click)="logout()" style="cursor: pointer;">Logout</a></li>
           </ul>
         </div>

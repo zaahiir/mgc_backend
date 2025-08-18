@@ -114,6 +114,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    // Debug JWT token to see what's available
+    this.profileService.debugJWTToken();
+    
+    // Clear and refresh user ID from token to ensure we have the latest
+    this.profileService.clearAndRefreshUserData();
     this.loadMemberProfile();
   }
 
@@ -130,16 +135,30 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     try {
       // Check if user is authenticated
-      if (!this.authService.isAuthenticated()) {
+      if (!this.authService.isAuthenticated() && !this.profileService.isAuthenticated()) {
         this.router.navigate(['/login']);
         return;
       }
+
+      // Get user ID from auth service, profile service, or localStorage
+      const userId = this.authService.getUserId() || this.profileService.getCurrentUserId() || localStorage.getItem('user_id');
+      if (!userId) {
+        throw new Error('User ID not found. Please log in again.');
+      }
+
+      console.log('Loading profile for user ID:', userId);
 
       // Fetch current user's profile
       const profileData = await this.profileService.getCurrentProfile();
       this.memberProfile = profileData;
 
-      console.log('Profile loaded successfully:', this.memberProfile);
+      console.log('Profile loaded successfully for user:', userId, this.memberProfile);
+
+      // Verify the profile belongs to the current user
+      if (this.memberProfile && this.memberProfile.id && this.memberProfile.id.toString() !== userId.toString()) {
+        console.warn('Profile ID mismatch. Expected:', userId, 'Got:', this.memberProfile.id);
+        // Still proceed, but log the warning
+      }
 
       // Load QR code after profile is loaded
       await this.loadQRCode();
@@ -358,7 +377,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
       // Generate QR code with member information
       const qrData = {
         memberId: this.memberProfile.golfClubId || this.memberProfile.id,
-        name: this.getFullName(),
         email: this.memberProfile.email
       };
 

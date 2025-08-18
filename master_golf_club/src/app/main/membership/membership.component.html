@@ -1,16 +1,25 @@
-<div class="membership-container">
-  <!-- Page Title Section -->
-  <div class="page-title" style="background-image: url('assets/images/golf-course-bg.jpg');">
+<!-- Membership Component -->
+<div class="home container-fluid p-0">
+  <!-- Background Image Banner -->
+  <section class="page-title d-flex justify-content-center align-items-center">
     <div class="bg-layer"></div>
-    <div class="auto-container">
-      <h1>Golf Membership Plans</h1>
-      <nav class="breadcrumb">
-        <span class="breadcrumb-item"><a href="/">Home</a></span>
-        <span class="breadcrumb-item">Membership</span>
-      </nav>
+    <div class="container">
+      <div class="row">
+        <div class="col-12">
+          <h1>Membership</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-center bg-transparent m-0">
+              <li class="breadcrumb-item"><a href="/">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Membership</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 
+  <!-- Main Content -->
+  <div class="container py-5">
   <!-- Pricing Section -->
   <section class="pricing-section">
     <div class="auto-container">
@@ -28,7 +37,7 @@
       <!-- Error State -->
       <div *ngIf="error && !loading" class="error-container">
         <div class="error-message">
-          <i class="icon-warning"></i>
+          <fa-icon [icon]="infoIcon" class="error-icon-svg"></fa-icon>
           <p>{{ error }}</p>
           <button class="theme-btn btn-one" (click)="loadPlans()">Try Again</button>
         </div>
@@ -49,11 +58,12 @@
                 <ul class="feature-list">
                   <li *ngFor="let feature of plan.features"
                       [class.cancel]="!feature.included">
-                    <i [class]="feature.included ? 'icon-check' : 'icon-cross'"></i>
+                    <fa-icon [icon]="feature.included ? checkCircleIcon : timesIcon" 
+                             [class]="feature.included ? 'feature-icon-check' : 'feature-icon-cross'"></fa-icon>
                     {{ feature.name }}
                   </li>
                   <li *ngIf="plan.features.length === 0" class="no-features">
-                    <i class="icon-info"></i>
+                    <fa-icon [icon]="infoIcon" class="feature-icon-info"></fa-icon>
                     No features specified for this plan
                   </li>
                 </ul>
@@ -65,7 +75,7 @@
         <!-- No Plans Available -->
         <div *ngIf="membershipPlans.length === 0" class="no-plans-container">
           <div class="no-plans-message">
-            <i class="icon-info"></i>
+            <fa-icon [icon]="infoIcon" class="no-plans-icon-svg"></fa-icon>
             <h3>No Plans Available</h3>
             <p>No membership plans are currently available.</p>
           </div>
@@ -80,9 +90,6 @@
       <div class="sec-title">
         <span class="sub-title">Account Status</span>
         <h2>Your Current Memberships</h2>
-        <button class="refresh-btn" (click)="refreshMemberships()" title="Refresh memberships">
-          <i class="icon-refresh">🔄</i>
-        </button>
       </div>
 
       <div class="membership-details">
@@ -96,14 +103,12 @@
                 <th>Expiration Date</th>
                 <th>Status</th>
                 <th>Days Left</th>
-                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let membership of currentMemberships">
                 <td>
                   <strong>{{ membership.memberId || 'N/A' }}</strong>
-                  <div class="member-name">{{ membership.memberName || 'Unknown' }}</div>
                 </td>
                 <td>{{ membership.type }}</td>
                 <td>{{ membership.startDate | date:'mediumDate' }}</td>
@@ -123,13 +128,6 @@
                     {{ membership.daysUntilExpiry > 0 ? membership.daysUntilExpiry + ' days' : 'Expired' }}
                   </span>
                 </td>
-                <td>
-                  <button class="btn-renew"
-                          [disabled]="!membership.isActive"
-                          (click)="renewMembership(membership)">
-                    {{ membership.isActive ? 'Renew Now' : 'Renew' }}
-                  </button>
-                </td>
               </tr>
             </tbody>
           </table>
@@ -138,7 +136,7 @@
         <!-- No Memberships Message -->
         <div *ngIf="currentMemberships.length === 0" class="no-memberships-container">
           <div class="no-memberships-message">
-            <i class="icon-info"></i>
+            <fa-icon [icon]="infoIcon" class="no-memberships-icon-svg"></fa-icon>
             <h3>No Memberships Found</h3>
             <p>You don't have any active memberships. Please contact the club administration to set up your membership.</p>
           </div>
@@ -157,25 +155,33 @@
 
       <div class="benefits-grid">
         <div class="benefit-card">
-          <div class="icon access-icon">🏌️</div>
+          <div class="icon access-icon">
+            <fa-icon [icon]="golfBallIcon" class="benefit-icon-svg"></fa-icon>
+          </div>
           <h3>Exclusive Course Access</h3>
           <p>Enjoy priority tee times and access to member-only course sections. Book up to 14 days in advance and get exclusive access to championship courses.</p>
         </div>
 
         <div class="benefit-card">
-          <div class="icon events-icon">🏆</div>
+          <div class="icon events-icon">
+            <fa-icon [icon]="trophyIcon" class="benefit-icon-svg"></fa-icon>
+          </div>
           <h3>Members-Only Events</h3>
           <p>Join exclusive tournaments, social gatherings, and networking events. Connect with fellow golf enthusiasts and build lasting relationships.</p>
         </div>
 
         <div class="benefit-card">
-          <div class="icon training-icon">⚡</div>
+          <div class="icon training-icon">
+            <fa-icon [icon]="boltIcon" class="benefit-icon-svg"></fa-icon>
+          </div>
           <h3>Professional Training</h3>
           <p>Enhance your game with personalized coaching sessions from PGA professionals. Access video analysis and custom training programs.</p>
         </div>
 
         <div class="benefit-card">
-          <div class="icon discount-icon">💰</div>
+          <div class="icon discount-icon">
+            <fa-icon [icon]="dollarSignIcon" class="benefit-icon-svg"></fa-icon>
+          </div>
           <h3>Member Discounts</h3>
           <p>Save on pro shop purchases, equipment rentals, and dining. Enjoy special rates on golf cart rentals and practice facilities.</p>
         </div>

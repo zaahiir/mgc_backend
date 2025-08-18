@@ -1,11 +1,19 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { 
+  faGolfBall, faTrophy, faBolt, faDollarSign,
+  faUsers, faCalendarAlt, faInfoCircle, faCheckCircle, faTimes
+} from '@fortawesome/free-solid-svg-icons';
 import { PlanService } from '../common-service/plan/plan.service';
+import { ProfileService } from '../common-service/profile/profile.service';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-membership',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FontAwesomeModule],
   templateUrl: './membership.component.html',
   styleUrl: './membership.component.css'
 })
@@ -18,9 +26,37 @@ export class MembershipComponent implements OnInit {
   // Current membership status for the user
   currentMemberships: any[] = [];
 
-  constructor(private planService: PlanService) {}
+  // Icons for benefits section
+  golfBallIcon = faGolfBall;
+  trophyIcon = faTrophy;
+  boltIcon = faBolt;
+  dollarSignIcon = faDollarSign;
+  usersIcon = faUsers;
+  calendarIcon = faCalendarAlt;
+  infoIcon = faInfoCircle;
+  checkCircleIcon = faCheckCircle;
+  timesIcon = faTimes;
+
+  constructor(
+    private planService: PlanService,
+    private profileService: ProfileService,
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
   ngOnInit() {
+    // Debug JWT token to see what's available
+    this.profileService.debugJWTToken();
+    
+    // Clear and refresh user ID from token to ensure we have the latest
+    this.profileService.clearAndRefreshUserData();
+    
+    // Check if user is authenticated
+    if (!this.authService.isAuthenticated() && !this.profileService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
     this.loadPlans();
     this.loadCurrentMemberships();
   }
@@ -82,11 +118,30 @@ export class MembershipComponent implements OnInit {
 
   async loadCurrentMemberships() {
     try {
-      this.currentMemberships = await this.planService.getCurrentMemberships();
+      // Get current user ID for verification
+      const userId = this.authService.getUserId() || this.profileService.getCurrentUserId() || localStorage.getItem('user_id');
+      if (!userId) {
+        console.error('User ID not found');
+        return;
+      }
+
+      console.log('Loading memberships for user ID:', userId);
+
+      // Use ProfileService to get current member memberships
+      this.currentMemberships = await this.profileService.getCurrentMemberMemberships();
+      
+      console.log('Current memberships loaded for user:', userId, this.currentMemberships);
+      
+      // Verify memberships belong to current user
+      this.currentMemberships.forEach((membership, index) => {
+        if (membership.memberId && membership.memberId.toString() !== userId.toString()) {
+          console.warn(`Membership ${index} ID mismatch. Expected: ${userId}, Got: ${membership.memberId}`);
+        }
+      });
       
       // If no memberships found, show appropriate message
       if (this.currentMemberships.length === 0) {
-        console.log('No memberships found for current user');
+        console.log('No memberships found for current user:', userId);
       }
     } catch (error) {
       console.error('Error loading current memberships:', error);
@@ -100,69 +155,6 @@ export class MembershipComponent implements OnInit {
   }
 
   loadDefaultMemberships() {
-    this.currentMemberships = [
-      {
-        type: 'Premium Membership',
-        startDate: '2024-01-15',
-        expirationDate: '2025-01-15',
-        status: 'Active',
-        isActive: true,
-        daysUntilExpiry: 45,
-        memberId: 'MGC24001',
-        memberName: 'John Doe',
-        memberEmail: 'john@example.com'
-      },
-      {
-        type: 'Regular Membership',
-        startDate: '2022-05-10',
-        expirationDate: '2023-05-10',
-        status: 'Expired',
-        isActive: false,
-        daysUntilExpiry: 0,
-        memberId: 'MGC22001',
-        memberName: 'Jane Smith',
-        memberEmail: 'jane@example.com'
-      }
-    ];
-  }
-
-
-
-
-
-  async renewMembership(membership: any) {
-    try {
-      console.log('Renewing membership:', membership);
-      
-      // Check if user is authenticated
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        alert('Please login to renew your membership.');
-        return;
-      }
-
-      // Call the plan service to renew membership
-      const result = await this.planService.renewMembership(membership.id);
-      
-      if (result.success) {
-        alert('Membership renewed successfully!');
-        // Reload current memberships to get updated data
-        await this.loadCurrentMemberships();
-      } else {
-        alert('Failed to renew membership. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error renewing membership:', error);
-      alert('An error occurred while renewing the membership. Please try again.');
-    }
-  }
-
-  // Method to refresh membership data
-  async refreshMemberships() {
-    try {
-      await this.loadCurrentMemberships();
-    } catch (error) {
-      console.error('Error refreshing memberships:', error);
-    }
+    this.currentMemberships = [];
   }
 }

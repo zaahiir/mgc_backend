@@ -53,7 +53,6 @@
                       </div>
                       <div class="profile-header-text">
                         <ul class="profile-meta">
-                          <li><fa-icon [icon]="faUser"></fa-icon>{{ getFullName() }}</li>
                           <li><fa-icon [icon]="faIdCard"></fa-icon>Member ID: {{ memberProfile?.golfClubId || memberProfile?.id }}</li>
                         </ul>
                         <h1 class="profile-name">{{ getFullName() }}</h1>
@@ -217,10 +216,9 @@
                 <div *ngIf="!qrCodeLoading && qrCodeUrl" class="qr-display">
                   <div class="qr-code-wrapper">
                     <img [src]="qrCodeUrl" alt="Member QR Code" class="qr-code-image">
-                    <div class="qr-info mt-3">
-                      <p class="qr-member-id">ID: {{ (qrCodeData && qrCodeData.memberId) || (memberProfile && memberProfile.golfClubId) || 'N/A' }}</p>
-                      <p class="qr-member-name">{{ (qrCodeData && qrCodeData.memberName) || getFullName() }}</p>
-                    </div>
+                                      <div class="qr-info mt-3">
+                    <p class="qr-member-id">ID: {{ (qrCodeData && qrCodeData.memberId) || (memberProfile && memberProfile.golfClubId) || 'N/A' }}</p>
+                  </div>
                   </div>
                   <div class="qr-actions mt-3">
                     <button class="btn btn-outline-primary me-2" (click)="downloadQRCode()" title="Download QR Code">

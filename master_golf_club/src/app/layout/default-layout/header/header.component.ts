@@ -1,10 +1,10 @@
 // header.component.ts
-import { Component, OnInit, Inject, PLATFORM_ID, HostListener, ElementRef } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Component, OnInit, Inject, PLATFORM_ID, HostListener, ElementRef, OnDestroy } from '@angular/core';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../../auth/auth.service';
 import { CollectionService } from '../../../main/common-service/collection/collection.service';
-import { Router } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-header',
@@ -13,12 +13,13 @@ import { Router } from '@angular/router';
   templateUrl: './header.component.html',
   styleUrl: './header.component.css'
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent implements OnInit, OnDestroy {
   isLoggedIn: boolean = false;
   isUserDropdownOpen: boolean = false;
   unreadNotifications: number = 0;
   showNotificationDropdown: boolean = false;
   notifications: any[] = [];
+  private routerSubscription: Subscription;
 
   constructor(
     private authService: AuthService,
@@ -26,7 +27,15 @@ export class HeaderComponent implements OnInit {
     private router: Router,
     private elementRef: ElementRef,
     @Inject(PLATFORM_ID) private platformId: Object
-  ) {}
+  ) {
+    // Subscribe to router events to close dropdown on navigation
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      this.closeUserDropdown();
+      this.showNotificationDropdown = false;
+    });
+  }
 
   ngOnInit(): void {
     // Check if user is logged in
@@ -136,6 +145,11 @@ export class HeaderComponent implements OnInit {
     this.isUserDropdownOpen = false;
   }
 
+  onMenuItemClick(): void {
+    // Close dropdown immediately when menu item is clicked
+    this.closeUserDropdown();
+  }
+
   private initializeDOMEvents(): void {
     // Use setTimeout to ensure DOM is ready
     setTimeout(() => {
@@ -191,5 +205,11 @@ export class HeaderComponent implements OnInit {
         this.router.navigate(['/login']);
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 }
