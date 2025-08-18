@@ -55,6 +55,7 @@ interface TimeSlot {
   total_participants?: number;
   isSelected?: boolean;
   isMultiSelected?: boolean;
+  participantCount?: number; // Individual participant count for this slot
 }
 
 interface BookingDetail {
@@ -450,7 +451,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           available_spots: slot.available_spots,
           total_participants: slot.total_participants,
           bookings: slot.bookings || [],
-          booking_count: slot.booking_count || 0
+          booking_count: slot.booking_count || 0,
+          participantCount: slot.participantCount || 1 // Ensure participantCount is set
         }));
       } else {
         this.currentTimeSlots = [];
@@ -546,6 +548,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     });
     
     slot.isSelected = true;
+    slot.participantCount = this.participantCount; // Set participant count for this slot
     this.selectedTime = slot.time;
     this.selectedSlots = [slot];
     this.updateSlotSummary();
@@ -557,8 +560,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       slot.isMultiSelected = false;
       this.selectedSlots = this.selectedSlots.filter(s => s.time !== slot.time);
     } else {
-      // Select slot - no limitation
+      // Select slot with current participant count
       slot.isMultiSelected = true;
+      slot.participantCount = this.participantCount; // Set participant count for this slot
       this.selectedSlots.push(slot);
     }
     
@@ -602,8 +606,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   confirmSlotSelection(): void {
     if (this.slotModalData) {
       const slot = this.slotModalData.slot;
-      // Set the global participantCount to the modal's requestedParticipants for this booking
-      this.participantCount = this.slotModalData.requestedParticipants;
+      // Set the participant count for this specific slot
+      slot.participantCount = this.slotModalData.requestedParticipants;
+      
       // Add to multi-select if we have slots selected, otherwise single select
       if (this.selectedSlots.length > 0) {
         this.toggleMultiSelectSlot(slot);
@@ -620,7 +625,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const totalParticipants = this.selectedSlots.reduce((sum, slot) => sum + this.participantCount, 0);
+    const totalParticipants = this.selectedSlots.reduce((sum, slot) => sum + slot.participantCount!, 0);
     const status = this.getSlotSummaryStatus();
 
     this.slotSummary = {
@@ -778,45 +783,41 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   private async createMultiBookings(dateStr: string): Promise<void> {
-    const bookingPromises = this.selectedSlots.map(async (slot) => {
-      const bookingData: any = {
+    try {
+      // Prepare slots data for multi-slot booking
+      const slotsData = this.selectedSlots.map(slot => ({
         course: this.course.id,
         tee: this.selectedTee!.id,
         bookingDate: dateStr,
         bookingTime: slot.time,
-        participants: this.participantCount,
-        totalPrice: this.getTotalPrice()
-      };
+        participants: slot.participantCount || this.participantCount,
+        totalPrice: this.getTotalPrice(),
+        is_join_request: slot.total_participants !== undefined && slot.total_participants > 0,
+        original_booking: slot.total_participants !== undefined && slot.total_participants > 0 
+          ? slot.bookings?.[0]?.booking_id 
+          : undefined
+      }));
 
-      // Check if this is a join request
-      const isJoinRequest = slot.total_participants !== undefined && slot.total_participants > 0;
-      if (isJoinRequest) {
-        const originalBooking = slot.bookings?.[0];
-        if (originalBooking) {
-          bookingData.is_join_request = true;
-          bookingData.original_booking = originalBooking.booking_id;
-          bookingData.status = 'pending_approval';
-        }
+      // Use the new multi-slot booking API
+      const response = await this.collectionService.createMultiSlotBooking({ slots: slotsData });
+
+      if (response && response.data && response.data.code === 1) {
+        this.successMessage = `Successfully created ${response.data.data.totalBookings} booking(s)!`;
+        this.bookingConfirmationData = {
+          groupId: response.data.data.groupId,
+          totalBookings: response.data.data.totalBookings,
+          selectedSlots: this.selectedSlots.map(slot => ({
+            time: slot.time,
+            participants: slot.participantCount || this.participantCount
+          }))
+        };
+        this.showBookingModal = true;
+      } else {
+        this.errorMessage = response?.data?.message || 'Failed to create multi-slot bookings';
       }
-
-      return this.collectionService.createBooking(bookingData);
-    });
-
-    const responses = await Promise.all(bookingPromises);
-    const successfulBookings = responses.filter(response => 
-      response && response.data && response.data.code === 1
-    );
-
-    if (successfulBookings.length === this.selectedSlots.length) {
-      this.successMessage = `Successfully created ${successfulBookings.length} booking${successfulBookings.length > 1 ? 's' : ''}!`;
-      this.bookingConfirmationData = {
-        totalBookings: successfulBookings.length,
-        selectedSlots: this.selectedSlots.map(slot => slot.time)
-      };
-      this.showBookingModal = true;
-    } else {
-      const failedCount = this.selectedSlots.length - successfulBookings.length;
-      this.errorMessage = `Failed to create ${failedCount} booking${failedCount > 1 ? 's' : ''}. Please try again.`;
+    } catch (error) {
+      console.error('Error creating multi-slot bookings:', error);
+      this.errorMessage = 'Failed to create multi-slot bookings. Please try again.';
     }
   }
 
@@ -964,5 +965,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   getMaxModalParticipants(): number {
     if (!this.slotModalData) return 1;
     return Math.min(this.slotModalData.availableSpots, 4);
+  }
+
+  // Helper method for booking confirmation modal
+  getTotalParticipants(slots: any[]): number {
+    return slots.reduce((total, slot) => total + (slot.participants || 1), 0);
   }
 }

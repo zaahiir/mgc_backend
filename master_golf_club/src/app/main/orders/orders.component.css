@@ -382,57 +382,85 @@ body {
   gap: 5px;
 }
 
+/* Enhanced status badges */
 .status-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
-  text-align: center;
-  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-completed {
+  background: #28a745;
+  color: white;
 }
 
 .status-confirmed {
-  background-color: var(--theme-color);
-  color: var(--text-color-one);
-  border: 1px solid var(--theme-color);
+  background: #17a2b8;
+  color: white;
 }
 
 .status-pending {
-  background-color: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeaa7;
-}
-
-.status-cancelled {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: #ffc107;
+  color: #212529;
 }
 
 .status-pending-approval {
-  background-color: #cce5ff;
-  color: #004085;
-  border: 1px solid #b3d7ff;
+  background: #fd7e14;
+  color: white;
 }
 
 .status-approved {
-  background-color: var(--theme-color);
-  color: var(--text-color-one);
-  border: 1px solid var(--theme-color);
+  background: #28a745;
+  color: white;
 }
 
 .status-rejected {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: #dc3545;
+  color: white;
+}
+
+.status-cancelled {
+  background: #6c757d;
+  color: white;
 }
 
 .status-default {
-  background-color: #e2e3e5;
-  color: #383d41;
-  border: 1px solid #d6d8db;
+  background: #6c757d;
+  color: white;
 }
 
+/* Slot full indicator */
+.slot-full-indicator {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #6c757d;
+  color: white;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Approved info styling */
+.approved-info {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.approved-info i {
+  margin-right: 5px;
+}
+
+.approved-info small {
+  display: block;
+  color: #6c757d;
+  font-weight: normal;
+  margin-top: 2px;
+}
 
 
 /* Action Buttons */

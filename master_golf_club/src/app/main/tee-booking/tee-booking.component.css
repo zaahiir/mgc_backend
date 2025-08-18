@@ -702,6 +702,7 @@
 /* Updated selected and multi-selected styles to work with golf ball */
 .time-slot.selected .golf-ball {
     background: var(--theme-color) !important;
+    box-shadow: 0 0 0 3px rgba(119, 169, 106, 0.3) !important;
 }
 
 .time-slot.selected .time {
@@ -711,11 +712,24 @@
 
 .time-slot.multi-selected .golf-ball {
     background: var(--theme-color) !important;
+    box-shadow: 0 0 0 3px rgba(119, 169, 106, 0.3) !important;
 }
 
 .time-slot.multi-selected .time {
     color: white !important;
     font-weight: 600 !important;
+}
+
+/* Ensure selected states persist */
+.time-slot.selected,
+.time-slot.multi-selected {
+    z-index: 2;
+}
+
+.time-slot.selected:hover .golf-ball,
+.time-slot.multi-selected:hover .golf-ball {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(119, 169, 106, 0.4) !important;
 }
 
 /* Partial slot theme styles */
@@ -2228,33 +2242,54 @@
 
 /* Selected times display */
 .selected-times {
-  margin-top: 15px !important;
-  padding-top: 15px !important;
-  border-top: 1px solid #dee2e6 !important;
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
 }
 
 .selected-times-label {
-  font-size: 12px !important;
-  color: #666 !important;
-  font-weight: 500 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  margin-bottom: 8px !important;
+    font-weight: 600;
+    color: var(--title-color);
+    margin-bottom: 10px;
+    font-size: 14px;
 }
 
 .selected-times-list {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .time-item {
-  background-color: var(--theme-color) !important;
-  color: white !important;
-  padding: 4px 12px !important;
-  border-radius: 16px !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.time-item .time {
+    font-weight: 600;
+    color: var(--theme-color);
+}
+
+.time-item .participants {
+    color: var(--text-color);
+    font-size: 12px;
+}
+
+.total-participants {
+    margin-top: 10px;
+    padding: 10px;
+    background: var(--theme-color);
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
 }
 
 /* Enhanced booking summary for multi-select */

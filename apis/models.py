@@ -276,18 +276,30 @@ class BookingModel(models.Model):
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
         ('cancelled', 'Cancelled'),
-        ('pending_approval', 'Pending Approval'),  # New status for join requests
-        ('approved', 'Approved'),  # New status for approved join requests
-        ('rejected', 'Rejected'),  # New status for rejected join requests
+        ('pending_approval', 'Pending Approval'),  # For join requests
+        ('approved', 'Approved'),  # For approved join requests
+        ('rejected', 'Rejected'),  # For rejected join requests
+        ('completed', 'Completed'),  # New status for completed bookings
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
-    # New fields for join request functionality
+    # Enhanced fields for multi-slot booking
+    is_multi_slot_booking = models.BooleanField(default=False, help_text="Whether this is part of a multi-slot booking")
+    multi_slot_group_id = models.CharField(max_length=50, null=True, blank=True, help_text="Group ID for multi-slot bookings")
+    slot_order = models.PositiveIntegerField(default=1, help_text="Order of slot in multi-slot booking")
+    
+    # Join request functionality
     original_booking = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, 
                                        related_name='join_requests', 
                                        help_text="Original booking this join request is for")
     is_join_request = models.BooleanField(default=False, 
                                          help_text="Whether this booking is a join request")
+    
+    # Enhanced approval tracking
+    approved_by = models.ForeignKey(MemberModel, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='approved_bookings',
+                                  help_text="Member who approved this join request")
+    approved_at = models.DateTimeField(null=True, blank=True, help_text="When the join request was approved")
     
     notes = models.TextField(null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
@@ -300,6 +312,11 @@ class BookingModel(models.Model):
         if not self.totalPrice:
             # Since pricePerPerson is removed, set totalPrice to 0 or a default value
             self.totalPrice = Decimal('0')
+        
+        # Generate booking ID if not provided
+        if not self.booking_id:
+            self.booking_id = self.generate_booking_id()
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -325,11 +342,43 @@ class BookingModel(models.Model):
                 course=self.course,
                 bookingDate=self.bookingDate,
                 bookingTime=self.bookingTime,
-                status__in=['pending', 'confirmed']
+                status__in=['pending', 'confirmed', 'completed']
             ).exclude(id=self.id if self.id else None)
             
             if overlapping.exists():
                 raise ValidationError("This time slot is already booked")
+    
+    def generate_booking_id(self):
+        """Generate unique booking ID in format: MGCBK25AUG00010"""
+        from datetime import datetime
+        
+        now = datetime.now()
+        year_suffix = str(now.year)[-2:]  # Last 2 digits of year
+        month_abbr = now.strftime('%b').upper()  # 3-letter month
+        
+        base_id = f"MGCBK{year_suffix}{month_abbr}"
+        
+        # Get the next sequential number for this month
+        existing_bookings = BookingModel.objects.filter(
+            booking_id__startswith=base_id
+        ).order_by('-booking_id')
+        
+        if existing_bookings.exists():
+            # Extract the last number and increment
+            last_booking_id = existing_bookings.first().booking_id
+            try:
+                # Extract the number part (last 5 digits)
+                last_number = int(last_booking_id[-5:])
+                next_number = last_number + 1
+            except (ValueError, IndexError):
+                next_number = 1
+        else:
+            next_number = 1
+        
+        # Format with leading zeros (5 digits)
+        booking_id = f"{base_id}{next_number:05d}"
+        
+        return booking_id
     
     @property
     def duration_hours(self):
@@ -361,12 +410,12 @@ class BookingModel(models.Model):
             # For join requests, count the original booking participants
             return self.original_booking.participants if self.original_booking else 0
         else:
-            # For regular bookings, count all confirmed bookings for this slot
+            # For regular bookings, count all confirmed/completed bookings for this slot
             return BookingModel.objects.filter(
                 course=self.course,
                 bookingDate=self.bookingDate,
                 bookingTime=self.bookingTime,
-                status__in=['confirmed', 'pending'],
+                status__in=['confirmed', 'pending', 'completed'],
                 is_join_request=False
             ).aggregate(total=models.Sum('participants'))['total'] or 0
     
@@ -408,6 +457,67 @@ class BookingModel(models.Model):
             is_join_request=True,
             status='pending_approval'
         )
+    
+    def approve_join_request(self, join_request_id, approved_by):
+        """Approve a join request and update status"""
+        try:
+            join_request = BookingModel.objects.get(
+                id=join_request_id,
+                original_booking=self,
+                is_join_request=True,
+                status='pending_approval'
+            )
+            
+            # Check if slot can accommodate the join request
+            total_participants = self.slot_participant_count + join_request.participants
+            if total_participants > 4:
+                raise ValidationError("Slot cannot accommodate additional participants")
+            
+            # Approve the join request
+            join_request.status = 'approved'
+            join_request.approved_by = approved_by
+            join_request.approved_at = timezone.now()
+            join_request.save()
+            
+            # Generate new booking ID for the approved slot
+            join_request.booking_id = join_request.generate_booking_id()
+            join_request.save()
+            
+            # Update original booking status if slot is now full
+            if total_participants == 4:
+                self.status = 'completed'
+                self.save()
+            
+            return True
+            
+        except BookingModel.DoesNotExist:
+            return False
+    
+    def reject_join_request(self, join_request_id):
+        """Reject a join request"""
+        try:
+            join_request = BookingModel.objects.get(
+                id=join_request_id,
+                original_booking=self,
+                is_join_request=True,
+                status='pending_approval'
+            )
+            
+            join_request.status = 'rejected'
+            join_request.save()
+            
+            return True
+            
+        except BookingModel.DoesNotExist:
+            return False
+    
+    def is_slot_full(self):
+        """Check if the slot is completely full"""
+        return self.slot_participant_count >= 4
+    
+    def can_accept_more_participants(self):
+        """Check if the slot can accept more participants"""
+        return self.slot_participant_count < 4
 
 
 class NotificationModel(models.Model):

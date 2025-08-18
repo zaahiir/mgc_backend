@@ -34,9 +34,25 @@ interface BookingData {
   bookingTime: string;
   participants: number;
   totalPrice: number;
-  status?: 'pending' | 'confirmed' | 'cancelled' | 'pending_approval' | 'approved' | 'rejected';
+  status?: 'pending' | 'confirmed' | 'cancelled' | 'pending_approval' | 'approved' | 'rejected' | 'completed';
   is_join_request?: boolean;
   original_booking?: number;
+  is_multi_slot_booking?: boolean;
+  multi_slot_group_id?: string;
+  slot_order?: number;
+}
+
+interface MultiSlotBookingData {
+  slots: Array<{
+    course: number;
+    tee: number;
+    bookingDate: string;
+    bookingTime: string;
+    participants: number;
+    totalPrice?: number;
+    is_join_request?: boolean;
+    original_booking?: number;
+  }>;
 }
 
 interface BookingDetail {
@@ -58,6 +74,9 @@ interface TimeSlot {
   total_participants?: number;
   bookings?: BookingDetail[];
   booking_count?: number;
+  isSelected?: boolean;
+  isMultiSelected?: boolean;
+  participantCount?: number; // Individual participant count for this slot
 }
 
 interface Notification {
@@ -91,6 +110,13 @@ interface BookingWithDetails extends BookingData {
   canJoinSlot: boolean;
   joinRequests: BookingWithDetails[];
   originalBookingInfo?: any;
+  isMultiSlotBooking?: boolean;
+  multiSlotGroupId?: string;
+  slotOrder?: number;
+  approvedBy?: any;
+  approvedAt?: string;
+  isSlotFull?: boolean;
+  canAcceptMoreParticipants?: boolean;
 }
 
 @Injectable({
@@ -225,6 +251,22 @@ export class CollectionService {
   // Join request methods
   createJoinRequest(bookingData: BookingData) {
     const url = `${this.apiUrl}booking/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, bookingData, config);
+  }
+
+  // Multi-slot booking method
+  createMultiSlotBooking(bookingData: MultiSlotBookingData) {
+    const url = `${this.apiUrl}booking/create_multi_slot_booking/`;
     const config: any = {};
     
     // Add authorization headers if available

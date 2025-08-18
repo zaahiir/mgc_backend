@@ -473,6 +473,19 @@ class BookingSerializer(serializers.ModelSerializer):
     joinRequests = serializers.SerializerMethodField(read_only=True)
     originalBookingInfo = serializers.SerializerMethodField(read_only=True)
     
+    # Enhanced fields for multi-slot booking
+    isMultiSlotBooking = serializers.BooleanField(source='is_multi_slot_booking', read_only=True)
+    multiSlotGroupId = serializers.CharField(source='multi_slot_group_id', read_only=True)
+    slotOrder = serializers.IntegerField(source='slot_order', read_only=True)
+    
+    # Enhanced approval tracking
+    approvedBy = serializers.SerializerMethodField(read_only=True)
+    approvedAt = serializers.DateTimeField(source='approved_at', read_only=True)
+    
+    # Enhanced status tracking
+    isSlotFull = serializers.BooleanField(source='is_slot_full', read_only=True)
+    canAcceptMoreParticipants = serializers.BooleanField(source='can_accept_more_participants', read_only=True)
+    
     class Meta:
         model = BookingModel
         fields = [
@@ -480,13 +493,18 @@ class BookingSerializer(serializers.ModelSerializer):
             'tee', 'teeInfo', 'bookingDate', 'formattedDate', 'bookingTime', 'endTime',
             'participants', 'totalPrice', 'status', 'notes', 'canCancel',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
-            'joinRequests', 'originalBookingInfo', 'is_join_request', 'original_booking'
+            'joinRequests', 'originalBookingInfo', 'is_join_request', 'original_booking',
+            'isMultiSlotBooking', 'multiSlotGroupId', 'slotOrder', 'approvedBy', 'approvedAt',
+            'isSlotFull', 'canAcceptMoreParticipants'
         ]
         extra_kwargs = {
             'member': {'required': False},  # Will be set automatically from authentication
             'totalPrice': {'required': False},
             'is_join_request': {'required': False, 'default': False},
-            'original_booking': {'required': False}
+            'original_booking': {'required': False},
+            'is_multi_slot_booking': {'required': False, 'default': False},
+            'multi_slot_group_id': {'required': False},
+            'slot_order': {'required': False, 'default': 1}
         }
     
     def get_memberFullName(self, obj):
@@ -545,6 +563,16 @@ class BookingSerializer(serializers.ModelSerializer):
             }
         return None
     
+    def get_approvedBy(self, obj):
+        """Get approved by member info"""
+        if obj.approved_by:
+            return {
+                'id': obj.approved_by.id,
+                'name': f"{obj.approved_by.firstName} {obj.approved_by.lastName}",
+                'email': obj.approved_by.email
+            }
+        return None
+    
     def validate_bookingDate(self, value):
         if value < timezone.now().date():
             raise serializers.ValidationError("Cannot book for past dates")
@@ -556,7 +584,7 @@ class BookingSerializer(serializers.ModelSerializer):
         return value
     
     def validate(self, data):
-        """Custom validation for join requests"""
+        """Custom validation for join requests and multi-slot bookings"""
         if data.get('is_join_request', False):
             original_booking = data.get('original_booking')
             if not original_booking:
@@ -579,6 +607,14 @@ class BookingSerializer(serializers.ModelSerializer):
                 
                 if existing_request:
                     raise serializers.ValidationError("You have already requested to join this slot")
+        
+        # Validate multi-slot booking
+        if data.get('is_multi_slot_booking', False):
+            if not data.get('multi_slot_group_id'):
+                raise serializers.ValidationError("Multi-slot group ID is required for multi-slot bookings")
+            
+            if data.get('slot_order', 1) < 1:
+                raise serializers.ValidationError("Slot order must be a positive integer")
         
         return data
 

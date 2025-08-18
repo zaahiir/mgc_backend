@@ -2063,13 +2063,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         try:
             member = MemberModel.objects.get(email=request.user.email)
             
-            # Generate unique booking ID
-            booking_id = self.generate_booking_id()
-            
-            # Add member and booking ID to request data
+            # Add member to request data
             data = request.data.copy()
             data['member'] = member.id
-            data['booking_id'] = booking_id
             
             # Set status to 'confirmed' for direct bookings (non-join requests)
             if not data.get('is_join_request', False):
@@ -2096,13 +2092,14 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': 'Booking created successfully',
                 'data': {
                     'id': booking.id,
-                    'bookingId': booking_id,
+                    'bookingId': booking.booking_id,
                     'courseName': booking.course.courseName,
                     'teeLabel': f"{booking.tee.holeNumber} Holes",
                     'date': booking.bookingDate,
                     'time': booking.bookingTime.strftime('%I:%M %p'),
                     'participants': booking.participants,
-                    'status': booking.status
+                    'status': booking.status,
+                    'isJoinRequest': booking.is_join_request
                 }
             }, status=201)
             
@@ -2116,38 +2113,6 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'code': 0,
                 'message': str(e)
             }, status=400)
-
-    def generate_booking_id(self):
-        """Generate unique booking ID in format: MGCBK25AUG00010"""
-        from datetime import datetime
-        
-        now = datetime.now()
-        year_suffix = str(now.year)[-2:]  # Last 2 digits of year
-        month_abbr = now.strftime('%b').upper()  # 3-letter month
-        
-        base_id = f"MGCBK{year_suffix}{month_abbr}"
-        
-        # Get the next sequential number for this month
-        existing_bookings = BookingModel.objects.filter(
-            booking_id__startswith=base_id
-        ).order_by('-booking_id')
-        
-        if existing_bookings.exists():
-            # Extract the last number and increment
-            last_booking_id = existing_bookings.first().booking_id
-            try:
-                # Extract the number part (last 5 digits)
-                last_number = int(last_booking_id[-5:])
-                next_number = last_number + 1
-            except (ValueError, IndexError):
-                next_number = 1
-        else:
-            next_number = 1
-        
-        # Format with leading zeros (5 digits)
-        booking_id = f"{base_id}{next_number:05d}"
-        
-        return booking_id
 
     @action(detail=True, methods=['patch'])
     def cancel_booking(self, request, pk=None):
@@ -2210,22 +2175,36 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Slot cannot accommodate additional participants'
                 }, status=400)
             
-            # Approve the join request
-            join_request.status = 'confirmed'
-            join_request.save()
+            # Approve the join request using the model method
+            success = original_booking.approve_join_request(join_request_id, original_booking.member)
             
-            # Create notification for the joining member
-            NotificationModel.create_join_response_notification(
-                recipient=join_request.member,
-                sender=original_booking.member,
-                booking=original_booking,
-                is_approved=True
-            )
-            
-            return Response({
-                'code': 1,
-                'message': 'Join request approved successfully'
-            })
+            if success:
+                # Create notification for the joining member
+                NotificationModel.create_join_response_notification(
+                    recipient=join_request.member,
+                    sender=original_booking.member,
+                    booking=original_booking,
+                    is_approved=True
+                )
+                
+                # Refresh the join request to get updated data
+                join_request.refresh_from_db()
+                
+                return Response({
+                    'code': 1,
+                    'message': 'Join request approved successfully',
+                    'data': {
+                        'joinRequestId': join_request.id,
+                        'newBookingId': join_request.booking_id,
+                        'status': join_request.status,
+                        'isSlotFull': original_booking.is_slot_full()
+                    }
+                })
+            else:
+                return Response({
+                    'code': 0,
+                    'message': 'Failed to approve join request'
+                }, status=400)
             
         except Exception as e:
             return Response({
@@ -2260,23 +2239,116 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Join request not found'
                 }, status=404)
             
-            # Reject the join request
-            join_request.status = 'rejected'
-            join_request.save()
+            # Reject the join request using the model method
+            success = original_booking.reject_join_request(join_request_id)
             
-            # Create notification for the joining member
-            NotificationModel.create_join_response_notification(
-                recipient=join_request.member,
-                sender=original_booking.member,
-                booking=original_booking,
-                is_approved=False
-            )
+            if success:
+                # Create notification for the joining member
+                NotificationModel.create_join_response_notification(
+                    recipient=join_request.member,
+                    sender=original_booking.member,
+                    booking=original_booking,
+                    is_approved=False
+                )
+                
+                return Response({
+                    'code': 1,
+                    'message': 'Join request rejected successfully'
+                })
+            else:
+                return Response({
+                    'code': 0,
+                    'message': 'Failed to reject join request'
+                }, status=400)
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': str(e)
+            }, status=400)
+
+    @action(detail=False, methods=['post'])
+    def create_multi_slot_booking(self, request):
+        """Create multiple bookings for different time slots with different participant counts"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Validate request data
+            slots_data = request.data.get('slots', [])
+            if not slots_data or not isinstance(slots_data, list):
+                return Response({
+                    'code': 0,
+                    'message': 'Slots data is required and must be a list'
+                }, status=400)
+            
+            # Generate unique group ID for multi-slot booking
+            import uuid
+            group_id = f"multi_{uuid.uuid4().hex[:8]}"
+            
+            created_bookings = []
+            
+            for i, slot_data in enumerate(slots_data):
+                # Validate slot data
+                required_fields = ['course', 'tee', 'bookingDate', 'bookingTime', 'participants']
+                for field in required_fields:
+                    if field not in slot_data:
+                        return Response({
+                            'code': 0,
+                            'message': f'Missing required field: {field}'
+                        }, status=400)
+                
+                # Create booking data for this slot
+                booking_data = {
+                    'member': member.id,
+                    'course': slot_data['course'],
+                    'tee': slot_data['tee'],
+                    'bookingDate': slot_data['bookingDate'],
+                    'bookingTime': slot_data['bookingTime'],
+                    'participants': slot_data['participants'],
+                    'totalPrice': slot_data.get('totalPrice', 0),
+                    'is_multi_slot_booking': True,
+                    'multi_slot_group_id': group_id,
+                    'slot_order': i + 1,
+                    'status': 'confirmed'
+                }
+                
+                # Check if this is a join request
+                if slot_data.get('is_join_request', False):
+                    booking_data['is_join_request'] = True
+                    booking_data['original_booking'] = slot_data.get('original_booking')
+                    booking_data['status'] = 'pending_approval'
+                
+                serializer = self.get_serializer(data=booking_data)
+                serializer.is_valid(raise_exception=True)
+                
+                # Create the booking
+                booking = serializer.save()
+                created_bookings.append(serializer.data)
+                
+                # Handle notifications for join requests
+                if booking.is_join_request and booking.original_booking:
+                    NotificationModel.create_join_request_notification(
+                        recipient=booking.original_booking.member,
+                        sender=member,
+                        booking=booking.original_booking,
+                        join_request=booking
+                    )
             
             return Response({
                 'code': 1,
-                'message': 'Join request rejected successfully'
-            })
+                'message': f'Successfully created {len(created_bookings)} booking(s)',
+                'data': {
+                    'groupId': group_id,
+                    'totalBookings': len(created_bookings),
+                    'bookings': created_bookings
+                }
+            }, status=201)
             
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=404)
         except Exception as e:
             return Response({
                 'code': 0,
@@ -2387,7 +2459,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 tee=tee,
                 bookingDate=booking_date,
                 bookingTime=slot_time,
-                status__in=['confirmed', 'pending'],
+                status__in=['confirmed', 'pending', 'completed'],
                 is_join_request=False
             )
             

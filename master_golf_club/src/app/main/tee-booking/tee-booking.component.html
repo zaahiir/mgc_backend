@@ -233,9 +233,13 @@
               <div class="selected-times" *ngIf="selectedSlots.length > 0">
                 <div class="selected-times-label">Selected Times:</div>
                 <div class="selected-times-list">
-                  <span class="time-item" *ngFor="let slot of selectedSlots">
-                    {{slot.time}}
-                  </span>
+                  <div class="time-item" *ngFor="let slot of selectedSlots; let i = index">
+                    <span class="time">{{slot.formatted_time}}</span>
+                    <span class="participants">({{slot.participantCount || participantCount}} player{{(slot.participantCount || participantCount) > 1 ? 's' : ''}})</span>
+                  </div>
+                </div>
+                <div class="total-participants">
+                  <strong>Total Participants: {{slotSummary?.totalParticipants || (selectedSlots.length * participantCount)}}</strong>
                 </div>
               </div>
             </div>
@@ -454,16 +458,25 @@
           <span class="value">{{bookingConfirmationData.time || selectedTime}}</span>
         </div>
         <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
-          <span class="label">Times:</span>
-          <span class="value">{{bookingConfirmationData.selectedSlots.join(', ')}}</span>
+          <span class="label">Slots:</span>
+          <div class="value slots-list">
+            <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots">
+              <span class="slot-time">{{slot.time}}</span>
+              <span class="slot-participants">({{slot.participants}} player{{slot.participants > 1 ? 's' : ''}})</span>
+            </div>
+          </div>
         </div>
-        <div class="detail-item">
+        <div class="detail-item" *ngIf="!bookingConfirmationData.selectedSlots">
           <span class="label">Participants:</span>
           <span class="value">{{bookingConfirmationData.participants || participantCount}}</span>
         </div>
-        <div class="detail-item" *ngIf="bookingConfirmationData.totalBookings">
+        <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
           <span class="label">Total Participants:</span>
-          <span class="value">{{bookingConfirmationData.totalBookings * participantCount}}</span>
+          <span class="value">{{getTotalParticipants(bookingConfirmationData.selectedSlots)}}</span>
+        </div>
+        <div class="detail-item" *ngIf="bookingConfirmationData.groupId">
+          <span class="label">Group ID:</span>
+          <span class="value">{{bookingConfirmationData.groupId}}</span>
         </div>
         <div class="detail-item">
           <span class="label">Status:</span>

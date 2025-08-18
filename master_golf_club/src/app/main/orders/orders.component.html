@@ -107,8 +107,8 @@
               </td>
               <td>
                 <div class="status-container">
-                  <span class="status-badge" [class]="getStatusClass(booking.status)">
-                    {{getStatusText(booking.status)}}
+                  <span class="status-badge" [class]="getStatusClass(booking)">
+                    {{getStatusDisplayText(booking)}}
                   </span>
                 </div>
               </td>
@@ -120,9 +120,15 @@
                   <button *ngIf="booking.canCancel" class="btn btn-danger btn-sm" (click)="cancelBooking(booking.id)">
                     Cancel
                   </button>
-                  <button *ngIf="booking.canJoinSlot" class="btn btn-success btn-sm">
+                  <!-- Only show join button if slot can accept more participants and is not full -->
+                  <button *ngIf="canAcceptMoreParticipants(booking) && !isSlotFull(booking)" 
+                          class="btn btn-success btn-sm">
                     Join
                   </button>
+                  <!-- Show "Slot Full" indicator when slot is full -->
+                  <span *ngIf="isSlotFull(booking)" class="slot-full-indicator">
+                    Slot Full
+                  </span>
                 </div>
               </td>
             </tr>
@@ -141,8 +147,8 @@
                         </div>
                         <div class="request-details">
                           <span class="participants">{{request.participants}} participants</span>
-                          <span class="status" [class]="getStatusClass(request.status)">
-                            {{getStatusText(request.status)}}
+                          <span class="status" [class]="getStatusClass(request)">
+                            {{getStatusDisplayText(request)}}
                           </span>
                         </div>
                       </div>
@@ -153,6 +159,13 @@
                         <button class="btn btn-danger btn-sm" (click)="rejectJoinRequest(booking.id, request.id)">
                           <i class="fas fa-times"></i> Reject
                         </button>
+                      </div>
+                      <!-- Show approval info if request was approved -->
+                      <div class="request-actions" *ngIf="request.status === 'approved'">
+                        <span class="approved-info">
+                          <i class="fas fa-check-circle"></i> Approved
+                          <small *ngIf="request.approvedAt">on {{request.approvedAt | date:'MMM d, yyyy'}}</small>
+                        </span>
                       </div>
                     </div>
                   </div>

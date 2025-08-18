@@ -32,6 +32,8 @@ interface Booking {
   totalPrice?: number;
   teeInfo?: string;
   formattedDate?: string;
+  isSlotFull?: boolean; // Added for enhanced status
+  canAcceptMoreParticipants?: boolean; // Added for enhanced status
 }
 
 interface Notification {
@@ -256,9 +258,22 @@ export class OrdersComponent implements OnInit {
 
   async approveJoinRequest(bookingId: number, joinRequestId: number) {
     try {
-      await this.collectionService.approveJoinRequest(bookingId, joinRequestId);
-      this.loadBookings(); // Reload bookings to update status
-      this.showSuccessMessage('Join request approved successfully');
+      const response = await this.collectionService.approveJoinRequest(bookingId, joinRequestId);
+      
+      if (response && response.data && response.data.code === 1) {
+        // Check if slot is now full
+        const isSlotFull = response.data.data.isSlotFull;
+        
+        if (isSlotFull) {
+          this.showSuccessMessage('Join request approved and slot is now full!');
+        } else {
+          this.showSuccessMessage('Join request approved successfully');
+        }
+        
+        this.loadBookings(); // Reload bookings to update status
+      } else {
+        this.showErrorMessage('Failed to approve join request');
+      }
     } catch (error) {
       console.error('Error approving join request:', error);
       this.showErrorMessage('Failed to approve join request');
@@ -297,30 +312,6 @@ export class OrdersComponent implements OnInit {
   closeBookingDetail() {
     this.selectedBooking = null;
     this.showBookingDetails = false;
-  }
-
-  getStatusClass(status: string): string {
-    switch (status) {
-      case 'confirmed': return 'status-confirmed';
-      case 'pending': return 'status-pending';
-      case 'cancelled': return 'status-cancelled';
-      case 'pending_approval': return 'status-pending-approval';
-      case 'approved': return 'status-approved';
-      case 'rejected': return 'status-rejected';
-      default: return 'status-default';
-    }
-  }
-
-  getStatusText(status: string): string {
-    switch (status) {
-      case 'confirmed': return 'Confirmed';
-      case 'pending': return 'Pending';
-      case 'cancelled': return 'Cancelled';
-      case 'pending_approval': return 'Pending Approval';
-      case 'approved': return 'Approved';
-      case 'rejected': return 'Rejected';
-      default: return status;
-    }
   }
 
   formatDate(dateString: string): string {
@@ -367,7 +358,76 @@ export class OrdersComponent implements OnInit {
     return !!(booking.availableSpots && booking.availableSpots > 0 && booking.status === 'confirmed');
   }
 
+  // Helper method to check if a booking can accept more participants
+  canAcceptMoreParticipants(booking: Booking): boolean {
+    if (!booking.availableSpots || !booking.canAcceptMoreParticipants) {
+      return false;
+    }
+    return booking.availableSpots > 0 && booking.canAcceptMoreParticipants;
+  }
 
+  // Helper method to check if a booking slot is full
+  isSlotFull(booking: Booking): boolean {
+    return booking.isSlotFull || (booking.availableSpots !== undefined && booking.availableSpots <= 0);
+  }
+
+  // Helper method to get status display text
+  getStatusDisplayText(booking: Booking): string {
+    if (booking.is_join_request) {
+      switch (booking.status) {
+        case 'pending_approval':
+          return 'Pending Approval';
+        case 'approved':
+          return 'Approved';
+        case 'rejected':
+          return 'Rejected';
+        default:
+          return booking.status;
+      }
+    } else {
+      switch (booking.status) {
+        case 'completed':
+          return 'Completed';
+        case 'confirmed':
+          return 'Confirmed';
+        case 'pending':
+          return 'Pending';
+        case 'cancelled':
+          return 'Cancelled';
+        default:
+          return booking.status;
+      }
+    }
+  }
+
+  // Helper method to get status CSS class
+  getStatusClass(booking: Booking): string {
+    if (booking.is_join_request) {
+      switch (booking.status) {
+        case 'pending_approval':
+          return 'status-pending';
+        case 'approved':
+          return 'status-approved';
+        case 'rejected':
+          return 'status-rejected';
+        default:
+          return 'status-default';
+      }
+    } else {
+      switch (booking.status) {
+        case 'completed':
+          return 'status-completed';
+        case 'confirmed':
+          return 'status-confirmed';
+        case 'pending':
+          return 'status-pending';
+        case 'cancelled':
+          return 'status-cancelled';
+        default:
+          return 'status-default';
+      }
+    }
+  }
 
   private showSuccessMessage(message: string) {
     // Implement toast or alert for success message
