@@ -477,9 +477,61 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.participantCount
       );
 
+      console.log('Full API response:', response);
+      console.log('Response data:', response?.data);
+      console.log('Response data code:', response?.data?.code);
+      console.log('Response data data:', response?.data?.data);
+
       if (response && response.data && response.data.code === 1) {
+        // The new API response structure has slots nested under data.data.slots
+        const responseData = response.data.data;
+        let slots = [];
+        
+        console.log('Response data structure:', responseData);
+        
+        // Handle both old and new response formats for backward compatibility
+        if (Array.isArray(responseData)) {
+          // Old format: response.data.data is directly an array of slots
+          slots = responseData;
+          console.log('Using old format - direct array of slots');
+        } else if (responseData && responseData.slots && Array.isArray(responseData.slots)) {
+          // New format: response.data.data.slots contains the array of slots
+          slots = responseData.slots;
+          console.log('Using new format - slots from responseData.slots');
+        } else {
+          console.error('Unexpected response format:', responseData);
+          console.error('Response data type:', typeof responseData);
+          console.error('Response data keys:', responseData ? Object.keys(responseData) : 'null/undefined');
+          console.error('Response data value:', JSON.stringify(responseData, null, 2));
+          this.currentTimeSlots = [];
+          this.errorMessage = 'Invalid response format from server';
+          return;
+        }
+        
+        console.log('Slots to filter:', slots);
+        console.log('Number of slots:', slots.length);
+        
+        // Validate that slots is a valid array
+        if (!Array.isArray(slots)) {
+          console.error('Slots is not an array:', slots);
+          this.currentTimeSlots = [];
+          this.errorMessage = 'Invalid slots data from server';
+          return;
+        }
+        
         // Filter slots based on current date vs other dates
-        const filteredSlots = this.filterTimeSlotsForDate(response.data.data);
+        const filteredSlots = this.filterTimeSlotsForDate(slots);
+        
+        console.log('Filtered slots:', filteredSlots);
+        console.log('Number of filtered slots:', filteredSlots.length);
+        
+        // Validate that filteredSlots is a valid array
+        if (!Array.isArray(filteredSlots)) {
+          console.error('Filtered slots is not an array:', filteredSlots);
+          this.currentTimeSlots = [];
+          this.errorMessage = 'Error filtering time slots';
+          return;
+        }
         
         this.currentTimeSlots = filteredSlots.map((slot: any) => ({
           time: slot.time,
@@ -634,6 +686,15 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Filter time slots based on current date vs other dates
   filterTimeSlotsForDate(slots: any[]): any[] {
+    console.log('filterTimeSlotsForDate called with:', slots);
+    console.log('slots type:', typeof slots);
+    console.log('slots isArray:', Array.isArray(slots));
+    
+    if (!Array.isArray(slots)) {
+      console.error('filterTimeSlotsForDate: slots is not an array:', slots);
+      return [];
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate date comparison
     
@@ -642,8 +703,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     
     const isToday = selectedDate.getTime() === today.getTime();
     
+    console.log('isToday:', isToday);
+    
     if (!isToday) {
       // For all future dates (including tomorrow), show all slots from open time (no filtering)
+      console.log('Not today, returning all slots');
       return slots;
     }
     
@@ -651,7 +715,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     const now = new Date();
     const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
     
-    return slots.filter((slot: any) => {
+    console.log('Today, filtering slots. Current time in minutes:', currentTime);
+    
+    const filteredSlots = slots.filter((slot: any) => {
+      if (!slot || !slot.time) {
+        console.warn('Invalid slot:', slot);
+        return false;
+      }
+      
       const [hours, minutes] = slot.time.split(':').map(Number);
       const slotTimeInMinutes = hours * 60 + minutes;
       
@@ -659,8 +730,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       const slotDuration = 8;
       const roundedCurrentTime = Math.ceil(currentTime / slotDuration) * slotDuration;
       
-      return slotTimeInMinutes >= roundedCurrentTime;
+      const shouldInclude = slotTimeInMinutes >= roundedCurrentTime;
+      console.log(`Slot ${slot.time} (${slotTimeInMinutes} min) vs current (${roundedCurrentTime} min): ${shouldInclude ? 'include' : 'exclude'}`);
+      
+      return shouldInclude;
     });
+    
+    console.log('Filtered slots result:', filteredSlots);
+    return filteredSlots;
   }
 
 

@@ -169,6 +169,22 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
+  // Get detailed information about a specific tee including its current bookings
+  getTeeInfo(teeId: number) {
+    const url = `${this.apiUrl}tee/${teeId}/tee_info/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
   // Booking Management API endpoints
   createBooking(bookingData: BookingData) {
     const url = `${this.apiUrl}booking/`;
@@ -200,6 +216,7 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
+  // Get available slots for a specific course, date, and tee (tee-specific slots)
   getAvailableSlots(courseId: number, date: string, teeId: number) {
     const url = `${this.apiUrl}booking/available_slots/`;
     const config: any = { 
@@ -221,6 +238,7 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
+  // Get available slots with participant count for a specific course, date, and tee (tee-specific slots)
   getAvailableSlotsWithParticipants(courseId: number, date: string, teeId: number, participants: number) {
     const url = `${this.apiUrl}booking/available_slots/`;
     

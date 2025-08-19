@@ -340,13 +340,14 @@ class BookingModel(models.Model):
         if not self.is_join_request:
             overlapping = BookingModel.objects.filter(
                 course=self.course,
+                tee=self.tee,  # Add tee filter to ensure tee-specific overlap checking
                 bookingDate=self.bookingDate,
                 bookingTime=self.bookingTime,
                 status__in=['pending', 'confirmed', 'completed']
             ).exclude(id=self.id if self.id else None)
             
             if overlapping.exists():
-                raise ValidationError("This time slot is already booked")
+                raise ValidationError(f"This time slot is already booked for {self.tee.holeNumber} holes tee")
     
     def generate_booking_id(self):
         """Generate unique booking ID in format: MGCBK25AUG00010"""
@@ -405,14 +406,15 @@ class BookingModel(models.Model):
     
     @property
     def slot_participant_count(self):
-        """Get total participants for this time slot"""
+        """Get total participants for this time slot and specific tee"""
         if self.is_join_request:
             # For join requests, count the original booking participants
             return self.original_booking.participants if self.original_booking else 0
         else:
-            # For regular bookings, count all confirmed/completed bookings for this slot
+            # For regular bookings, count all confirmed/completed bookings for this specific slot and tee
             return BookingModel.objects.filter(
                 course=self.course,
+                tee=self.tee,  # Add tee filter to ensure tee-specific counting
                 bookingDate=self.bookingDate,
                 bookingTime=self.bookingTime,
                 status__in=['confirmed', 'pending', 'completed'],
@@ -421,13 +423,13 @@ class BookingModel(models.Model):
     
     @property
     def available_spots(self):
-        """Get available spots in this slot"""
+        """Get available spots in this slot for this specific tee"""
         total_participants = self.slot_participant_count
         return max(0, 4 - total_participants)
     
     @property
     def slot_status(self):
-        """Get slot status based on participant count"""
+        """Get slot status based on participant count for this specific tee"""
         total_participants = self.slot_participant_count
         if total_participants == 0:
             return 'available'
@@ -437,13 +439,13 @@ class BookingModel(models.Model):
             return 'booked'
     
     def can_join_slot(self, requested_participants):
-        """Check if a member can join this slot with the requested number of participants"""
+        """Check if a member can join this slot with the requested number of participants for this specific tee"""
         if self.slot_status == 'booked':
             return False
         return self.available_spots >= requested_participants
     
     def get_join_requests(self):
-        """Get all join requests for this booking"""
+        """Get all join requests for this booking (tee-specific)"""
         return BookingModel.objects.filter(
             original_booking=self,
             is_join_request=True,
@@ -451,7 +453,7 @@ class BookingModel(models.Model):
         )
     
     def get_pending_join_requests(self):
-        """Get pending join requests for this booking"""
+        """Get pending join requests for this booking (tee-specific)"""
         return BookingModel.objects.filter(
             original_booking=self,
             is_join_request=True,
@@ -459,7 +461,7 @@ class BookingModel(models.Model):
         )
     
     def approve_join_request(self, join_request_id, approved_by):
-        """Approve a join request and update status"""
+        """Approve a join request and update status for this specific tee"""
         try:
             join_request = BookingModel.objects.get(
                 id=join_request_id,
@@ -468,7 +470,7 @@ class BookingModel(models.Model):
                 status='pending_approval'
             )
             
-            # Check if slot can accommodate the join request
+            # Check if slot can accommodate the join request for this specific tee
             total_participants = self.slot_participant_count + join_request.participants
             if total_participants > 4:
                 raise ValidationError("Slot cannot accommodate additional participants")
@@ -494,7 +496,7 @@ class BookingModel(models.Model):
             return False
     
     def reject_join_request(self, join_request_id):
-        """Reject a join request"""
+        """Reject a join request for this specific tee"""
         try:
             join_request = BookingModel.objects.get(
                 id=join_request_id,
@@ -512,11 +514,11 @@ class BookingModel(models.Model):
             return False
     
     def is_slot_full(self):
-        """Check if the slot is completely full"""
+        """Check if the slot is completely full for this specific tee"""
         return self.slot_participant_count >= 4
     
     def can_accept_more_participants(self):
-        """Check if the slot can accept more participants"""
+        """Check if the slot can accept more participants for this specific tee"""
         return self.slot_participant_count < 4
 
 

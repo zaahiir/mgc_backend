@@ -2030,6 +2030,7 @@ class TeeViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def by_course(self, request):
+        """Get all tees for a specific course"""
         course_id = request.query_params.get('course_id')
         if not course_id:
             return Response({'error': 'course_id parameter required'}, status=400)
@@ -2039,8 +2040,92 @@ class TeeViewSet(viewsets.ModelViewSet):
         return Response({
             'code': 1,
             'data': serializer.data,
-            'message': 'Tees retrieved successfully'
+            'message': f'Tees retrieved successfully for course {course_id}'
         })
+    
+    @action(detail=True, methods=['get'])
+    def tee_info(self, request, pk=None):
+        """Get detailed information about a specific tee including its current bookings"""
+        try:
+            tee = self.get_object()
+            
+            # Get current date bookings for this tee
+            from datetime import date
+            today = date.today()
+            
+            current_bookings = BookingModel.objects.filter(
+                tee=tee,
+                bookingDate=today,
+                status__in=['confirmed', 'pending', 'completed'],
+                is_join_request=False
+            ).order_by('bookingTime')
+            
+            # Calculate slot availability for today
+            slots_info = []
+            from datetime import time, timedelta
+            
+            # Course opening time (default 6:00 AM)
+            open_time = time(6, 0)
+            close_time = time(19, 0)  # 7:00 PM
+            slot_duration = 8  # 8 minutes per slot
+            
+            current_time = open_time
+            while current_time <= close_time:
+                slot_time = current_time
+                formatted_time = slot_time.strftime('%I:%M %p')
+                
+                # Get existing bookings for this slot and tee
+                existing_bookings = current_bookings.filter(bookingTime=slot_time)
+                total_participants = sum(booking.participants for booking in existing_bookings)
+                available_spots = 4 - total_participants
+                
+                # Determine slot status
+                if total_participants == 0:
+                    slot_status = 'available'
+                elif total_participants < 4:
+                    slot_status = 'partially_available'
+                else:
+                    slot_status = 'booked'
+                
+                slots_info.append({
+                    'time': slot_time.strftime('%H:%M'),
+                    'formatted_time': formatted_time,
+                    'slot_status': slot_status,
+                    'available_spots': available_spots,
+                    'total_participants': total_participants,
+                    'bookings': [
+                        {
+                            'member_name': f"{booking.member.firstName} {booking.member.lastName}",
+                            'participants': booking.participants,
+                            'status': booking.status
+                        } for booking in existing_bookings
+                    ]
+                })
+                
+                # Move to next slot (8 minutes later)
+                current_time = (datetime.combine(date.min, current_time) + timedelta(minutes=slot_duration)).time()
+            
+            tee_data = {
+                'id': tee.id,
+                'holeNumber': tee.holeNumber,
+                'courseName': tee.course.courseName,
+                'estimatedDuration': tee.estimated_duration,
+                'today_slots': slots_info,
+                'total_slots': len(slots_info),
+                'available_slots': len([s for s in slots_info if s['slot_status'] != 'booked'])
+            }
+            
+            return Response({
+                'code': 1,
+                'data': tee_data,
+                'message': f'Tee information retrieved successfully for {tee.holeNumber} holes'
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving tee information: {str(e)}'
+            }, status=500)
 
 class BookingViewSet(viewsets.ModelViewSet):
     serializer_class = BookingSerializer
@@ -2357,7 +2442,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[])
     def available_slots(self, request):
-        """Get available time slots for a course, date, and tee"""
+        """Get available time slots for a course, date, and specific tee"""
         try:
             course_id = request.query_params.get('course_id')
             date_str = request.query_params.get('date')
@@ -2375,7 +2460,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             from datetime import datetime
             booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             
-            # Get course and tee
+            # Get course and specific tee
             try:
                 course = CourseModel.objects.get(id=course_id, hideStatus=0)
                 tee = TeeModel.objects.get(id=tee_id, course=course, hideStatus=0)
@@ -2385,13 +2470,30 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Course or tee not found'
                 }, status=404)
             
-            # Generate time slots with timezone consideration
+            # Generate time slots specifically for this tee with timezone consideration
             slots = self.generate_time_slots(course, booking_date, tee, participants, timezone_offset)
+            
+            print(f"Generated {len(slots)} slots for {tee.holeNumber} holes tee")
+            print(f"First few slots: {slots[:3] if slots else 'No slots'}")
+            
+            # Add tee information to the response for clarity
+            response_data = {
+                'course_id': course_id,
+                'course_name': course.courseName,
+                'tee_id': tee_id,
+                'tee_holes': tee.holeNumber,
+                'date': date_str,
+                'participants': participants,
+                'slots': slots,
+                'total_slots': len(slots)
+            }
+            
+            print(f"Response data structure: {response_data}")
             
             return Response({
                 'code': 1,
-                'message': 'Time slots retrieved successfully',
-                'data': slots
+                'message': f'Time slots retrieved successfully for {tee.holeNumber} holes tee',
+                'data': response_data
             })
             
         except Exception as e:
@@ -2401,7 +2503,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             }, status=400)
 
     def generate_time_slots(self, course, booking_date, tee, requested_participants, timezone_offset=None):
-        """Generate time slots dynamically based on course opening time and slot duration"""
+        """Generate time slots dynamically based on course opening time and slot duration for a specific tee"""
         from datetime import datetime, time, timedelta
         from django.utils import timezone
         
@@ -2441,29 +2543,29 @@ class BookingViewSet(viewsets.ModelViewSet):
                 if current_time.time() < open_time:
                     current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
                 
-                print(f"Today's booking - starting from: {current_time.time()}")
+                print(f"Today's booking for {tee.holeNumber} holes - starting from: {current_time.time()}")
             else:
-                print(f"Today's booking - using open time: {current_time.time()}")
+                print(f"Today's booking for {tee.holeNumber} holes - using open time: {current_time.time()}")
         else:
             # For all future dates (including tomorrow), start from the course opening time
             current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
-            print(f"Future date {booking_date} - using open time: {current_time.time()}")
+            print(f"Future date {booking_date} for {tee.holeNumber} holes - using open time: {current_time.time()}")
         
         while current_time.time() <= close_time:
             slot_time = current_time.time()
             formatted_time = slot_time.strftime('%I:%M %p')
             
-            # Get existing bookings for this slot and specific tee
+            # Get existing bookings for this specific slot, date, and tee
             existing_bookings = BookingModel.objects.filter(
                 course=course,
-                tee=tee,
+                tee=tee,  # This ensures we only get bookings for the specific tee
                 bookingDate=booking_date,
                 bookingTime=slot_time,
                 status__in=['confirmed', 'pending', 'completed'],
                 is_join_request=False
             )
             
-            # Calculate total participants in this slot
+            # Calculate total participants in this slot for this specific tee
             total_participants = sum(booking.participants for booking in existing_bookings)
             available_spots = 4 - total_participants
             
@@ -2493,7 +2595,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                             'end_time': booking.end_time.strftime('%I:%M %p')
                         })
                 
-                slots.append({
+                slot_data = {
                     'time': slot_time.strftime('%H:%M'),
                     'available': True,
                     'formatted_time': formatted_time,
@@ -2501,12 +2603,18 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'available_spots': available_spots,
                     'total_participants': total_participants,
                     'bookings': booking_details,
-                    'booking_count': len(booking_details)
-                })
+                    'booking_count': len(booking_details),
+                    'tee_id': tee.id,  # Add tee ID to identify which tee this slot belongs to
+                    'tee_holes': tee.holeNumber  # Add hole count for clarity
+                }
+                
+                slots.append(slot_data)
+                print(f"Added slot: {slot_data['time']} - {slot_data['slot_status']} - {slot_data['available_spots']} spots available")
             
             # Move to next slot (8 minutes later)
             current_time += timedelta(minutes=slot_duration)
         
+        print(f"Total slots generated: {len(slots)}")
         return slots
 
 
