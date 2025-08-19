@@ -34,46 +34,24 @@
           </div>
 
           <div class="booking-form">
-            <!-- Step 1: Participants -->
-            <div class="form-section">
-              <div class="label-with-icon">
-                <div class="label-group">
-                  <fa-icon [icon]="usersIcon" class="section-icon"></fa-icon>
-                  <label>Participants</label>
-                </div>
-              </div>
-              <div class="player-selector">
-                <button class="circle-btn" (click)="decrementParticipants()" [disabled]="participantCount === 1">-</button>
-                <span class="player-count">{{participantCount}}</span>
-                <button class="circle-btn" (click)="incrementParticipants()" [disabled]="participantCount === maxParticipants">+</button>
-              </div>
-            </div>
+            
 
-            <!-- Participant prompt -->
-            <div class="form-section" *ngIf="participantCount === 0" class="participant-prompt">
-              <div class="prompt-message">
-                <fa-icon [icon]="usersIcon" class="prompt-icon"></fa-icon>
-                <p>Please select the number of participants to see available tees and time slots.</p>
-              </div>
-            </div>
-
-            <!-- Step 2: Tee Selection (only visible after participants selected) -->
-            <div class="form-section" *ngIf="participantCount > 0">
-              <div class="label-with-icon">
-                <div class="label-group">
-                  <fa-icon [icon]="golfIcon" class="section-icon"></fa-icon>
-                  <label>Select Tee</label>
-                </div>
-              </div>
-              
-              <div class="tee-options">
-                <button class="tee-option" 
-                        *ngFor="let tee of availableTees"
-                        [class.selected]="selectedTee?.id === tee.id"
-                        [disabled]="participantCount === 0"
-                        (click)="selectTee(tee)">
-                  <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
-                </button>
+                         <!-- Step 1: Tee Selection -->
+             <div class="form-section">
+               <div class="label-with-icon">
+                 <div class="label-group">
+                   <fa-icon [icon]="golfIcon" class="section-icon"></fa-icon>
+                   <label>Select Tee</label>
+                 </div>
+               </div>
+               
+               <div class="tee-options">
+                 <button class="tee-option" 
+                         *ngFor="let tee of availableTees"
+                         [class.selected]="selectedTee?.id === tee.id"
+                         (click)="selectTee(tee)">
+                   <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
+                 </button>
                 
                 <!-- Show message when no tees available -->
                 <div *ngIf="availableTees.length === 0 && !isLoading" class="no-tees-message">
@@ -88,8 +66,8 @@
               </div>
             </div>
 
-            <!-- Step 3: Date Selection (only visible after tee selected) -->
-            <div class="form-section" *ngIf="selectedTee">
+                         <!-- Step 2: Date Selection (only visible after tee selected) -->
+             <div class="form-section" *ngIf="selectedTee">
               <div class="label-with-icon">
                 <div class="label-group">
                   <fa-icon [icon]="calendarIcon" class="section-icon"></fa-icon>
@@ -137,8 +115,8 @@
               </div>
             </div>
 
-            <!-- Step 4: Time Selection (only visible after date selected) -->
-            <div class="form-section" *ngIf="selectedDate && selectedTee">
+                         <!-- Step 3: Time Selection (only visible after date selected) -->
+             <div class="form-section" *ngIf="selectedDate && selectedTee">
               <div class="label-with-icon">
                 <div class="label-group">
                   <fa-icon [icon]="clockIcon" class="section-icon"></fa-icon>
@@ -195,62 +173,97 @@
               </div>
             </div>
 
-            <!-- Booking Summary (only visible when all steps completed) -->
-            <div class="booking-summary" *ngIf="canBook()">
-              <div class="summary-header">
-                <h4>Booking Summary</h4>
-                <span class="summary-status" *ngIf="slotSummary" [class]="slotSummary.status">
-                  {{slotSummary.status}}
-                </span>
-              </div>
-              <div class="summary-details">
-                <div class="summary-item">
-                  <span class="label">Tee:</span>
-                  <span class="value">{{selectedTee?.label}}</span>
-                </div>
-                <div class="summary-item">
-                  <span class="label">Date:</span>
-                  <span class="value">{{selectedDate | date:'MMM d, yyyy'}}</span>
-                </div>
-                <div class="summary-item" *ngIf="selectedSlots.length === 0">
-                  <span class="label">Time:</span>
-                  <span class="value">{{selectedTime}}</span>
-                </div>
-                <div class="summary-item" *ngIf="selectedSlots.length > 0">
-                  <span class="label">Selected Slots:</span>
-                  <span class="value">{{selectedSlots.length}} slot{{selectedSlots.length > 1 ? 's' : ''}}</span>
-                </div>
-                <div class="summary-item">
-                  <span class="label">Participants:</span>
-                  <span class="value">{{participantCount}}</span>
-                </div>
-                <div class="summary-item total" *ngIf="selectedSlots.length > 0">
-                  <span class="label">Total Participants:</span>
-                  <span class="value">{{selectedSlots.length * participantCount}}</span>
-                </div>
-              </div>
-              <!-- Show selected times for multi-select -->
-              <div class="selected-times" *ngIf="selectedSlots.length > 0">
-                <div class="selected-times-label">Selected Times:</div>
-                <div class="selected-times-list">
-                  <div class="time-item" *ngFor="let slot of selectedSlots; let i = index">
-                    <span class="time">{{slot.formatted_time}}</span>
-                    <span class="participants">({{slot.participantCount || participantCount}} player{{(slot.participantCount || participantCount) > 1 ? 's' : ''}})</span>
-                  </div>
-                </div>
-                <div class="total-participants">
-                  <strong>Total Participants: {{slotSummary?.totalParticipants || (selectedSlots.length * participantCount)}}</strong>
-                </div>
-              </div>
-            </div>
+             <!-- Booking Summary (only visible when all steps completed) -->
+             <div class="booking-summary" *ngIf="canBook()">
+               <div class="summary-header">
+                 <h4>Booking Summary</h4>
+                 <span class="summary-status" *ngIf="slotSummary" [class]="slotSummary.status">
+                   {{slotSummary.status}}
+                 </span>
+               </div>
+               
+               <!-- Single Slot Booking Summary -->
+               <div class="summary-details" *ngIf="getAllSelectedSlots().length === 0 && selectedTime">
+                 <div class="summary-item">
+                   <span class="label">Tee:</span>
+                   <span class="value">{{selectedTee?.label}}</span>
+                 </div>
+                 <div class="summary-item">
+                   <span class="label">Date:</span>
+                   <span class="value">{{selectedDate | date:'MMM d, yyyy'}}</span>
+                 </div>
+                 <div class="summary-item">
+                   <span class="label">Time:</span>
+                   <span class="value">{{selectedTime}}</span>
+                 </div>
+               </div>
+               
+               <!-- Multi-Slot Booking Summary -->
+               <div class="summary-details" *ngIf="getAllSelectedSlots().length > 0">
+                 <div class="summary-item">
+                   <span class="label">Total Slots:</span>
+                   <span class="value">{{getAllSelectedSlots().length}} slot{{getAllSelectedSlots().length > 1 ? 's' : ''}}</span>
+                 </div>
+                 <div class="summary-item">
+                   <span class="label">Total Dates:</span>
+                   <span class="value">{{getTotalDatesWithSelections()}} date{{getTotalDatesWithSelections() > 1 ? 's' : ''}}</span>
+                 </div>
+                 <div class="summary-actions">
+                   <button class="clear-all-btn" (click)="clearAllSelections()" title="Clear all selected slots across all dates">
+                     Clear All
+                   </button>
+                 </div>
+               </div>
+               
+               <!-- Detailed Slot Information for Multi-Select - Grouped by Tee -->
+               <div class="selected-slots-details" *ngIf="getAllSelectedSlots().length > 0">
+                 <div class="slots-details-header">
+                   <h5>Slot Details</h5>
+                 </div>
+                 
+                 <!-- Group slots by tee -->
+                 <div *ngFor="let teeGroup of getSlotsGroupedByTee(); let teeIndex = index" class="tee-group">
+                   <div class="tee-group-header">
+                     <h6>{{teeGroup.teeLabel}}</h6>
+                     <span class="tee-slot-count">{{teeGroup.slots.length}} slot{{teeGroup.slots.length > 1 ? 's' : ''}}</span>
+                   </div>
+                   
+                   <!-- Slots for this tee -->
+                   <div class="slot-detail-item" *ngFor="let slot of teeGroup.slots; let i = index" 
+                        (click)="openSlotModal(slot)" 
+                        style="cursor: pointer;">
+                     <div class="slot-detail-header">
+                       <span class="slot-number">Slot {{i + 1}}</span>
+                       <button class="clear-slot-btn" (click)="deselectSlot(slot); $event.stopPropagation()" title="Remove this slot">
+                         ×
+                       </button>
+                     </div>
+                     <div class="slot-detail-content">
+                       <div class="slot-detail-row">
+                         <span class="label">Date:</span>
+                         <span class="value">{{slot.booking_date ? (slot.booking_date | date:'MMM d, yyyy') : (selectedDate | date:'MMM d, yyyy')}}</span>
+                       </div>
+                       <div class="slot-detail-row">
+                         <span class="label">Time:</span>
+                         <span class="value">{{slot.formatted_time}}</span>
+                       </div>
+                       <div class="slot-detail-row">
+                         <span class="label">Participants:</span>
+                         <span class="value">{{slot.participantCount || 1}} player{{(slot.participantCount || 1) > 1 ? 's' : ''}}</span>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
 
             <button class="theme-btn w-100"
                     [disabled]="!canBook()"
                     [class.loading]="isLoading"
                     (click)="bookTeeTime()">
                              {{isLoading ? 'Booking...' : 
-                 (selectedSlots.length > 0 ? 
-                   ('Book ' + selectedSlots.length + ' Slot' + (selectedSlots.length > 1 ? 's' : '')) : 
+                 (getAllSelectedSlots().length > 0 ? 
+                   ('Book ' + getAllSelectedSlots().length + ' Slot' + (getAllSelectedSlots().length > 1 ? 's' : '')) : 
                    (isJoinRequest() ? 'Request to Join' : 'Book Now')
                  )
                }}
@@ -451,24 +464,30 @@
         </div>
         <div class="detail-item">
           <span class="label">Date:</span>
-          <span class="value">{{bookingConfirmationData.date | date:'MMM d, yyyy' || (selectedDate | date:'MMM d, yyyy')}}</span>
+          <span class="value">{{bookingConfirmationData.date ? (bookingConfirmationData.date | date:'MMM d, yyyy') : (selectedDate | date:'MMM d, yyyy')}}</span>
         </div>
         <div class="detail-item" *ngIf="!bookingConfirmationData.selectedSlots">
           <span class="label">Time:</span>
           <span class="value">{{bookingConfirmationData.time || selectedTime}}</span>
         </div>
+        <div class="detail-item" *ngIf="!bookingConfirmationData.selectedSlots">
+          <span class="label">Participants:</span>
+          <span class="value participants-display">{{bookingConfirmationData.participants || participantCount}} player{{(bookingConfirmationData.participants || participantCount) > 1 ? 's' : ''}}</span>
+        </div>
         <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
           <span class="label">Slots:</span>
           <div class="value slots-list">
             <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots">
-              <span class="slot-time">{{slot.time}}</span>
-              <span class="slot-participants">({{slot.participants}} player{{slot.participants > 1 ? 's' : ''}})</span>
+              <div class="slot-details">
+                <div class="slot-time">{{slot.time}}</div>
+                <div class="slot-info">
+                  <span class="slot-tee" *ngIf="slot.tee">{{slot.tee}}</span>
+                  <span class="slot-date" *ngIf="slot.date">{{slot.date | date:'MMM d, yyyy'}}</span>
+                </div>
+                <div class="slot-participants">{{slot.participants}} player{{slot.participants > 1 ? 's' : ''}}</div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="detail-item" *ngIf="!bookingConfirmationData.selectedSlots">
-          <span class="label">Participants:</span>
-          <span class="value">{{bookingConfirmationData.participants || participantCount}}</span>
         </div>
         <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
           <span class="label">Total Participants:</span>

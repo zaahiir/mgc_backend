@@ -1892,12 +1892,15 @@
 .modal-content {
   background: white;
   border-radius: 15px;
-  max-width: 500px;
-  width: 90%;
-  max-height: 90vh;
+  width: 70%;
+  height: 70%;
+  max-width: 800px;
+  max-height: 80vh;
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   animation: modalSlideIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes modalSlideIn {
@@ -1945,6 +1948,11 @@
 
 .modal-body {
   padding: 30px 25px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .confirmation-icon {
@@ -2645,5 +2653,299 @@
   .legend-text {
     font-size: 0.8rem;
   }
+}
+
+/* Detailed Slot Information Styles */
+.selected-slots-details {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border: 1px solid #e9ecef;
+}
+
+.slots-details-header h5 {
+  margin: 0 0 15px 0;
+  color: var(--title-color);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.slot-detail-item {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.slot-detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.slot-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: var(--theme-color);
+  color: white;
+  font-weight: 600;
+}
+
+.slot-number {
+  font-size: 14px;
+}
+
+.slot-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.slot-status.available {
+  background: #28a745;
+}
+
+.slot-status.partially-available {
+  background: #ffc107;
+  color: #212529;
+}
+
+.slot-status.selected {
+  background: #17a2b8;
+}
+
+.slot-detail-content {
+  padding: 15px;
+}
+
+.slot-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.slot-detail-row:last-child {
+  border-bottom: none;
+}
+
+.slot-detail-row .label {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 13px;
+}
+
+.slot-detail-row .value {
+  color: var(--theme-color);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Responsive Design for Slot Details */
+@media (max-width: 768px) {
+  .slot-detail-header {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  
+  .slot-detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .slot-detail-row .value {
+    align-self: flex-end;
+  }
+  
+  .selected-slots-details {
+    padding: 12px;
+  }
+  
+  .slot-detail-content {
+    padding: 12px;
+  }
+}
+
+/* Enhanced slot detail styling */
+.slot-detail-row {
+  position: relative;
+}
+
+/* Responsive design for slot details */
+@media (max-width: 768px) {
+  .slot-detail-row {
+    padding: 8px 0;
+  }
+}
+
+/* Enhanced slot display in booking confirmation modal */
+.slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.slot-item {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.slot-item:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.slot-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slot-time {
+  font-weight: 600;
+  font-size: 16px;
+  color: #2c3e50;
+}
+
+.slot-info {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.slot-tee {
+  background: #007bff;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.slot-date {
+  color: #495057;
+}
+
+.slot-participants {
+  font-weight: 500;
+  color: #28a745;
+  font-size: 14px;
+}
+
+.participants-display {
+  font-weight: 600;
+  color: #28a745;
+  font-size: 16px;
+  background: #d4edda;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+/* Existing modal styles */
+
+.clear-slot-btn {
+  background: #1C3D40;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  margin-left: auto;
+}
+
+.clear-slot-btn:hover {
+  background: #2a5a5f;
+}
+
+.clear-slot-btn:active {
+  background: #1a2f32;
+}
+
+.summary-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.clear-all-btn {
+  background: #1C3D40;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clear-all-btn:hover {
+  background: #2a5a5f;
+}
+
+.clear-all-btn:active {
+  background: #1a2f32;
+}
+
+.tee-group {
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tee-group-header {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tee-group-header h6 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.tee-slot-count {
+  font-size: 12px;
+  color: #666;
+  background: #e9ecef;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.tee-group .slot-detail-item {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tee-group .slot-detail-item:last-child {
+  border-bottom: none;
 }
 
