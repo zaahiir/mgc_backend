@@ -772,13 +772,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Debug method to log current selection state
   private logSelectionState(): void {
-    console.log('=== Current Selection State ===');
-    console.log('Selected slots:', this.selectedSlots.map(s => ({
-      time: s.time,
-      tee_label: s.tee_label,
-      date: s.booking_date,
-      participants: s.participantCount
-    })));
+    console.log('Current selection state:');
+    console.log('Selected slots:', this.selectedSlots);
     console.log('Date slot selections:', this.dateSlotSelections);
     console.log('Current time slots:', this.currentTimeSlots.map(slot => ({
       time: slot.time,
@@ -788,16 +783,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     })));
     
     // Additional debugging for slot preservation
-    console.log('All selected slots across dates:', this.getAllSelectedSlots().map(s => ({
-      time: s.time,
-      tee_label: s.tee_label,
-      date: s.booking_date,
-      participants: s.participantCount
-    })));
+    console.log('All selected slots across dates:', this.getAllSelectedSlots());
     console.log('Slots grouped by tee:', this.getSlotsGroupedByTee());
     console.log('Total dates with selections:', this.getTotalDatesWithSelections());
     console.log('Can book:', this.canBook());
-    console.log('==============================');
   }
 
   // Helper methods for date-based slot management
@@ -876,35 +865,21 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   private updateDateSlotSelection(date: Date): void {
-    // Get all slots for this specific date (regardless of tee)
-    const currentDateSlots = this.selectedSlots.filter(slot => 
+    if (!this.selectedTee) {
+      return;
+    }
+    
+    // Filter slots for this specific date and tee combination
+    const currentDateTeeSlots = this.selectedSlots.filter(slot => 
       slot.booking_date && 
-      this.getDateKey(slot.booking_date) === this.getDateKey(date)
+      this.getDateKey(slot.booking_date) === this.getDateKey(date) &&
+      slot.tee_label === this.selectedTee!.label
     );
     
-    if (currentDateSlots.length > 0) {
-      // Group slots by tee for this date
-      const teeGroups = new Map<string, TimeSlot[]>();
-      
-      currentDateSlots.forEach(slot => {
-        const teeLabel = slot.tee_label || 'Unknown Tee';
-        if (!teeGroups.has(teeLabel)) {
-          teeGroups.set(teeLabel, []);
-        }
-        teeGroups.get(teeLabel)!.push(slot);
-      });
-      
-      // Update each tee group separately
-      teeGroups.forEach((slots, teeLabel) => {
-        // Find the tee object for this group
-        const tee = this.availableTees.find(t => t.label === teeLabel);
-        if (tee) {
-          this.setDateSlotSelection(date, tee, slots);
-        }
-      });
+    if (currentDateTeeSlots.length > 0) {
+      this.setDateSlotSelection(date, this.selectedTee, currentDateTeeSlots);
     } else {
-      // Remove all selections for this date
-      this.removeDateSlotSelection(date);
+      this.removeDateSlotSelection(date, this.selectedTee);
     }
   }
 
@@ -1178,42 +1153,36 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   openSlotModal(slot: TimeSlot): void {
-    console.log('🎯 Opening modal for slot:', slot.time, 'Tee:', slot.tee_label, 'Date:', slot.booking_date);
+    // Check if this slot is already selected
+    const isAlreadySelected = this.getCurrentDateSelectedSlots().some(selectedSlot => 
+      selectedSlot.time === slot.time
+    );
     
-    // Debug slot finding
-    this.debugSlotFinding(slot);
+    let requestedParticipants = this.participantCount; // Default to current participant count
     
-    // Check if this slot is already selected across ALL dates and tees (not just current date)
-    const existingSlot = this.findExistingSlot(slot);
-    const isAlreadySelected = !!existingSlot;
-    
-    let requestedParticipants = 1; // Default to 1 participant
-    
-    if (isAlreadySelected && existingSlot) {
+    if (isAlreadySelected) {
       // If slot is already selected, use the stored participant count
-      if (existingSlot.participantCount) {
-        requestedParticipants = existingSlot.participantCount;
-        console.log('Found existing slot with participants:', requestedParticipants);
+      const selectedSlot = this.getCurrentDateSelectedSlots().find(s => s.time === slot.time);
+      if (selectedSlot && selectedSlot.participantCount) {
+        requestedParticipants = selectedSlot.participantCount;
       }
     } else {
       // For new selections, clamp to available spots
       const maxAllowed = Math.min(slot.available_spots || 4, 4);
       requestedParticipants = Math.min(this.participantCount, maxAllowed);
-      console.log('New slot selection, participants:', requestedParticipants);
     }
     
-    // Ensure we have the most up-to-date slot data
-    const currentSlotData = this.getCurrentSlotData(slot);
-    
     this.slotModalData = {
-      slot: currentSlotData,
-      bookings: currentSlotData.bookings || [],
-      availableSpots: currentSlotData.available_spots || 0,
-      totalParticipants: currentSlotData.total_participants || 0,
+      slot: slot,
+      bookings: slot.bookings || [],
+      availableSpots: slot.available_spots || 0,
+      totalParticipants: slot.total_participants || 0,
       requestedParticipants: requestedParticipants
     };
     
-    console.log('Modal data set for slot:', slot.time, 'Tee:', slot.tee_label, 'Participants:', requestedParticipants);
+    console.log('Opening modal for slot:', slot.time);
+    console.log('Is already selected:', isAlreadySelected);
+    console.log('Requested participants:', requestedParticipants);
     
     this.showSlotModal = true;
   }
@@ -1221,168 +1190,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   closeSlotModal(): void {
     this.showSlotModal = false;
     this.slotModalData = null;
-  }
-
-  // Get the most up-to-date slot data from current time slots
-  private getCurrentSlotData(slot: TimeSlot): TimeSlot {
-    console.log('Getting current slot data for:', slot.time, 'Tee:', slot.tee_label, 'Date:', slot.booking_date);
-    
-    // First try to find the slot in current time slots (most up-to-date)
-    const currentSlot = this.currentTimeSlots.find(s => s.time === slot.time);
-    if (currentSlot) {
-      console.log('Found slot in current time slots');
-      // Merge the current slot data with the original slot's tee and date info
-      return {
-        ...currentSlot,
-        tee_label: slot.tee_label, // Preserve original tee label
-        booking_date: slot.booking_date // Preserve original date
-      };
-    }
-    
-    console.log('Slot not found in current time slots, using original slot data');
-    // If not found in current time slots, return the original slot
-    return slot;
-  }
-
-  // Helper method to find existing slot by time, tee, and date
-  private findExistingSlot(slot: TimeSlot): TimeSlot | undefined {
-    console.log('🔍 Finding existing slot for:', {
-      time: slot.time,
-      tee_label: slot.tee_label,
-      booking_date: slot.booking_date
-    });
-    
-    // First try to find in selectedSlots
-    let foundSlot = this.selectedSlots.find(s => 
-      s.time === slot.time && 
-      s.tee_label === slot.tee_label &&
-      s.booking_date && 
-      slot.booking_date &&
-      this.getDateKey(s.booking_date) === this.getDateKey(slot.booking_date)
-    );
-    
-    // If not found in selectedSlots, try to find in dateSlotSelections
-    if (!foundSlot) {
-      console.log('🔍 Slot not found in selectedSlots, checking dateSlotSelections...');
-      for (const [key, selection] of this.dateSlotSelections.entries()) {
-        const matchingSlot = selection.selectedSlots.find(s => 
-          s.time === slot.time && 
-          s.tee_label === slot.tee_label &&
-          s.booking_date && 
-          slot.booking_date &&
-          this.getDateKey(s.booking_date) === this.getDateKey(slot.booking_date)
-        );
-        if (matchingSlot) {
-          foundSlot = matchingSlot;
-          console.log('✅ Found slot in dateSlotSelections:', key);
-          break;
-        }
-      }
-    }
-    
-    if (foundSlot) {
-      console.log('✅ Found existing slot:', {
-        time: foundSlot.time,
-        tee_label: foundSlot.tee_label,
-        booking_date: foundSlot.booking_date,
-        participantCount: foundSlot.participantCount
-      });
-    } else {
-      console.log('❌ No existing slot found. Available slots:', this.selectedSlots.map(s => ({
-        time: s.time,
-        tee_label: s.tee_label,
-        booking_date: s.booking_date,
-        participantCount: s.participantCount
-      })));
-      console.log('❌ DateSlotSelections:', Array.from(this.dateSlotSelections.entries()).map(([key, selection]) => ({
-        key,
-        date: selection.date,
-        tee: selection.tee.label,
-        slots: selection.selectedSlots.map(s => ({
-          time: s.time,
-          tee_label: s.tee_label,
-          booking_date: s.booking_date,
-          participantCount: s.participantCount
-        }))
-      })));
-    }
-    
-    return foundSlot;
-  }
-
-  // Method to sync dateSlotSelections with selectedSlots
-  private syncDateSlotSelections(): void {
-    console.log('🔄 Syncing dateSlotSelections with selectedSlots...');
-    
-    // Clear existing dateSlotSelections
-    this.dateSlotSelections.clear();
-    
-    // Group selectedSlots by date and tee
-    const groupedSlots = new Map<string, TimeSlot[]>();
-    
-    this.selectedSlots.forEach(slot => {
-      if (slot.booking_date && slot.tee_label) {
-        const dateKey = this.getDateKey(slot.booking_date);
-        const groupKey = `${dateKey}_${slot.tee_label}`;
-        
-        if (!groupedSlots.has(groupKey)) {
-          groupedSlots.set(groupKey, []);
-        }
-        groupedSlots.get(groupKey)!.push(slot);
-      }
-    });
-    
-    // Rebuild dateSlotSelections
-    groupedSlots.forEach((slots, groupKey) => {
-      const [dateKey, teeLabel] = groupKey.split('_', 2);
-      const date = new Date(dateKey);
-      const tee = this.availableTees.find(t => t.label === teeLabel);
-      
-      if (tee) {
-        const totalParticipants = slots.reduce((sum, slot) => sum + (slot.participantCount || 1), 0);
-        this.dateSlotSelections.set(groupKey, {
-          date: date,
-          tee: tee,
-          selectedSlots: slots.map(slot => ({ ...slot })),
-          totalParticipants: totalParticipants
-        });
-      }
-    });
-    
-    console.log('✅ Synced dateSlotSelections. New size:', this.dateSlotSelections.size);
-  }
-
-  // Debug method to test slot finding
-  private debugSlotFinding(slot: TimeSlot): void {
-    console.log('🔍 === DEBUG SLOT FINDING ===');
-    console.log('Looking for slot:', {
-      time: slot.time,
-      tee_label: slot.tee_label,
-      booking_date: slot.booking_date
-    });
-    
-    console.log('Current selectedSlots:', this.selectedSlots.map(s => ({
-      time: s.time,
-      tee_label: s.tee_label,
-      booking_date: s.booking_date,
-      participantCount: s.participantCount
-    })));
-    
-    console.log('Current dateSlotSelections:', Array.from(this.dateSlotSelections.entries()).map(([key, selection]) => ({
-      key,
-      date: selection.date,
-      tee: selection.tee.label,
-      slots: selection.selectedSlots.map(s => ({
-        time: s.time,
-        tee_label: s.tee_label,
-        booking_date: s.booking_date,
-        participantCount: s.participantCount
-      }))
-    })));
-    
-    const foundSlot = this.findExistingSlot(slot);
-    console.log('Found slot:', foundSlot);
-    console.log('=== END DEBUG ===');
   }
 
   incrementModalParticipants(): void {
@@ -1404,46 +1211,30 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     if (this.slotModalData) {
       const slot = this.slotModalData.slot;
       
-      console.log('🎯 ConfirmSlotSelection called for slot:', {
-        time: slot.time,
-        tee_label: slot.tee_label,
-        booking_date: slot.booking_date,
-        requestedParticipants: this.slotModalData.requestedParticipants
-      });
+      // Create a copy of the slot to avoid modifying the original
+      const slotCopy = { ...slot };
       
-      // Check if this slot is already selected across ALL dates and tees
-      const existingSlot = this.findExistingSlot(slot);
-      const isAlreadySelected = !!existingSlot;
+      // Set the participant count for this specific slot
+      slotCopy.participantCount = this.slotModalData.requestedParticipants;
+      // Store the date and tee information for this slot
+      slotCopy.booking_date = this.selectedDate;
+      slotCopy.tee_label = this.selectedTee?.label;
       
-      console.log('📋 Slot selection status:', {
-        isAlreadySelected,
-        existingSlot: existingSlot ? {
-          time: existingSlot.time,
-          tee_label: existingSlot.tee_label,
-          booking_date: existingSlot.booking_date,
-          participantCount: existingSlot.participantCount
-        } : null
-      });
+      // Debug logging
+      console.log('Modal participant count:', this.slotModalData.requestedParticipants);
+      console.log('Slot copy participant count:', slotCopy.participantCount);
+      console.log('Slot copy date:', slotCopy.booking_date);
+      console.log('Slot copy time:', slotCopy.time);
+      
+      // Check if this slot is already selected
+      const isAlreadySelected = this.getCurrentDateSelectedSlots().some(selectedSlot => 
+        selectedSlot.time === slot.time
+      );
       
       if (isAlreadySelected) {
-        console.log('🔄 Updating existing slot selection');
-        // Update existing selection - preserve the original date and tee
-        this.updateExistingSlotSelection(slot, this.slotModalData.requestedParticipants);
+        // Update existing selection
+        this.updateExistingSlotSelection(slotCopy, this.slotModalData.requestedParticipants);
       } else {
-        console.log('🆕 Creating new slot selection');
-        // This is a new selection - create a copy and set date/tee info
-        const slotCopy = { ...slot };
-        slotCopy.participantCount = this.slotModalData.requestedParticipants;
-        slotCopy.booking_date = this.selectedDate;
-        slotCopy.tee_label = this.selectedTee?.label;
-        
-        console.log('📝 New slot copy created:', {
-          time: slotCopy.time,
-          tee_label: slotCopy.tee_label,
-          booking_date: slotCopy.booking_date,
-          participantCount: slotCopy.participantCount
-        });
-        
         // Add to multi-select if we have slots selected for the current date, otherwise single select
         const currentDateSlots = this.getCurrentDateSelectedSlots();
         
@@ -1454,9 +1245,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           // Use the modal's participant count for single select
           this.selectSingleSlotWithParticipants(slotCopy, this.slotModalData.requestedParticipants);
         }
-        
-        // Sync dateSlotSelections with selectedSlots to ensure consistency
-        this.syncDateSlotSelections();
       }
       
       this.closeSlotModal();
@@ -1468,76 +1256,75 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Method to update existing slot selection
   private updateExistingSlotSelection(slot: TimeSlot, newParticipantCount: number): void {
-    console.log('Attempting to update slot:', slot.time, 'Tee:', slot.tee_label, 'Date:', slot.booking_date);
+    console.log('Updating existing slot selection:', slot.time, 'with participants:', newParticipantCount);
     
-    // Find and update the existing selection in selectedSlots by time AND tee AND date
-    const existingSlot = this.findExistingSlot(slot);
+    // Find and update the existing selection in selectedSlots
+    const existingSlotIndex = this.selectedSlots.findIndex(s => 
+      s.time === slot.time && 
+      s.booking_date && 
+      this.getDateKey(s.booking_date) === this.getDateKey(this.selectedDate)
+    );
     
-    if (existingSlot) {
-      // Find the index of the existing slot
-      const existingSlotIndex = this.selectedSlots.findIndex(s => s === existingSlot);
+    if (existingSlotIndex !== -1) {
+      // Update the existing slot
+      this.selectedSlots[existingSlotIndex].participantCount = newParticipantCount;
+      this.selectedSlots[existingSlotIndex].booking_date = this.selectedDate;
+      this.selectedSlots[existingSlotIndex].tee_label = this.selectedTee?.label;
       
-      if (existingSlotIndex !== -1) {
-        // Update the existing slot
-        this.selectedSlots[existingSlotIndex].participantCount = newParticipantCount;
-        
-        // Preserve the original date and tee - don't change them
-        console.log('Successfully updated existing slot:', slot.time, 'Tee:', slot.tee_label, 'Date:', slot.booking_date, 'Participants:', newParticipantCount);
-        
-        // Update the date-based slot selection for the slot's original date
-        if (slot.booking_date) {
-          this.updateDateSlotSelection(slot.booking_date);
-        }
-        
-        // Sync dateSlotSelections with selectedSlots to ensure consistency
-        this.syncDateSlotSelections();
-        
-        // Update slot summary
-        this.updateSlotSummary();
+      // Update the corresponding slot in currentTimeSlots
+      const currentTimeSlot = this.currentTimeSlots.find(s => s.time === slot.time);
+      if (currentTimeSlot) {
+        currentTimeSlot.participantCount = newParticipantCount;
+        currentTimeSlot.booking_date = this.selectedDate;
+        currentTimeSlot.tee_label = this.selectedTee?.label;
       }
-    } else {
-      console.error('Slot not found in selectedSlots. This should not happen.');
-      console.error('Looking for slot with:', {
-        time: slot.time,
-        tee_label: slot.tee_label,
-        booking_date: slot.booking_date
-      });
-      console.error('Available slots:', this.selectedSlots.map(s => ({
-        time: s.time,
-        tee_label: s.tee_label,
-        booking_date: s.booking_date
-      })));
+      
+      console.log('Existing slot updated with new participant count:', newParticipantCount);
     }
+    
+    // Update date-based slot selection
+    this.updateDateSlotSelection(this.selectedDate);
+    
+    this.updateSlotSummary();
   }
 
   updateSlotSummary(): void {
-    // Sync dateSlotSelections with selectedSlots to ensure consistency
-    this.syncDateSlotSelections();
+    const currentDateSlots = this.getSelectedSlotsForDate(this.selectedDate);
     
-    // Get all selected slots across all dates and tees
-    const allSelectedSlots = this.getAllSelectedSlots();
+    console.log('updateSlotSummary called:');
+    console.log('Current date slots:', currentDateSlots);
+    console.log('Selected date:', this.selectedDate);
+    console.log('Selected tee:', this.selectedTee);
     
-    if (allSelectedSlots.length === 0) {
+    if (currentDateSlots.length === 0) {
       this.slotSummary = null;
+      console.log('No current date slots, slot summary cleared');
       return;
     }
 
-    const totalParticipants = allSelectedSlots.reduce((sum, slot) => sum + (slot.participantCount || 1), 0);
+    const totalParticipants = currentDateSlots.reduce((sum, slot) => sum + (slot.participantCount || 1), 0);
     const status = this.getSlotSummaryStatus();
 
     this.slotSummary = {
-      date: this.selectedDate, // Keep current date for reference
-      tee: this.selectedTee,   // Keep current tee for reference
-      selectedSlots: allSelectedSlots, // Show ALL selected slots
+      date: this.selectedDate,
+      tee: this.selectedTee,
+      selectedSlots: currentDateSlots,
       totalParticipants: totalParticipants,
       status: status
     };
+    
+    console.log('Slot summary updated:', this.slotSummary);
   }
 
   getSlotSummaryStatus(): 'available' | 'partial' | 'booked' {
-    const allSelectedSlots = this.getAllSelectedSlots();
-    const hasPartial = allSelectedSlots.some(slot => slot.slot_status === 'partially_available');
-    const hasBooked = allSelectedSlots.some(slot => slot.slot_status === 'booked');
+    const currentDateSlots = this.getSelectedSlotsForDate(this.selectedDate);
+    const hasPartial = currentDateSlots.some(slot => slot.slot_status === 'partially_available');
+    const hasBooked = currentDateSlots.some(slot => slot.slot_status === 'booked');
+    
+    console.log('getSlotSummaryStatus called:');
+    console.log('Current date slots:', currentDateSlots);
+    console.log('Has partial:', hasPartial);
+    console.log('Has booked:', hasBooked);
     
     if (hasBooked) return 'booked';
     if (hasPartial) return 'partial';
@@ -1992,22 +1779,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Get all selected slots across all dates
   getAllSelectedSlots(): TimeSlot[] {
-    // First try to get from dateSlotSelections
-    const fromDateSelections = Array.from(this.dateSlotSelections.values())
+    return Array.from(this.dateSlotSelections.values())
       .flatMap(dateSelection => dateSelection.selectedSlots);
-    
-    // Also check if there are any slots in selectedSlots that might not be in dateSlotSelections
-    const allSlots = [...this.selectedSlots];
-    
-    console.log('🔍 getAllSelectedSlots debug:', {
-      fromDateSelections: fromDateSelections.length,
-      fromSelectedSlots: this.selectedSlots.length,
-      dateSlotSelectionsSize: this.dateSlotSelections.size,
-      allSlotsCount: allSlots.length
-    });
-    
-    // Return the union of both sources to ensure we don't miss any slots
-    return allSlots;
   }
 
   // Get total participants across all dates
