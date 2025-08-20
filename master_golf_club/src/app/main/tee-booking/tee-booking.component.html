@@ -524,33 +524,7 @@
     </div>
     
     <div class="slot-modal-body" *ngIf="slotModalData">
-      <!-- Availability Information -->
-      <div class="slot-availability-info">
-        <div class="slot-availability-header">
-          <h4 class="slot-availability-title">Slot Availability</h4>
-          <span class="slot-availability-status">
-            {{ slotModalData.slot.slot_status === 'available' ? 'Available' : (slotModalData.slot.slot_status === 'partially_available' ? 'Partially Available' : slotModalData.slot.slot_status) }}
-          </span>
-        </div>
-        <div class="slot-availability-details">
-          <div class="slot-availability-item">
-            <div class="slot-availability-icon">
-              <fa-icon [icon]="usersIcon"></fa-icon>
-            </div>
-            <div class="slot-availability-text">
-              Available Spots: {{slotModalData.availableSpots}}
-            </div>
-          </div>
-          <div class="slot-availability-item">
-            <div class="slot-availability-icon">
-              <fa-icon [icon]="usersIcon"></fa-icon>
-            </div>
-            <div class="slot-availability-text">
-              Current Participants: {{slotModalData.totalParticipants}}/4
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Participant Selector in Modal -->
       <div class="slot-modal-section">
@@ -565,31 +539,47 @@
           <span class="player-count">{{slotModalData.requestedParticipants}}</span>
           <button class="circle-btn" (click)="incrementModalParticipants()" [disabled]="slotModalData.requestedParticipants === getMaxModalParticipants()">+</button>
         </div>
-        <div class="slot-availability-text small-text">
+        <div class="slot-info-text small-text">
           (Max: {{getMaxModalParticipants()}} participants)
         </div>
       </div>
 
-      <!-- Current Bookings -->
+      <!-- Slot Information Row -->
       <div class="slot-modal-section">
         <div class="slot-modal-section-title">
           <div class="slot-modal-section-icon">
             <fa-icon [icon]="golfIcon"></fa-icon>
           </div>
-          Current Bookings
+          Slot Information
         </div>
-        <div class="slot-booking-list">
-          <div class="slot-booking-item" *ngFor="let booking of slotModalData.bookings">
-            <div class="slot-booking-info">
-              <div class="slot-booking-member">{{booking.member_name}}</div>
-              <div class="slot-booking-details">
-                <span>{{booking.start_time}} - {{booking.end_time}}</span>
-                <span>{{booking.hole_number}} holes</span>
-              </div>
-            </div>
-            <div class="slot-booking-participants">
-              {{booking.participants}} player{{booking.participants > 1 ? 's' : ''}}
-            </div>
+        <div class="slot-info-row">
+          <div class="slot-info-item">
+            <span class="slot-info-label">Course:</span>
+            <span class="slot-info-value course-name">{{course.name}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Tee:</span>
+            <span class="slot-info-value tee-name">{{selectedTee?.label || (selectedTee?.holeNumber + ' Holes')}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Date:</span>
+            <span class="slot-info-value slot-date">{{selectedDate | date:'MMM d, yyyy'}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Time:</span>
+            <span class="slot-info-value slot-time">{{slotModalData.slot.formatted_time}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Status:</span>
+            <span class="slot-info-value slot-status">{{ slotModalData.slot.slot_status === 'available' ? 'Available' : (slotModalData.slot.slot_status === 'partially_available' ? 'Partially Available' : slotModalData.slot.slot_status) }}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Available Spots:</span>
+            <span class="slot-info-value available-spots">{{slotModalData.availableSpots}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Current Participants:</span>
+            <span class="slot-info-value current-participants">{{slotModalData.totalParticipants}}/4</span>
           </div>
         </div>
       </div>

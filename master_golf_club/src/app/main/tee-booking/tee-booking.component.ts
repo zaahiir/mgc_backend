@@ -88,7 +88,6 @@ interface DateSlotSelection {
 
 interface SlotModalData {
   slot: TimeSlot;
-  bookings: BookingDetail[];
   availableSpots: number;
   totalParticipants: number;
   requestedParticipants: number;
@@ -1174,7 +1173,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     
     this.slotModalData = {
       slot: slot,
-      bookings: slot.bookings || [],
       availableSpots: slot.available_spots || 0,
       totalParticipants: slot.total_participants || 0,
       requestedParticipants: requestedParticipants
