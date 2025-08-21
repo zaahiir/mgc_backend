@@ -230,7 +230,7 @@
                    
                    <!-- Slots for this tee -->
                    <div class="slot-detail-item" *ngFor="let slot of teeGroup.slots; let i = index" 
-                        (click)="openSlotModal(slot)" 
+                        (click)="openExistingSlotModal(slot)" 
                         style="cursor: pointer;">
                      <div class="slot-detail-header">
                        <span class="slot-number">Slot {{i + 1}}</span>
@@ -449,8 +449,8 @@
       <div class="confirmation-message">
         <h4 *ngIf="!bookingConfirmationData.totalBookings">Your tee time has been booked successfully!</h4>
         <h4 *ngIf="bookingConfirmationData.totalBookings">Your bookings have been created successfully!</h4>
-        <p *ngIf="!bookingConfirmationData.totalBookings">Booking ID: #{{bookingConfirmationData.bookingId}}</p>
-        <p *ngIf="bookingConfirmationData.totalBookings">{{bookingConfirmationData.totalBookings}} booking{{bookingConfirmationData.totalBookings > 1 ? 's' : ''}} created</p>
+        <p class="booking-id">Booking ID: <strong>{{bookingConfirmationData.bookingId}}</strong></p>
+        <p *ngIf="bookingConfirmationData.totalBookings" class="total-bookings">{{bookingConfirmationData.totalBookings}} booking{{bookingConfirmationData.totalBookings > 1 ? 's' : ''}} created</p>
       </div>
       
       <div class="booking-details">
@@ -477,9 +477,12 @@
         <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
           <span class="label">Slots:</span>
           <div class="value slots-list">
-            <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots">
+            <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
+              <div class="slot-header">
+                <span class="slot-number">Slot {{i + 1}}</span>
+                <span class="slot-time">{{slot.time}}</span>
+              </div>
               <div class="slot-details">
-                <div class="slot-time">{{slot.time}}</div>
                 <div class="slot-info">
                   <span class="slot-tee" *ngIf="slot.tee">{{slot.tee}}</span>
                   <span class="slot-date" *ngIf="slot.date">{{slot.date | date:'MMM d, yyyy'}}</span>

@@ -2061,6 +2061,27 @@
   .confirmation-message h4 {
     font-size: 1.2rem;
   }
+  
+  .booking-id {
+    font-size: 1rem;
+    padding: 8px 16px;
+  }
+  
+  .slot-item {
+    padding: 12px;
+  }
+  
+  .slot-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .slot-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 }
 
 /* Slot Status Styles */
@@ -2960,5 +2981,96 @@
     font-size: 12px;
     padding: 5px 8px;
   }
+}
+
+.confirmation-message p {
+  color: var(--text-color);
+  margin: 0;
+  font-weight: 500;
+}
+
+.booking-id {
+  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
+  color: white !important;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 15px 0;
+  display: inline-block;
+}
+
+.total-bookings {
+  color: var(--theme-color) !important;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* Slot details styling */
+.slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.slot-item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.slot-number {
+  background: var(--theme-color);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.slot-time {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--theme-color);
+}
+
+.slot-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slot-tee, .slot-date {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.slot-participants {
+  background: #f8f9fa;
+  color: var(--theme-color);
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid var(--theme-color);
 }
 
