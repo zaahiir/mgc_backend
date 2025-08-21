@@ -2732,12 +2732,23 @@
   font-weight: 600;
   font-size: 16px;
   color: #2c3e50;
+  flex: 1;
+}
+
+.slot-date {
+  font-weight: 500;
+  color: #6c757d;
+  font-size: 14px;
+  min-width: 100px;
+  text-align: center;
 }
 
 .slot-participants {
   font-weight: 500;
   color: #28a745;
   font-size: 14px;
+  min-width: 40px;
+  text-align: right;
 }
 
 .booking-ids-list {

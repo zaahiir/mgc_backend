@@ -241,7 +241,7 @@
                      <div class="slot-detail-content">
                        <div class="slot-detail-row">
                          <span class="label">Date:</span>
-                         <span class="value">{{slot.booking_date ? (slot.booking_date | date:'MMM d, yyyy') : (selectedDate | date:'MMM d, yyyy')}}</span>
+                         <span class="value">{{slot.slot_date ? (slot.slot_date | date:'MMM d, yyyy') : (slot.booking_date ? (slot.booking_date | date:'MMM d, yyyy') : (selectedDate | date:'MMM d, yyyy'))}}</span>
                        </div>
                        <div class="slot-detail-row">
                          <span class="label">Time:</span>
@@ -476,6 +476,7 @@
             <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
               <div class="slot-row">
                 <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
+                <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
                 <span class="slot-participants"> {{slot.participants}}p</span>
               </div>
             </div>
