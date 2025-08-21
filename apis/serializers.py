@@ -3,6 +3,7 @@ from .models import *
 from django.utils import timezone
 import json
 import decimal
+import pytz
 
 
 class UserTypeModelSerializers(serializers.ModelSerializer):
@@ -793,7 +794,7 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
         
         # Handle conversion date automatically if is_converted is being set to True
         if validated_data.get('is_converted', False) and not instance.is_converted:
-            validated_data['converted_date'] = timezone.now()
+            validated_data['converted_date'] = timezone.now().astimezone(pytz.timezone('Europe/London'))
         
         return super().update(instance, validated_data)
 

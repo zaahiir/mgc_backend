@@ -190,7 +190,7 @@
                  </div>
                  <div class="summary-item">
                    <span class="label">Date:</span>
-                   <span class="value">{{slot.date ? (slot.date | date:'MMM d, yyyy') : (slot.formatted_slot_date )}}</span>
+                   <span class="value">{{slot.slot_date ? (slot.slot_date | date:'EEEE, MMMM d, yyyy') : (slot.formatted_slot_date || (selectedDate | date:'EEEE, MMMM d, yyyy'))}}</span>
                  </div>
                  <div class="summary-item">
                    <span class="label">Time:</span>
@@ -242,7 +242,7 @@
 
                        <div class="slot-detail-row">
                          <span class="label">Date:</span>
-                         <span class="value">{{slot.booking_date ? (slot.booking_date | date:'MMM d, yyyy') : (slot.formatted_slot_date || (selectedDate | date:'MMM d, yyyy'))}}</span>
+                         <span class="value">{{slot.slot_date ? (slot.slot_date | date:'EEEE, MMMM d, yyyy') : (slot.formatted_slot_date || (selectedDate | date:'EEEE, MMMM d, yyyy'))}}</span>
                        </div>
                        <div class="slot-detail-row">
                          <span class="label">Time:</span>
@@ -556,7 +556,9 @@
           </div>
           <div class="slot-info-item">
             <span class="slot-info-label">Date:</span>
-            <span class="slot-info-value slot-date">{{slotModalData.slot.slot_date ? (slotModalData.slot.slot_date | date:'MMM d, yyyy') : (slotModalData.slot.formatted_slot_date || (selectedDate | date:'MMM d, yyyy'))}}</span>
+            <span class="slot-info-value slot-date">
+              {{formatSlotDateForDisplay(slotModalData.slot)}}
+            </span>
           </div>
           <div class="slot-info-item">
             <span class="slot-info-label">Time:</span>

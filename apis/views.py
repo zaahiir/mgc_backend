@@ -30,6 +30,10 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import UntypedToken
 from django.shortcuts import render
+import pytz
+
+# UK timezone
+UK_TIMEZONE = pytz.timezone('Europe/London')
 
 class CustomJWTAuthentication(JWTAuthentication):
     """
@@ -314,7 +318,9 @@ class UserViewSet(viewsets.ViewSet):
             from django.core.mail import send_mail
             
             verification_code = str(random.randint(100000, 999999))
-            reset_token_expiry = dt.datetime.now() + dt.timedelta(hours=1)  # 1 hour expiry
+            # Use UK time for expiry
+            uk_now = timezone.now().astimezone(UK_TIMEZONE)
+            reset_token_expiry = uk_now + dt.timedelta(hours=1)  # 1 hour expiry
             
             # Store verification code and expiry in member record
             member.reset_token = verification_code  # Using reset_token field to store verification code
@@ -390,7 +396,7 @@ class UserViewSet(viewsets.ViewSet):
             try:
                 member = MemberModel.objects.get(
                     reset_token=verification_code,
-                    reset_token_expiry__gt=dt.datetime.now(),
+                    reset_token_expiry__gt=timezone.now().astimezone(UK_TIMEZONE),
                     hideStatus=0
                 )
                 return Response({
@@ -442,7 +448,7 @@ class UserViewSet(viewsets.ViewSet):
             try:
                 member = MemberModel.objects.get(
                     reset_token=verification_code,
-                    reset_token_expiry__gt=dt.datetime.now(),
+                    reset_token_expiry__gt=timezone.now().astimezone(UK_TIMEZONE),
                     hideStatus=0
                 )
             except MemberModel.DoesNotExist:
@@ -2501,7 +2507,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             date_str = request.query_params.get('date')
             tee_id = request.query_params.get('tee_id')
             participants = int(request.query_params.get('participants', 1))
-            timezone_offset = request.query_params.get('timezone_offset')
+            # Remove timezone_offset parameter as we now use UK time directly
             
             if not all([course_id, date_str, tee_id]):
                 return Response({
@@ -2523,8 +2529,8 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Course or tee not found'
                 }, status=404)
             
-            # Generate time slots specifically for this tee with timezone consideration
-            slots = self.generate_time_slots(course, booking_date, tee, participants, timezone_offset)
+            # Generate time slots specifically for this tee (using UK time)
+            slots = self.generate_time_slots(course, booking_date, tee, participants)
             
             print(f"Generated {len(slots)} slots for {tee.holeNumber} holes tee")
             print(f"First few slots: {slots[:3] if slots else 'No slots'}")
@@ -2558,7 +2564,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': str(e)
             }, status=400)
 
-    def generate_time_slots(self, course, booking_date, tee, requested_participants, timezone_offset=None):
+    def generate_time_slots(self, course, booking_date, tee, requested_participants):
         """Generate time slots dynamically based on course opening time and slot duration for a specific tee"""
         from datetime import datetime, time, timedelta
         from django.utils import timezone
@@ -2573,21 +2579,12 @@ class BookingViewSet(viewsets.ModelViewSet):
         current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
         end_datetime = timezone.make_aware(datetime.combine(booking_date, close_time))
         
-        # Only for today, start from current time rounded to next slot
-        if booking_date == timezone.now().date():
-            # Adjust for timezone if provided
-            if timezone_offset is not None:
-                try:
-                    offset_minutes = int(timezone_offset)
-                    # Adjust the current time by the timezone offset
-                    now = timezone.now() + timedelta(minutes=offset_minutes)
-                    print(f"Timezone offset: {offset_minutes} minutes, Adjusted time: {now}")
-                except (ValueError, TypeError):
-                    now = timezone.now()
-                    print(f"Invalid timezone offset: {timezone_offset}, using server time: {now}")
-            else:
-                now = timezone.now()
-                print(f"No timezone offset provided, using server time: {now}")
+        # Only for today, start from current time rounded to next slot (using UK time)
+        uk_now = timezone.now().astimezone(UK_TIMEZONE)
+        if booking_date == uk_now.date():
+            # Use UK time directly - no need for timezone offset adjustment
+            now = uk_now
+            print(f"Today's booking for {tee.holeNumber} holes - using UK time: {now}")
                 
             if current_time < now:
                 # Round up to next 8-minute slot
@@ -3166,7 +3163,7 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
             # Update enquiry as converted
             enquiry.is_converted = True
             enquiry.converted_member_id = converted_member_id
-            enquiry.converted_date = timezone.now()
+            enquiry.converted_date = timezone.now().astimezone(UK_TIMEZONE)
             
             # FIXED: Use update_fields to ensure the save operation only updates these specific fields
             enquiry.save(update_fields=['is_converted', 'converted_member_id', 'converted_date'])

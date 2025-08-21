@@ -147,11 +147,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   };
 
   // Icons
-  usersIcon = faUsers;
-  golfIcon = faGolfBall;
   calendarIcon = faCalendarAlt;
   clockIcon = faClock;
-  locationIcon = faMapMarkerAlt;
+  usersIcon = faUsers;
+  golfBallIcon = faGolfBall;
+  mapMarkerIcon = faMapMarkerAlt;
+  locationIcon = faMapMarkerAlt; // Alias for location icon
   phoneIcon = faPhone;
   directionsIcon = faDirections;
   shareIcon = faShare;
@@ -163,8 +164,48 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   chevronRightIcon = faChevronRight;
   wifiIcon = faWifi;
   parkingIcon = faParking;
+  utensilsIcon = faUtensils;
+  shoppingBagIcon = faShoppingBag;
+  
+  // Additional icons for amenities
   restaurantIcon = faUtensils;
   shopIcon = faShoppingBag;
+  golfIcon = faGolfBall;
+
+  // UK timezone utilities
+  private ukTimezone = 'Europe/London';
+  
+  // Helper method to get current UK time
+  private getCurrentUKTime(): Date {
+    const now = new Date();
+    return new Date(now.toLocaleString('en-US', { timeZone: this.ukTimezone }));
+  }
+  
+  // Helper method to format date for UK timezone
+  private formatDateForUK(date: Date): string {
+    return date.toLocaleDateString('en-GB', { 
+      timeZone: this.ukTimezone,
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  }
+  
+  // Helper method to format time for UK timezone
+  private formatTimeForUK(date: Date): string {
+    return date.toLocaleTimeString('en-GB', { 
+      timeZone: this.ukTimezone,
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+  
+  // Helper method to check if date is today in UK timezone
+  private isTodayInUK(date: Date): boolean {
+    const ukNow = this.getCurrentUKTime();
+    return date.toDateString() === ukNow.toDateString();
+  }
 
   // Booking state
   participantCount: number = 1;
@@ -659,6 +700,16 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         console.log('Slots to filter:', slots);
         console.log('Number of slots:', slots.length);
         
+        // Debug: Log the first few slots to see their structure
+        if (slots.length > 0) {
+          console.log('First slot structure:', slots[0]);
+          console.log('First slot date fields:', {
+            slot_date: slots[0].slot_date,
+            formatted_slot_date: slots[0].formatted_slot_date,
+            time: slots[0].time
+          });
+        }
+        
         // Validate that slots is a valid array
         if (!Array.isArray(slots)) {
           console.error('Slots is not an array:', slots);
@@ -682,19 +733,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         }
         
         this.currentTimeSlots = filteredSlots.map((slot: any) => {
-          // Override backend slot_date with the correct selected date
-          // This ensures consistency between frontend selection and backend data
-          const correctedSlotDate = this.formatDateForBackend(this.selectedDate);
-          const correctedFormattedSlotDate = this.selectedDate.toLocaleDateString('en-US', { 
+          // Use backend date information directly, but ensure it's properly formatted
+          // The backend already sends the correct slot_date and formatted_slot_date
+          const slotDate = slot.slot_date || this.formatDateForBackend(this.selectedDate);
+          const formattedSlotDate = slot.formatted_slot_date || this.selectedDate.toLocaleDateString('en-US', { 
             day: '2-digit', 
             month: 'long', 
             year: 'numeric' 
           });
           
-          console.log(`Slot ${slot.time}: Backend slot_date="${slot.slot_date}" -> Corrected to "${correctedSlotDate}"`);
-          console.log(`Slot ${slot.time}: Backend formatted_slot_date="${slot.formatted_slot_date}" -> Corrected to "${correctedFormattedSlotDate}"`);
+          console.log(`Slot ${slot.time}: Using backend slot_date="${slot.slot_date}" and formatted_slot_date="${slot.formatted_slot_date}"`);
           
-          return {
+          const processedSlot = {
             time: slot.time,
             available: slot.available,
             formatted_time: slot.formatted_time,
@@ -706,9 +756,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             participantCount: slot.participantCount || 1, // Ensure participantCount is set
             tee_id: slot.tee_id, // Include tee ID from backend
             tee_name: slot.tee_name, // Include exact tee name from backend
-            slot_date: correctedSlotDate,
-            formatted_slot_date: correctedFormattedSlotDate
+            slot_date: slotDate,
+            formatted_slot_date: formattedSlotDate
           };
+          
+          // Debug the processed slot
+          this.debugSlotDateInfo(processedSlot, 'loadAvailableSlots');
+          
+          return processedSlot;
         });
 
         // Restore selection state for slots that were previously selected
@@ -1563,11 +1618,17 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     
     // Ensure the slot has proper date and tee information for display
     const slotForModal = { ...slot };
+    
+    // Debug the original slot before processing
+    this.debugSlotDateInfo(slot, 'openSlotModal-original');
+    
+    // Use the slot's own date information if available, otherwise fall back to selected date
     if (!slotForModal.booking_date && this.selectedDate) {
       slotForModal.booking_date = this.selectedDate;
     }
-    if (!slotForModal.slot_date && this.selectedDate) {
-      slotForModal.slot_date = this.formatDateForBackend(this.selectedDate);
+    if (!slotForModal.slot_date) {
+      // Prefer the slot's own slot_date, then formatted_slot_date, then selected date
+      slotForModal.slot_date = slot.slot_date || slot.formatted_slot_date || this.formatDateForBackend(this.selectedDate);
     }
     if (!slotForModal.tee_label && this.selectedTee) {
       slotForModal.tee_label = this.selectedTee.label;
@@ -1579,6 +1640,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       slotForModal.tee_id = this.selectedTee.id;
     }
     
+    // Debug the processed slot for modal
+    this.debugSlotDateInfo(slotForModal, 'openSlotModal-processed');
+    
     this.slotModalData = {
       slot: slotForModal,
       availableSpots: slot.available_spots || 0,
@@ -1587,12 +1651,22 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       isExistingSlot: isAlreadySelected // Add flag to indicate if this is an existing slot
     };
     
+    // Debug: Log the final modal data
+    console.log('Final slotModalData set:', this.slotModalData);
+    console.log('Modal slot date fields:', {
+      slot_date: this.slotModalData.slot.slot_date,
+      formatted_slot_date: this.slotModalData.slot.formatted_slot_date,
+      booking_date: this.slotModalData.slot.booking_date
+    });
+    
     console.log('Opening modal for slot:', slotForModal.time);
     console.log('Is already selected:', isAlreadySelected);
     console.log('Requested participants:', requestedParticipants);
     console.log('Slot date:', slotForModal.booking_date);
     console.log('Slot slot_date:', slotForModal.slot_date);
+    console.log('Slot formatted_slot_date:', slotForModal.formatted_slot_date);
     console.log('Slot tee:', slotForModal.tee_label);
+    console.log('Full slot data for modal:', slotForModal);
     
     this.showSlotModal = true;
   }
@@ -1625,7 +1699,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         // Always use the correct date and tee information from the selected slot
         // This ensures the modal shows the same date as the slot-detail-item
         updatedSlot.booking_date = selectedSlot.booking_date;
-        updatedSlot.slot_date = selectedSlot.slot_date;
+        updatedSlot.slot_date = selectedSlot.slot_date || selectedSlot.formatted_slot_date;
         updatedSlot.tee_label = selectedSlot.tee_label;
         updatedSlot.tee_name = selectedSlot.tee_name;
         updatedSlot.tee_id = selectedSlot.tee_id;
@@ -1638,11 +1712,21 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           isExistingSlot: true // Mark as existing slot to prevent duplication
         };
         
+        // Debug: Log the final modal data for existing slot
+        console.log('Final slotModalData set for existing slot:', this.slotModalData);
+        console.log('Modal slot date fields for existing slot:', {
+          slot_date: this.slotModalData.slot.slot_date,
+          formatted_slot_date: this.slotModalData.slot.formatted_slot_date,
+          booking_date: this.slotModalData.slot.booking_date
+        });
+        
         console.log('Opening modal for existing slot:', updatedSlot.time);
         console.log('Current participant count:', selectedSlot.participantCount);
         console.log('Available spots:', updatedSlot.available_spots);
         console.log('Slot date:', updatedSlot.booking_date);
         console.log('Slot slot_date:', updatedSlot.slot_date);
+        console.log('Slot formatted_slot_date:', updatedSlot.formatted_slot_date);
+        console.log('Full updated slot data:', updatedSlot);
         console.log('Marked as existing slot to prevent duplication');
         
         this.showSlotModal = true;
@@ -2117,21 +2201,21 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   private async createSingleBooking(dateStr: string): Promise<void> {
     // Validate that the date string is not in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const ukToday = this.getCurrentUKTime();
+    ukToday.setHours(0, 0, 0, 0);
     
     const [year, month, day] = dateStr.split('-').map(Number);
     const selectedDateOnly = new Date(year, month - 1, day);
     selectedDateOnly.setHours(0, 0, 0, 0);
     
-    if (selectedDateOnly < today) {
+    if (selectedDateOnly < ukToday) {
       this.errorMessage = 'Cannot book for past dates. Please select a valid date.';
       return;
     }
     
-    console.log('Single booking date validation - Today:', today);
+    console.log('Single booking date validation - UK Today:', ukToday);
     console.log('Single booking date validation - Selected date:', selectedDateOnly);
-    console.log('Single booking date validation - Is valid:', selectedDateOnly >= today);
+    console.log('Single booking date validation - Is valid:', selectedDateOnly >= ukToday);
     
     // Check if this is a join request (slot has existing bookings)
     const selectedSlot = this.currentTimeSlots.find(slot => slot.time === this.selectedTime);
@@ -2192,22 +2276,22 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   private async createMultiBookings(dateStr: string): Promise<void> {
     try {
-      // Validate that the date string is not in the past
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Validate that the date string is not in the past (using UK time)
+      const ukToday = this.getCurrentUKTime();
+      ukToday.setHours(0, 0, 0, 0);
       
       const [year, month, day] = dateStr.split('-').map(Number);
       const selectedDateOnly = new Date(year, month - 1, day);
       selectedDateOnly.setHours(0, 0, 0, 0);
       
-      if (selectedDateOnly < today) {
+      if (selectedDateOnly < ukToday) {
         this.errorMessage = 'Cannot book for past dates. Please select a valid date.';
         return;
       }
       
-      console.log('Date validation - Today:', today);
+      console.log('Date validation - UK Today:', ukToday);
       console.log('Date validation - Selected date:', selectedDateOnly);
-      console.log('Date validation - Is valid:', selectedDateOnly >= today);
+      console.log('Date validation - Is valid:', selectedDateOnly >= ukToday);
       
       // Prepare slots data for multi-slot booking
       const slotsData = this.selectedSlots.map(slot => ({
@@ -2805,6 +2889,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         isExistingSlot: true
       };
       
+      // Debug: Log the final modal data for summary item click
+      console.log('Final slotModalData set for summary item click:', this.slotModalData);
+      console.log('Modal slot date fields for summary item click:', {
+        slot_date: this.slotModalData.slot.slot_date,
+        formatted_slot_date: this.slotModalData.slot.formatted_slot_date,
+        booking_date: this.slotModalData.slot.booking_date
+      });
+      
       console.log('Opening modal for existing slot from summary:', updatedSlot.time);
       console.log('Current participant count:', selectedSlot.participantCount);
       
@@ -2867,6 +2959,56 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   formatDateForBackend(date: Date): string {
     return date.toISOString().split('T')[0];
+  }
+
+  // Helper method to format slot date for display
+  formatSlotDateForDisplay(slot: TimeSlot): string {
+    if (slot.slot_date) {
+      // If slot_date is a string in YYYY-MM-DD format, parse and format it
+      if (typeof slot.slot_date === 'string' && slot.slot_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const date = new Date(slot.slot_date);
+        return date.toLocaleDateString('en-US', { 
+          weekday: 'long',
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
+      // If it's already a Date object, format it
+      if (slot.slot_date && typeof slot.slot_date === 'object' && 'getTime' in slot.slot_date) {
+        return (slot.slot_date as Date).toLocaleDateString('en-US', { 
+          weekday: 'long',
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
+    }
+    
+    // Fall back to formatted_slot_date if available
+    if (slot.formatted_slot_date) {
+      return slot.formatted_slot_date;
+    }
+    
+    // Final fallback to selected date
+    return this.selectedDate.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  }
+
+  // Debug method to log slot date information
+  debugSlotDateInfo(slot: TimeSlot, context: string): void {
+    console.log(`[${context}] Slot ${slot.time} date information:`, {
+      slot_date: slot.slot_date,
+      formatted_slot_date: slot.formatted_slot_date,
+      booking_date: slot.booking_date,
+      slot_date_type: typeof slot.slot_date,
+      formatted_slot_date_type: typeof slot.formatted_slot_date,
+      booking_date_type: typeof slot.booking_date
+    });
   }
 
 }

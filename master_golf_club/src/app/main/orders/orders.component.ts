@@ -85,6 +85,41 @@ interface Notification {
   styleUrl: './orders.component.css'
 })
 export class OrdersComponent implements OnInit {
+  // UK timezone utilities
+  private ukTimezone = 'Europe/London';
+  
+  // Helper method to get current UK time
+  private getCurrentUKTime(): Date {
+    const now = new Date();
+    return new Date(now.toLocaleString('en-US', { timeZone: this.ukTimezone }));
+  }
+  
+  // Helper method to format date for UK timezone
+  private formatDateForUK(date: Date): string {
+    return date.toLocaleDateString('en-GB', { 
+      timeZone: this.ukTimezone,
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  }
+  
+  // Helper method to format time for UK timezone
+  private formatTimeForUK(date: Date): string {
+    return date.toLocaleTimeString('en-GB', { 
+      timeZone: this.ukTimezone,
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+  
+  // Helper method to check if date is today in UK timezone
+  private isTodayInUK(date: Date): boolean {
+    const ukNow = this.getCurrentUKTime();
+    return date.toDateString() === ukNow.toDateString();
+  }
+  
   bookings: Booking[] = [];
   notifications: Notification[] = [];
   unreadCount = 0;
@@ -371,7 +406,7 @@ export class OrdersComponent implements OnInit {
     this.showBookingDetails = false;
   }
 
-  // Enhanced date formatting for the new structure
+  // Enhanced date formatting for the new structure (using UK timezone)
   formatDate(dateString: string | Date): string {
     if (!dateString) return 'N/A';
     
@@ -380,6 +415,7 @@ export class OrdersComponent implements OnInit {
       if (isNaN(date.getTime())) return 'Invalid Date';
       
       return date.toLocaleDateString('en-GB', {
+        timeZone: this.ukTimezone,
         day: '2-digit',
         month: 'short', // Changed from 'long' to 'short' for abbreviated month
         year: 'numeric'
@@ -392,10 +428,10 @@ export class OrdersComponent implements OnInit {
 
   canCancelBooking(booking: Booking): boolean {
     const bookingDate = new Date(booking.bookingDate);
-    const now = new Date();
-    const hoursDiff = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const ukNow = this.getCurrentUKTime();
+    const hoursDiff = (bookingDate.getTime() - ukNow.getTime()) / (1000 * 60 * 60);
     
-    // Can cancel if booking is more than 24 hours away and status is confirmed or pending
+    // Can cancel if booking is more than 24 hours away and status is confirmed or pending (using UK time)
     return hoursDiff > 24 && ['confirmed', 'pending'].includes(booking.status);
   }
 

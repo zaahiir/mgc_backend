@@ -7,6 +7,10 @@ from django.utils import timezone
 from decimal import Decimal
 import uuid
 import datetime
+import pytz
+
+# UK timezone
+UK_TIMEZONE = pytz.timezone('Europe/London')
 
 
 # Start of Master
@@ -322,8 +326,9 @@ class BookingModel(models.Model):
     
     def clean(self):
         super().clean()
-        # Validate booking date is not in the past
-        if self.bookingDate < timezone.now().date():
+        # Validate booking date is not in the past (using UK time)
+        uk_now = timezone.now().astimezone(UK_TIMEZONE)
+        if self.bookingDate < uk_now.date():
             raise ValidationError("Cannot book for past dates")
         
         # Validate participants count
@@ -402,14 +407,15 @@ class BookingModel(models.Model):
     
     @property
     def can_cancel(self):
-        # Allow cancellation up to 24 hours before the earliest slot
+        # Allow cancellation up to 24 hours before the earliest slot (using UK time)
         try:
             earliest_slot = self.slots.order_by('slot_date', 'booking_time').first()
             if earliest_slot:
                 # Use slot_date if available, otherwise use booking date
                 slot_date = earliest_slot.slot_date or self.bookingDate
                 booking_datetime = timezone.datetime.combine(slot_date, earliest_slot.booking_time)
-                return booking_datetime - timezone.now() > timezone.timedelta(hours=24)
+                uk_now = timezone.now().astimezone(UK_TIMEZONE)
+                return booking_datetime - uk_now > timezone.timedelta(hours=24)
         except (TypeError, ValueError):
             pass
         return True
@@ -481,7 +487,7 @@ class BookingModel(models.Model):
             # Approve the join request
             join_request.status = 'approved'
             join_request.approved_by = approved_by
-            join_request.approved_at = timezone.now()
+            join_request.approved_at = timezone.now().astimezone(UK_TIMEZONE)
             join_request.save()
             
             # Generate new booking ID for the approved slot
@@ -655,8 +661,11 @@ class BookingSlotModel(models.Model):
         # Use the slot date if available, otherwise fall back to booking date
         slot_date = self.slot_date or self.booking.bookingDate
         start_datetime = timezone.datetime.combine(slot_date, self.booking_time)
+        # Make it timezone-aware with UK time
+        start_datetime = UK_TIMEZONE.localize(start_datetime)
         duration = timedelta(hours=self.duration_hours)
-        return (start_datetime + duration).time()
+        end_datetime = start_datetime + duration
+        return end_datetime.time()
     
     @property
     def formatted_slot_date(self):
