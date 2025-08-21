@@ -681,21 +681,35 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           return;
         }
         
-        this.currentTimeSlots = filteredSlots.map((slot: any) => ({
-          time: slot.time,
-          available: slot.available,
-          formatted_time: slot.formatted_time,
-          slot_status: slot.slot_status,
-          available_spots: slot.available_spots,
-          total_participants: slot.total_participants,
-          bookings: slot.bookings || [],
-          booking_count: slot.booking_count || 0,
-          participantCount: slot.participantCount || 1, // Ensure participantCount is set
-          tee_id: slot.tee_id, // Include tee ID from backend
-          tee_name: slot.tee_name, // Include exact tee name from backend
-          slot_date: slot.slot_date, // Include slot date from backend
-          formatted_slot_date: slot.formatted_slot_date // Include formatted slot date from backend
-        }));
+        this.currentTimeSlots = filteredSlots.map((slot: any) => {
+          // Override backend slot_date with the correct selected date
+          // This ensures consistency between frontend selection and backend data
+          const correctedSlotDate = this.formatDateForBackend(this.selectedDate);
+          const correctedFormattedSlotDate = this.selectedDate.toLocaleDateString('en-US', { 
+            day: '2-digit', 
+            month: 'long', 
+            year: 'numeric' 
+          });
+          
+          console.log(`Slot ${slot.time}: Backend slot_date="${slot.slot_date}" -> Corrected to "${correctedSlotDate}"`);
+          console.log(`Slot ${slot.time}: Backend formatted_slot_date="${slot.formatted_slot_date}" -> Corrected to "${correctedFormattedSlotDate}"`);
+          
+          return {
+            time: slot.time,
+            available: slot.available,
+            formatted_time: slot.formatted_time,
+            slot_status: slot.slot_status,
+            available_spots: slot.available_spots,
+            total_participants: slot.total_participants,
+            bookings: slot.bookings || [],
+            booking_count: slot.booking_count || 0,
+            participantCount: slot.participantCount || 1, // Ensure participantCount is set
+            tee_id: slot.tee_id, // Include tee ID from backend
+            tee_name: slot.tee_name, // Include exact tee name from backend
+            slot_date: correctedSlotDate,
+            formatted_slot_date: correctedFormattedSlotDate
+          };
+        });
 
         // Restore selection state for slots that were previously selected
         this.restoreSlotSelectionState();
@@ -1726,16 +1740,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         slotCopy.participantCount = this.slotModalData.requestedParticipants;
         
         // Set the individual slot date - this is the key change
-        // Use the slot's existing date if available, otherwise use selected date
-        if (slot.booking_date) {
-          slotCopy.booking_date = slot.booking_date;
-          // Set the slot_date to the same value for individual slot tracking
-          slotCopy.slot_date = this.formatDateForBackend(slot.booking_date);
-        } else {
-          slotCopy.booking_date = this.selectedDate;
-          // Set the slot_date to the selected date for individual slot tracking
-          slotCopy.slot_date = this.formatDateForBackend(this.selectedDate);
-        }
+        // Always use the selected date from the modal/calendar for consistency
+        // This ensures both booking_date and slot_date have the same correct date
+        slotCopy.booking_date = this.selectedDate;
+        slotCopy.slot_date = this.formatDateForBackend(this.selectedDate);
         
         // Use the slot's existing tee label if available, otherwise use selected tee
         if (slot.tee_label) {
@@ -2626,15 +2634,16 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       
       // Add the date property to the slot using the same logic as booking confirmation modal
       // Ensure the date is always a Date object for proper display in the template
+      // Use booking_date first since it contains the correct date, not slot_date which might be wrong
       let slotDate: Date;
-      if (slot.slot_date) {
-        // If slot_date is a string, parse it to a Date object
-        slotDate = new Date(slot.slot_date);
-        console.log(`Slot ${slot.time}: slot_date string "${slot.slot_date}" converted to Date:`, slotDate);
-      } else if (slot.booking_date) {
-        // Use booking_date if available
+      if (slot.booking_date) {
+        // Use booking_date if available (this contains the correct date)
         slotDate = slot.booking_date;
         console.log(`Slot ${slot.time}: using booking_date:`, slotDate);
+      } else if (slot.slot_date) {
+        // If slot_date is a string, parse it to a Date object (fallback)
+        slotDate = new Date(slot.slot_date);
+        console.log(`Slot ${slot.time}: slot_date string "${slot.slot_date}" converted to Date:`, slotDate);
       } else {
         // Fallback to selectedDate
         slotDate = this.selectedDate;
