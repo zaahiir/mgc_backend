@@ -2721,6 +2721,66 @@
   border-color: #dee2e6;
 }
 
+.slot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.slot-tee-info {
+  font-weight: 600;
+  font-size: 16px;
+  color: #2c3e50;
+}
+
+.slot-participants {
+  font-weight: 500;
+  color: #28a745;
+  font-size: 14px;
+}
+
+.booking-ids-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.booking-id-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+/* Single booking styling */
+.value:not(.booking-ids-list) .booking-id-item {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.slot-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  min-width: 60px;
+}
+
+.booking-id {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: #007bff;
+  font-size: 14px;
+  background: #e3f2fd;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #bbdefb;
+}
+
 .slot-details {
   display: flex;
   flex-direction: column;

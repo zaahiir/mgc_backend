@@ -54,124 +54,100 @@
         <table class="bookings-table">
           <thead>
             <tr>
-              <th>Booking ID</th>
-              <th>Course</th>
+              <th>Slot</th>
               <th>Tee</th>
               <th>Date</th>
-              <th>Slot Time</th>
+              <th>Time</th>
               <th>Participants</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let booking of bookings" class="booking-row" [class.join-request]="booking.is_join_request">
-              <td>
-                <div class="booking-id">
-                  <span class="id-text">{{booking.booking_id || 'N/A'}}</span>
-                  <span *ngIf="booking.is_join_request" class="join-request-indicator">Join Request</span>
-                </div>
-              </td>
-              <td>
-                <div class="course-info">
-                  <div class="course-name">{{booking.courseName}}</div>
-                </div>
-              </td>
-              <td>
-                <div class="tee-info">
-                  {{booking.teeInfo || 'N/A'}}
-                </div>
-              </td>
-              <td>
-                <div class="date">
-                  {{booking.formattedDate || (booking.bookingDate | date:'MMM d, yyyy')}}
-                </div>
-              </td>
-              <td>
-                <div class="slot-time">
-                  {{booking.bookingTime}}
-                </div>
-              </td>
-              <td>
-                <div class="participants-info">
-                  <span class="participants-count">{{booking.participants}}</span>
-                  <span *ngIf="booking.availableSpots" class="available-spots">
-                    ({{booking.availableSpots}} spots available)
-                  </span>
-                  <button class="btn-book-participants" 
-                          *ngIf="booking.availableSpots && booking.availableSpots > 0 && booking.status === 'confirmed'"
-                          (click)="openParticipantBookingModal(booking)">
-                    Book Participants
-                  </button>
-                </div>
-              </td>
-              <td>
-                <div class="status-container">
-                  <span class="status-badge" [class]="getStatusClass(booking)">
-                    {{getStatusDisplayText(booking)}}
-                  </span>
-                </div>
-              </td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn btn-primary btn-sm" (click)="showBookingDetail(booking)">
-                    Details
-                  </button>
-                  <button *ngIf="booking.canCancel" class="btn btn-danger btn-sm" (click)="cancelBooking(booking.id)">
-                    Cancel
-                  </button>
-                  <!-- Only show join button if slot can accept more participants and is not full -->
-                  <button *ngIf="canAcceptMoreParticipants(booking) && !isSlotFull(booking)" 
-                          class="btn btn-success btn-sm">
-                    Join
-                  </button>
-                  <!-- Show "Slot Full" indicator when slot is full -->
-                  <span *ngIf="isSlotFull(booking)" class="slot-full-indicator">
-                    Slot Full
-                  </span>
-                </div>
-              </td>
-            </tr>
-            
-            <!-- Show join requests for original bookings -->
-            <tr *ngFor="let booking of getBookingsWithJoinRequests()" class="join-requests-row">
-              <td colspan="8">
-                <div class="join-requests-section">
-                  <h4>Join Requests for {{booking.courseName}} - {{booking.bookingDate | date:'MMM d'}} at {{booking.bookingTime}}</h4>
-                  <div class="join-requests-list">
-                    <div *ngFor="let request of booking.joinRequests" class="join-request-item">
-                      <div class="request-info">
-                        <div class="member-details">
-                          <span class="member-name">{{request.memberName}}</span>
-                          <span class="member-full-name" *ngIf="request.memberFullName">({{request.memberFullName}})</span>
-                        </div>
-                        <div class="request-details">
-                          <span class="participants">{{request.participants}} participants</span>
-                          <span class="status" [class]="getStatusClass(request)">
-                            {{getStatusDisplayText(request)}}
-                          </span>
-                        </div>
+            <!-- Main booking rows with nested slots -->
+            <ng-container *ngFor="let booking of getGroupedBookings()">
+              <!-- Main booking row -->
+              <tr class="booking-row main-booking" [class.join-request]="booking.is_join_request">
+                <td class="main-booking-cell" [attr.colspan]="9">
+                  <div class="main-booking-header">
+                    <div class="main-booking-info">
+                      <div class="booking-id-main">
+                        <strong>{{booking.booking_id || 'N/A'}}</strong>
+                        <span *ngIf="booking.is_join_request" class="join-request-indicator">Join Request</span>
                       </div>
-                      <div class="request-actions" *ngIf="request.status === 'pending_approval'">
-                        <button class="btn btn-success btn-sm" (click)="approveJoinRequest(booking.id, request.id)">
-                          <i class="fas fa-check"></i> Approve
-                        </button>
-                        <button class="btn btn-danger btn-sm" (click)="rejectJoinRequest(booking.id, request.id)">
-                          <i class="fas fa-times"></i> Reject
-                        </button>
-                      </div>
-                      <!-- Show approval info if request was approved -->
-                      <div class="request-actions" *ngIf="request.status === 'approved'">
-                        <span class="approved-info">
-                          <i class="fas fa-check-circle"></i> Approved
-                          <small *ngIf="request.approvedAt">on {{request.approvedAt | date:'MMM d, yyyy'}}</small>
+                      <div class="course-name-main">{{booking.courseName}}</div>
+                      <div class="date-main">{{formatDate(booking.bookingDate || booking.formattedDate)}}</div>
+                      <div class="status-main">
+                        <span class="status-badge" [class]="getStatusClass(booking)">
+                          {{getStatusDisplayText(booking)}}
                         </span>
                       </div>
                     </div>
+                    <div class="main-booking-actions">
+                      <button class="btn btn-primary btn-sm" (click)="showBookingDetail(booking)">
+                        Details
+                      </button>
+                      <button *ngIf="canCancelBooking(booking)" class="btn btn-danger btn-sm" (click)="cancelBooking(booking.id)">
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </td>
-            </tr>
+                </td>
+              </tr>
+              
+              <!-- Nested slot rows -->
+              <ng-container *ngFor="let slot of booking.slots; let slotIndex = index">
+                <tr class="slot-row" [class.multi-slot]="booking.slots.length > 1">
+                  <td class="slot-cell">
+                    <div class="slot-indicator-nested">
+                      Slot {{slotIndex + 1}}/{{booking.slots.length}}
+                    </div>
+                  </td>
+                  <td class="slot-cell">
+                    <div class="tee-info-nested">
+                      <strong>{{slot.teeInfo || 'Tee ' + slot.tee}}</strong>
+                    </div>
+                  </td>
+                  <td class="slot-cell">
+                    <div class="slot-date-nested">
+                      <strong>{{slot.formattedSlotDate || formatDate(slot.slotDate) || 'N/A'}}</strong>
+                    </div>
+                  </td>
+                  <td class="slot-cell">
+                    <div class="time-nested">
+                      {{formatTime(slot.booking_time || 'N/A')}}
+                    </div>
+                  </td>
+                  <td class="slot-cell">
+                    <div class="participants-nested">
+                      {{slot.participants}} participants
+                    </div>
+                  </td>
+                  <td class="slot-cell">
+                    <div class="slot-status-nested">
+                      <span class="status-badge slot-status" [class]="getStatusClass(slot)">
+                        {{slot.slot_status || 'N/A'}}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="slot-cell">
+                    <div class="slot-actions">
+                      <button *ngIf="canJoinSlot(slot)" class="btn btn-success btn-sm">
+                        Join
+                      </button>
+                      <span *ngIf="isSlotFull(slot)" class="slot-full-indicator">
+                        Slot Full
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+              
+              <!-- Empty row for spacing -->
+              <tr class="spacing-row">
+                <td colspan="9" class="spacing-cell"></td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
       </div>
@@ -216,7 +192,10 @@
               </div>
               <div class="detail-item">
                 <label>Time:</label>
-                <span>{{selectedBooking.bookingTime}} - {{selectedBooking.endTime || 'TBD'}} (8 minutes duration)</span>
+                <span>{{formatTime(selectedBooking.booking_time || 'N/A')}} (8 minutes duration)</span>
+                <div *ngIf="selectedBooking.hasMultipleSlots" class="slot-details">
+                  <small><strong>This is slot {{selectedBooking.slotNumber}} of {{selectedBooking.totalSlots}}</strong></small>
+                </div>
               </div>
               <div class="detail-item">
                 <label>Participants:</label>
@@ -224,14 +203,25 @@
               </div>
               <div class="detail-item">
                 <label>Status:</label>
-                <span class="status-badge" [class]="getStatusClass(selectedBooking.status)">
-                  {{getStatusText(selectedBooking.status)}}
+                <span class="status-badge" [class]="getStatusClass(selectedBooking)">
+                  {{getStatusDisplayText(selectedBooking)}}
                 </span>
+                <div *ngIf="selectedBooking.hasMultipleSlots" class="slot-status-detail">
+                  <small>Slot Status: {{selectedBooking.slot_status || 'N/A'}}</small>
+                </div>
               </div>
 
               <div class="detail-item" *ngIf="selectedBooking.teeInfo">
                 <label>Tee Information:</label>
                 <span>{{selectedBooking.teeInfo}}</span>
+                <!-- Show slot details for multi-slot bookings -->
+                <div *ngIf="selectedBooking.hasMultipleSlots" class="slot-detail-info">
+                  <small>
+                    <strong>Slot {{selectedBooking.slotNumber}} of {{selectedBooking.totalSlots}}</strong><br>
+                    Booking ID: {{selectedBooking.booking_id}}<br>
+                    Slot Order: {{selectedBooking.slot_order || 'N/A'}}
+                  </small>
+                </div>
               </div>
               <div class="detail-item" *ngIf="selectedBooking.availableSpots">
                 <label>Available Spots:</label>
@@ -249,7 +239,7 @@
                     <span *ngIf="request.memberFullName">({{request.memberFullName}})</span>
                   </div>
                   <div class="request-status">
-                    <span class="status-badge" [class]="getStatusClass(request.status)">
+                    <span class="status-badge" [class]="getStatusClass(request)">
                       {{getStatusText(request.status)}}
                     </span>
                   </div>
@@ -303,7 +293,7 @@
         </div>
         <div class="info-item">
           <label>Time:</label>
-          <span>{{selectedBookingForParticipants.bookingTime}} (8 minutes duration)</span>
+          <span>{{getEarliestTime(selectedBookingForParticipants)}} (8 minutes duration)</span>
         </div>
         <div class="info-item">
           <label>Available Spots:</label>

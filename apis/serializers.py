@@ -458,6 +458,26 @@ class TeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Hole number must be a positive integer")
         return value
 
+class BookingSlotSerializer(serializers.ModelSerializer):
+    """Serializer for individual booking slots"""
+    teeInfo = serializers.SerializerMethodField(read_only=True)
+    endTime = serializers.TimeField(source='end_time', read_only=True)
+    teeName = serializers.CharField(source='tee.holeNumber', read_only=True)
+    courseName = serializers.CharField(source='tee.course.courseName', read_only=True)
+    slotDate = serializers.DateField(source='slot_date', read_only=True)
+    formattedSlotDate = serializers.CharField(source='formatted_slot_date', read_only=True)
+    
+    class Meta:
+        model = BookingSlotModel
+        fields = [
+            'id', 'tee', 'teeInfo', 'teeName', 'courseName', 'slot_date', 'slotDate', 'formattedSlotDate',
+            'booking_time', 'participants', 'slot_order', 'slot_status', 'notes', 'endTime', 'createdAt', 'updatedAt'
+        ]
+    
+    def get_teeInfo(self, obj):
+        return f"{obj.tee.holeNumber} Holes"
+
+
 class BookingSerializer(serializers.ModelSerializer):
     memberName = serializers.CharField(source='member.firstName', read_only=True)
     memberFullName = serializers.SerializerMethodField(read_only=True)
@@ -473,10 +493,11 @@ class BookingSerializer(serializers.ModelSerializer):
     joinRequests = serializers.SerializerMethodField(read_only=True)
     originalBookingInfo = serializers.SerializerMethodField(read_only=True)
     
-    # Enhanced fields for multi-slot booking
-    isMultiSlotBooking = serializers.BooleanField(source='is_multi_slot_booking', read_only=True)
-    multiSlotGroupId = serializers.CharField(source='multi_slot_group_id', read_only=True)
-    slotOrder = serializers.IntegerField(source='slot_order', read_only=True)
+    # Multi-slot booking fields - updated for new system
+    hasMultipleSlots = serializers.BooleanField(source='has_multiple_slots', read_only=True)
+    isMultiSlotBooking = serializers.SerializerMethodField(read_only=True)
+    totalParticipants = serializers.SerializerMethodField(read_only=True)
+    slots = BookingSlotSerializer(many=True, read_only=True)
     
     # Enhanced approval tracking
     approvedBy = serializers.SerializerMethodField(read_only=True)
@@ -486,36 +507,99 @@ class BookingSerializer(serializers.ModelSerializer):
     isSlotFull = serializers.BooleanField(source='is_slot_full', read_only=True)
     canAcceptMoreParticipants = serializers.BooleanField(source='can_accept_more_participants', read_only=True)
     
+    # Additional fields for orders display
+    earliestTime = serializers.SerializerMethodField(read_only=True)
+    latestTime = serializers.SerializerMethodField(read_only=True)
+    teeSummary = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = BookingModel
         fields = [
             'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
-            'tee', 'teeInfo', 'bookingDate', 'formattedDate', 'bookingTime', 'endTime',
-            'participants', 'totalPrice', 'status', 'notes', 'canCancel',
+            'teeInfo', 'bookingDate', 'formattedDate', 'endTime', 'earliestTime', 'latestTime',
+            'participants', 'status', 'notes', 'canCancel',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
             'joinRequests', 'originalBookingInfo', 'is_join_request', 'original_booking',
-            'isMultiSlotBooking', 'multiSlotGroupId', 'slotOrder', 'approvedBy', 'approvedAt',
-            'isSlotFull', 'canAcceptMoreParticipants'
+            'hasMultipleSlots', 'isMultiSlotBooking', 'totalParticipants', 'slots',
+            'approvedBy', 'approvedAt', 'isSlotFull', 'canAcceptMoreParticipants',
+            'teeSummary'
         ]
         extra_kwargs = {
             'member': {'required': False},  # Will be set automatically from authentication
-            'totalPrice': {'required': False},
             'is_join_request': {'required': False, 'default': False},
             'original_booking': {'required': False},
-            'is_multi_slot_booking': {'required': False, 'default': False},
-            'multi_slot_group_id': {'required': False},
-            'slot_order': {'required': False, 'default': 1}
+            'has_multiple_slots': {'required': False, 'default': False}
         }
     
     def get_memberFullName(self, obj):
         return f"{obj.member.firstName} {obj.member.lastName}"
     
     def get_teeInfo(self, obj):
-        return f"{obj.tee.holeNumber} Holes"
+        return obj.get_tee_info()
     
     def get_formattedDate(self, obj):
-        # Return date in ISO format for frontend compatibility
-        return obj.bookingDate.isoformat()
+        # Return date in DD/Month/YYYY format for orders component
+        return obj.bookingDate.strftime('%d/%B/%Y')
+    
+    def get_earliestTime(self, obj):
+        """Get the earliest time from all slots"""
+        earliest_slot = obj.slots.order_by('booking_time').first()
+        if earliest_slot:
+            return earliest_slot.booking_time.strftime('%I:%M %p')
+        return None
+    
+    def get_latestTime(self, obj):
+        """Get the latest time from all slots"""
+        latest_slot = obj.slots.order_by('booking_time').last()
+        if latest_slot:
+            return latest_slot.booking_time.strftime('%I:%M %p')
+        return None
+    
+    def get_teeSummary(self, obj):
+        """Get a summary of all tees in this booking"""
+        slots = obj.slots.all()
+        if not slots.exists():
+            return "No slots"
+        
+        tee_summary = {}
+        for slot in slots:
+            hole_count = slot.tee.holeNumber
+            slot_date = slot.slot_date or obj.bookingDate
+            date_key = slot_date.strftime('%Y-%m-%d')
+            
+            if hole_count not in tee_summary:
+                tee_summary[hole_count] = {}
+            
+            if date_key not in tee_summary[hole_count]:
+                tee_summary[hole_count][date_key] = {
+                    'holes': hole_count,
+                    'slots': 0,
+                    'participants': 0,
+                    'date': slot_date
+                }
+            
+            tee_summary[hole_count][date_key]['slots'] += 1
+            tee_summary[hole_count][date_key]['participants'] += slot.participants
+        
+        # Format the summary
+        summary_parts = []
+        for hole_count, dates in tee_summary.items():
+            for date_info in dates.values():
+                date_str = date_info['date'].strftime('%d/%B/%Y')
+                if date_info['slots'] == 1:
+                    summary_parts.append(f"{hole_count} Holes on {date_str} ({date_info['participants']}p)")
+                else:
+                    summary_parts.append(f"{hole_count} Holes x{date_info['slots']} on {date_str} ({date_info['participants']}p)")
+        
+        return " + ".join(summary_parts)
+    
+    def get_isMultiSlotBooking(self, obj):
+        """Check if this is a multi-slot booking"""
+        return obj.is_multi_slot_booking()
+    
+    def get_totalParticipants(self, obj):
+        """Get total participants across all slots"""
+        return obj.get_total_participants()
     
     def get_canJoinSlot(self, obj):
         """Check if current member can join this slot"""
@@ -608,14 +692,6 @@ class BookingSerializer(serializers.ModelSerializer):
                 if existing_request:
                     raise serializers.ValidationError("You have already requested to join this slot")
         
-        # Validate multi-slot booking
-        if data.get('is_multi_slot_booking', False):
-            if not data.get('multi_slot_group_id'):
-                raise serializers.ValidationError("Multi-slot group ID is required for multi-slot bookings")
-            
-            if data.get('slot_order', 1) < 1:
-                raise serializers.ValidationError("Slot order must be a positive integer")
-        
         return data
 
 
@@ -647,7 +723,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             return {
                 'id': obj.related_booking.id,
                 'courseName': obj.related_booking.course.courseName,
-                'bookingDate': obj.related_booking.bookingDate.strftime('%B %d, %Y'),
+                'bookingDate': obj.related_booking.bookingDate.strftime('%d/%m/%y'),
                 'bookingTime': obj.related_booking.bookingTime.strftime('%I:%M %p'),
                 'participants': obj.related_booking.participants
             }

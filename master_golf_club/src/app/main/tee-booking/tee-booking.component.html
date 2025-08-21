@@ -459,10 +459,6 @@
           <span class="value">{{bookingConfirmationData.courseName || course.name}}</span>
         </div>
         <div class="detail-item">
-          <span class="label">Tee:</span>
-          <span class="value">{{bookingConfirmationData.teeLabel || selectedTee?.label}}</span>
-        </div>
-        <div class="detail-item">
           <span class="label">Date:</span>
           <span class="value">{{bookingConfirmationData.date ? (bookingConfirmationData.date | date:'MMM d, yyyy') : (selectedDate | date:'MMM d, yyyy')}}</span>
         </div>
@@ -478,27 +474,19 @@
           <span class="label">Slots:</span>
           <div class="value slots-list">
             <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
-              <div class="slot-header">
-                <span class="slot-number">Slot {{i + 1}}</span>
-                <span class="slot-time">{{slot.time}}</span>
-              </div>
-              <div class="slot-details">
-                <div class="slot-info">
-                  <span class="slot-tee" *ngIf="slot.tee">{{slot.tee}}</span>
-                  <span class="slot-date" *ngIf="slot.date">{{slot.date | date:'MMM d, yyyy'}}</span>
-                </div>
-                <div class="slot-participants">{{slot.participants}} player{{slot.participants > 1 ? 's' : ''}}</div>
+              <div class="slot-row">
+                <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
+                <span class="slot-participants"> {{slot.participants}}p</span>
               </div>
             </div>
           </div>
         </div>
-        <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
-          <span class="label">Total Participants:</span>
-          <span class="value">{{getTotalParticipants(bookingConfirmationData.selectedSlots)}}</span>
-        </div>
-        <div class="detail-item" *ngIf="bookingConfirmationData.groupId">
-          <span class="label">Group ID:</span>
-          <span class="value">{{bookingConfirmationData.groupId}}</span>
+        <!-- Show single booking ID for all slots -->
+        <div class="detail-item" *ngIf="bookingConfirmationData.bookingId">
+          <span class="label">Booking ID:</span>
+          <span class="value">
+            <span class="booking-id">{{bookingConfirmationData.bookingId}}</span>
+          </span>
         </div>
         <div class="detail-item">
           <span class="label">Status:</span>

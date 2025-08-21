@@ -31,15 +31,12 @@ interface BookingData {
   course: number;
   tee: number;
   bookingDate: string;
+  slotDate?: string;  // Add optional slot date for individual slots
   bookingTime: string;
   participants: number;
-  totalPrice: number;
   status?: 'pending' | 'confirmed' | 'cancelled' | 'pending_approval' | 'approved' | 'rejected' | 'completed';
   is_join_request?: boolean;
   original_booking?: number;
-  is_multi_slot_booking?: boolean;
-  multi_slot_group_id?: string;
-  slot_order?: number;
 }
 
 interface MultiSlotBookingData {
@@ -47,9 +44,9 @@ interface MultiSlotBookingData {
     course: number;
     tee: number;
     bookingDate: string;
+    slotDate?: string;  // Add optional slot date for individual slots
     bookingTime: string;
     participants: number;
-    totalPrice?: number;
     is_join_request?: boolean;
     original_booking?: number;
   }>;
@@ -77,6 +74,8 @@ interface TimeSlot {
   isSelected?: boolean;
   isMultiSelected?: boolean;
   participantCount?: number; // Individual participant count for this slot
+  slot_date?: string; // Date for this specific slot
+  formatted_slot_date?: string; // Formatted date for display
 }
 
 interface Notification {
@@ -110,9 +109,6 @@ interface BookingWithDetails extends BookingData {
   canJoinSlot: boolean;
   joinRequests: BookingWithDetails[];
   originalBookingInfo?: any;
-  isMultiSlotBooking?: boolean;
-  multiSlotGroupId?: string;
-  slotOrder?: number;
   approvedBy?: any;
   approvedAt?: string;
   isSlotFull?: boolean;

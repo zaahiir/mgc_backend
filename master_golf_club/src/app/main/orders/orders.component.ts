@@ -17,23 +17,53 @@ interface Booking {
   course?: number;
   tee?: number;
   bookingDate: string;
-  bookingTime: string;
+  // Remove bookingTime since it's now in slots
+  // bookingTime: string;
   endTime?: string;
   participants: number;
   status: string;
   is_join_request: boolean;
   originalBookingInfo?: any;
+  originalBookingId?: number; // Add this property
   joinRequests?: Booking[];
   canCancel?: boolean;
   slotStatus?: string;
   availableSpots?: number;
   slotParticipantCount?: number;
   canJoinSlot?: boolean;
-  totalPrice?: number;
+
   teeInfo?: string;
   formattedDate?: string;
   isSlotFull?: boolean; // Added for enhanced status
   canAcceptMoreParticipants?: boolean; // Added for enhanced status
+  // Multi-slot booking fields - updated for new model structure
+  hasMultipleSlots?: boolean;
+  isMultiSlotBooking?: boolean;
+  totalParticipants?: number;
+  
+  // Add properties that are used in the component
+  booking_time?: string;
+  teeName?: string;
+  slot_status?: string;
+  slot_order?: number;
+  
+  slots?: Array<{
+    id: number;
+    tee: number;
+    teeInfo: string;
+    teeName?: string;
+    courseName?: string;
+    booking_time: string;
+    participants: number;
+    slot_order: number;
+    slot_status: string;
+    endTime: string;
+  }>; // Individual slots within the booking
+  
+  // New fields for better display
+  earliestTime?: string;
+  latestTime?: string;
+  teeSummary?: string;
 }
 
 interface Notification {
@@ -116,53 +146,80 @@ export class OrdersComponent implements OnInit {
       if (response && response.data) {
         console.log('Response data:', response.data);
         
+        let rawBookings: any[] = [];
+        
         // Check if response.data is an array (direct API response)
         if (Array.isArray(response.data)) {
           console.log('Raw booking data from API (array format):', response.data);
-          
-          this.bookings = response.data.map((booking: any) => {
-            console.log('Processing booking:', booking);
-            console.log('Booking date:', booking.bookingDate);
-            console.log('Formatted date from API:', booking.formattedDate);
-            
-            const processedBooking = {
-              ...booking,
-              formattedDate: this.formatDate(booking.bookingDate || booking.formattedDate),
-              canCancel: this.canCancelBooking(booking),
-              canJoinSlot: this.canJoinSlot(booking)
-            };
-            
-            console.log('Processed booking:', processedBooking);
-            return processedBooking;
-          });
-          
-          console.log('Final processed bookings:', this.bookings);
+          rawBookings = response.data;
         } 
         // Check if response.data has the expected code/data structure
         else if (response.data.code === 1) {
           console.log('Raw booking data from API (code/data format):', response.data.data);
+          rawBookings = response.data.data;
+        } else {
+          console.error('API returned error code:', response.data.code);
+          this.errorMessage = response.data.message || 'Failed to load bookings';
+          return;
+        }
+
+        // Process bookings to handle multi-slot structure
+        this.bookings = [];
+        
+        for (const booking of rawBookings) {
+          console.log('Processing booking:', booking);
           
-          this.bookings = response.data.data.map((booking: any) => {
-            console.log('Processing booking:', booking);
-            console.log('Booking date:', booking.bookingDate);
-            console.log('Formatted date from API:', booking.formattedDate);
-            
+          if (booking.slots && booking.slots.length > 0) {
+            // Create a separate row for each slot
+            for (let i = 0; i < booking.slots.length; i++) {
+              const slot = booking.slots[i];
+              const slotBooking = {
+                ...booking,
+                id: `${booking.id}-slot-${i + 1}`, // Create unique ID for display
+                originalBookingId: booking.id, // Keep reference to original booking
+                slotIndex: i,
+                // Override with slot-specific data
+                tee: slot.tee,
+                teeInfo: slot.teeInfo || `Tee ${slot.tee}`,
+                teeName: slot.teeName,
+                booking_time: slot.booking_time,
+                participants: slot.participants,
+                slot_status: slot.slot_status,
+                slot_order: slot.slot_order,
+                endTime: slot.endTime,
+                // Mark as multi-slot
+                hasMultipleSlots: booking.slots.length > 1,
+                isMultiSlotBooking: true,
+                totalSlots: booking.slots.length,
+                slotNumber: i + 1,
+                // Format display data
+                formattedDate: this.formatDate(booking.bookingDate || booking.formattedDate),
+                canCancel: this.canCancelBooking(booking),
+                canJoinSlot: this.canJoinSlot(booking)
+              };
+              
+              console.log('Created slot booking:', slotBooking);
+              this.bookings.push(slotBooking);
+            }
+          } else {
+            // Single slot or no slots - create single row
             const processedBooking = {
               ...booking,
               formattedDate: this.formatDate(booking.bookingDate || booking.formattedDate),
               canCancel: this.canCancelBooking(booking),
-              canJoinSlot: this.canJoinSlot(booking)
+              canJoinSlot: this.canJoinSlot(booking),
+              hasMultipleSlots: false,
+              isMultiSlotBooking: false,
+              totalSlots: 1,
+              slotNumber: 1
             };
             
-            console.log('Processed booking:', processedBooking);
-            return processedBooking;
-          });
-          
-          console.log('Final processed bookings:', this.bookings);
-        } else {
-          console.error('API returned error code:', response.data.code);
-          this.errorMessage = response.data.message || 'Failed to load bookings';
+            console.log('Created single booking:', processedBooking);
+            this.bookings.push(processedBooking);
+          }
         }
+        
+        console.log('Final processed bookings:', this.bookings);
       } else {
         console.error('Invalid response format:', response);
         this.errorMessage = 'Invalid response from server';
@@ -314,33 +371,22 @@ export class OrdersComponent implements OnInit {
     this.showBookingDetails = false;
   }
 
-  formatDate(dateString: string): string {
+  // Enhanced date formatting for the new structure
+  formatDate(dateString: string | Date): string {
+    if (!dateString) return 'N/A';
+    
     try {
-      console.log('formatDate input:', dateString);
-      
-      if (!dateString) {
-        console.warn('No date string provided to formatDate');
-        return 'Date not available';
-      }
-      
       const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid Date';
       
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date string:', dateString);
-        return 'Invalid date';
-      }
-      
-      const formattedDate = date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long'
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short', // Changed from 'long' to 'short' for abbreviated month
+        year: 'numeric'
       });
-      
-      console.log('Formatted date result:', formattedDate);
-      return formattedDate;
     } catch (error) {
-      console.error('Error formatting date:', error, 'Input:', dateString);
-      return 'Date formatting error';
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
     }
   }
 
@@ -398,6 +444,11 @@ export class OrdersComponent implements OnInit {
           return booking.status;
       }
     }
+  }
+
+  // Helper method to get status text (for backward compatibility)
+  getStatusText(status: string): string {
+    return this.getStatusDisplayText({ status } as Booking);
   }
 
   // Helper method to get status CSS class
@@ -468,6 +519,43 @@ export class OrdersComponent implements OnInit {
     return this.bookings.filter(booking => booking.status === 'cancelled').length;
   }
 
+  // Helper methods for multi-slot bookings
+  getEarliestTime(booking: Booking): string {
+    if (!booking.slots || booking.slots.length === 0) return 'N/A';
+    
+    const earliestSlot = booking.slots.reduce((earliest, current) => {
+      const earliestTime = new Date(`2000-01-01T${earliest.booking_time}`);
+      const currentTime = new Date(`2000-01-01T${current.booking_time}`);
+      return currentTime < earliestTime ? current : earliest;
+    });
+    
+    return this.formatTime(earliestSlot.booking_time);
+  }
+
+  getLatestTime(booking: Booking): string {
+    if (!booking.slots || booking.slots.length === 0) return 'N/A';
+    
+    const latestSlot = booking.slots.reduce((latest, current) => {
+      const latestTime = new Date(`2000-01-01T${latest.booking_time}`);
+      const currentTime = new Date(`2000-01-01T${current.booking_time}`);
+      return currentTime > latestTime ? current : latest;
+    });
+    
+    return this.formatTime(latestSlot.booking_time);
+  }
+
+  formatTime(timeString: string): string {
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minutes} ${ampm}`;
+    } catch (error) {
+      return timeString;
+    }
+  }
+
   // Participant Booking Modal Methods
   openParticipantBookingModal(booking: Booking) {
     this.selectedBookingForParticipants = booking;
@@ -497,14 +585,21 @@ export class OrdersComponent implements OnInit {
     if (!this.selectedBookingForParticipants) return;
 
     try {
+      // Get the first slot's time for the join request
+      const firstSlot = this.selectedBookingForParticipants.slots?.[0];
+      if (!firstSlot) {
+        this.showErrorMessage('No slots found for this booking');
+        return;
+      }
+
       // Create a new booking for the additional participants
       const bookingData = {
         course: this.selectedBookingForParticipants.course || 0,
-        tee: this.selectedBookingForParticipants.tee || 0,
+        tee: firstSlot.tee, // Use the tee from the first slot
         bookingDate: this.selectedBookingForParticipants.bookingDate,
-        bookingTime: this.selectedBookingForParticipants.bookingTime,
+        bookingTime: firstSlot.booking_time, // Use the time from the first slot
         participants: this.requestedParticipants,
-        totalPrice: 0, // Add required totalPrice field
+
         is_join_request: true,
         original_booking: this.selectedBookingForParticipants.id
       };
@@ -522,5 +617,66 @@ export class OrdersComponent implements OnInit {
       console.error('Error booking participants:', error);
       this.showErrorMessage('Failed to book participants. Please try again.');
     }
+  }
+
+  // Helper method to get grouped bookings for nested table display
+  getGroupedBookings(): any[] {
+    // Group bookings by their original booking ID
+    const groupedBookings = new Map<number, any>();
+    
+    for (const booking of this.bookings) {
+      const originalId = booking.originalBookingId || booking.id;
+      
+      if (!groupedBookings.has(originalId)) {
+        // Create the main booking object
+        const mainBooking: any = {
+          ...booking,
+          id: originalId,
+          slots: []
+        };
+        
+        // Add the current slot to the slots array
+        if (booking.booking_time) {
+          mainBooking.slots.push({
+            id: booking.id,
+            tee: booking.tee,
+            teeInfo: booking.teeInfo,
+            teeName: booking.teeName,
+            booking_time: booking.booking_time,
+            participants: booking.participants,
+            slot_status: booking.slot_status || booking.status,
+            slot_order: booking.slot_order || 1,
+            endTime: booking.endTime
+          });
+        }
+        
+        groupedBookings.set(originalId, mainBooking);
+      } else {
+        // Add additional slots to existing booking
+        if (booking.booking_time) {
+          groupedBookings.get(originalId)!.slots.push({
+            id: booking.id,
+            tee: booking.tee,
+            teeInfo: booking.teeInfo,
+            teeName: booking.teeName,
+            booking_time: booking.booking_time,
+            participants: booking.participants,
+            slot_status: booking.slot_status || booking.status,
+            slot_order: booking.slot_order || 1,
+            endTime: booking.endTime
+          });
+        }
+      }
+    }
+    
+    // Convert map to array and sort slots by slot_order
+    const result = Array.from(groupedBookings.values());
+    result.forEach((booking: any) => {
+      if (booking.slots && booking.slots.length > 0) {
+        booking.slots.sort((a: any, b: any) => (a.slot_order || 0) - (b.slot_order || 0));
+      }
+    });
+    
+    return result;
   }
 }
