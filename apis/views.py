@@ -2072,7 +2072,7 @@ class TeeViewSet(viewsets.ModelViewSet):
             current_time = open_time
             while current_time <= close_time:
                 slot_time = current_time
-                formatted_time = slot_time.strftime('%I:%M %p')
+                formatted_time = slot_time.strftime('%H:%M')  # Changed to 24-hour format
                 
                 # Get existing bookings for this slot and tee
                 existing_bookings = current_bookings.filter(bookingTime=slot_time)
@@ -2609,7 +2609,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         
         while current_time.time() <= close_time:
             slot_time = current_time.time()
-            formatted_time = slot_time.strftime('%I:%M %p')
+            formatted_time = slot_time.strftime('%H:%M')  # Changed to 24-hour format
             
             # Get existing bookings for this specific slot, date, and tee
             try:
@@ -2653,8 +2653,8 @@ class BookingViewSet(viewsets.ModelViewSet):
                             'participants': booking.participants,
                             'status': booking.slot_status,
                             'hole_number': booking.tee.holeNumber,
-                            'start_time': booking.booking_time.strftime('%I:%M %p'),
-                            'end_time': booking.end_time.strftime('%I:%M %p')
+                            'start_time': booking.booking_time.strftime('%H:%M'),  # Changed to 24-hour format
+                            'end_time': booking.end_time.strftime('%H:%M')  # Changed to 24-hour format
                         })
                 
                 slot_data = {
@@ -2668,7 +2668,9 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'booking_count': len(booking_details),
                     'tee_id': tee.id,  # Add tee ID to identify which tee this slot belongs to
                     'tee_holes': tee.holeNumber,  # Add hole count for clarity
-                    'tee_name': f"{tee.holeNumber} Holes"  # Add exact tee name for display
+                    'tee_name': f"{tee.holeNumber} Holes",  # Add exact tee name for display
+                    'slot_date': booking_date.strftime('%Y-%m-%d'),  # Add slot date in YYYY-MM-DD format
+                    'formatted_slot_date': booking_date.strftime('%d/%B/%Y')  # Add formatted slot date for display
                 }
                 
                 slots.append(slot_data)

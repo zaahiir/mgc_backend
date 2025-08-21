@@ -692,7 +692,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           booking_count: slot.booking_count || 0,
           participantCount: slot.participantCount || 1, // Ensure participantCount is set
           tee_id: slot.tee_id, // Include tee ID from backend
-          tee_name: slot.tee_name // Include exact tee name from backend
+          tee_name: slot.tee_name, // Include exact tee name from backend
+          slot_date: slot.slot_date, // Include slot date from backend
+          formatted_slot_date: slot.formatted_slot_date // Include formatted slot date from backend
         }));
 
         // Restore selection state for slots that were previously selected
@@ -736,7 +738,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       slot.isMultiSelected = false;
       slot.participantCount = undefined;
       slot.booking_date = undefined;
-      slot.slot_date = undefined; // Clear slot_date as well
+      // Don't clear slot_date - preserve the original slot date from backend
       slot.tee_label = undefined;
       slot.tee_id = undefined;
       slot.tee_name = undefined;
@@ -1127,6 +1129,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   selectSingleSlot(slot: TimeSlot): void {
+    // Use the date that was displayed in the modal (this.selectedDate) as the slot's date
+    // This ensures the slot-detail-item shows the same date as the modal
+    const modalDate = this.selectedDate;
+    const modalDateStr = this.formatDateForBackend(modalDate);
+    
     // Clear previous selections for the current date and tee only
     this.clearCurrentDateTeeSelections();
     
@@ -1136,21 +1143,24 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       s.isMultiSelected = false;
       s.participantCount = undefined;
       s.booking_date = undefined;
-      s.slot_date = undefined; // Clear slot_date as well
+      // Don't clear slot_date - preserve the original slot date from backend
       s.tee_label = undefined;
       s.tee_id = undefined;
       s.tee_name = undefined;
     });
     
-    slot.isSelected = true;
-    slot.participantCount = this.participantCount; // Set participant count for this slot
-    slot.booking_date = this.selectedDate; // Store the date for this slot
-    slot.slot_date = this.formatDateForBackend(this.selectedDate); // Store the slot_date for individual slot tracking
-    slot.tee_label = this.selectedTee?.label; // Store the tee label for this slot
-    slot.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
-    slot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
-    this.selectedTime = slot.time;
-    this.selectedSlots.push(slot);
+    // Create a copy of the slot to avoid modifying the original
+    const slotCopy = { ...slot };
+    
+    slotCopy.isSelected = true;
+    slotCopy.participantCount = this.participantCount; // Set participant count for this slot
+    slotCopy.booking_date = modalDate; // Use the date from the modal
+    slotCopy.slot_date = modalDateStr; // Use the date from the modal
+    slotCopy.tee_label = this.selectedTee?.label; // Store the tee label for this slot
+    slotCopy.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
+    slotCopy.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
+    this.selectedTime = slotCopy.time;
+    this.selectedSlots.push(slotCopy);
     
     // Update the slot in currentTimeSlots to show selected state
     const currentTimeSlot = this.currentTimeSlots.find(s => s.time === slot.time);
@@ -1158,8 +1168,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       currentTimeSlot.isSelected = true;
       currentTimeSlot.isMultiSelected = false;
       currentTimeSlot.participantCount = this.participantCount;
-      currentTimeSlot.booking_date = this.selectedDate;
-      currentTimeSlot.slot_date = this.formatDateForBackend(this.selectedDate); // Set slot_date as well
+      currentTimeSlot.booking_date = modalDate; // Use the date from the modal
+      currentTimeSlot.slot_date = modalDateStr; // Use the date from the modal
       currentTimeSlot.tee_label = this.selectedTee?.label;
       currentTimeSlot.tee_id = this.selectedTee?.id;
       currentTimeSlot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name
@@ -1183,12 +1193,56 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     const dateKey = this.getDateKey(this.selectedDate);
     const teeId = this.selectedTee.id;
 
+    console.log('clearCurrentDateTeeSelections called:');
+    console.log('Current date:', this.selectedDate, 'Date key:', dateKey);
+    console.log('Current tee:', this.selectedTee.label, 'Tee ID:', teeId);
+    console.log('SelectedSlots before filtering:', this.selectedSlots.map(s => ({
+      time: s.time,
+      slot_date: s.slot_date,
+      booking_date: s.booking_date,
+      tee_id: s.tee_id,
+      tee_label: s.tee_label
+    })));
+
     // Clear previous selections from selectedSlots for the current date and tee
-    this.selectedSlots = this.selectedSlots.filter(s => 
-      !(s.booking_date && 
-        this.getDateKey(s.booking_date) === dateKey &&
-        s.tee_id === teeId)
-    );
+    // Only filter out slots that match the current date and tee combination
+    this.selectedSlots = this.selectedSlots.filter(s => {
+      // Check if this slot matches the current date and tee combination
+      const slotDateKey = s.slot_date ? this.getDateKey(new Date(s.slot_date)) : 
+                          (s.booking_date ? this.getDateKey(s.booking_date) : null);
+      
+      console.log(`Filtering slot ${s.time}: slot_date="${s.slot_date}", booking_date="${s.booking_date}", slotDateKey="${slotDateKey}", tee_id="${s.tee_id}"`);
+      
+      // If the slot doesn't have a date, keep it (shouldn't happen, but safety check)
+      if (!slotDateKey) {
+        console.log(`  -> Keeping slot ${s.time} (no date)`);
+        return true;
+      }
+      
+      // If the slot has a different date, keep it
+      if (slotDateKey !== dateKey) {
+        console.log(`  -> Keeping slot ${s.time} (different date: ${slotDateKey} vs ${dateKey})`);
+        return true;
+      }
+      
+      // If the slot has a different tee, keep it
+      if (s.tee_id !== teeId) {
+        console.log(`  -> Keeping slot ${s.time} (different tee: ${s.tee_id} vs ${teeId})`);
+        return true;
+      }
+      
+      // This slot matches the current date and tee, so filter it out
+      console.log(`  -> Filtering out slot ${s.time} (matches current date and tee)`);
+      return false;
+    });
+    
+    console.log('SelectedSlots after filtering:', this.selectedSlots.map(s => ({
+      time: s.time,
+      slot_date: s.slot_date,
+      booking_date: s.booking_date,
+      tee_id: s.tee_id,
+      tee_label: s.tee_label
+    })));
     
     // Clear selection states for current time slots
     this.currentTimeSlots.forEach(s => {
@@ -1196,7 +1250,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       s.isMultiSelected = false;
       s.participantCount = undefined;
       s.booking_date = undefined;
-      s.slot_date = undefined; // Clear slot_date as well
+      // Don't clear slot_date - preserve the original slot date from backend
       s.tee_label = undefined;
       s.tee_id = undefined;
       s.tee_name = undefined;
@@ -1207,6 +1261,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   selectSingleSlotWithParticipants(slot: TimeSlot, participantCount: number): void {
     console.log('selectSingleSlotWithParticipants called with participantCount:', participantCount);
     
+    // Use the date that was displayed in the modal (this.selectedDate) as the slot's date
+    // This ensures the slot-detail-item shows the same date as the modal
+    const modalDate = this.selectedDate;
+    const modalDateStr = this.formatDateForBackend(modalDate);
+    
     // Clear previous selections for the current date and tee only
     this.clearCurrentDateTeeSelections();
     
@@ -1216,7 +1275,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       s.isMultiSelected = false;
       s.participantCount = undefined;
       s.booking_date = undefined;
-      s.slot_date = undefined; // Clear slot_date as well
+      // Don't clear slot_date - preserve the original slot date from backend
       s.tee_label = undefined;
       s.tee_id = undefined;
     });
@@ -1227,25 +1286,74 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       currentTimeSlot.isSelected = true;
       currentTimeSlot.isMultiSelected = false;
       currentTimeSlot.participantCount = participantCount;
-      currentTimeSlot.booking_date = this.selectedDate;
-      currentTimeSlot.slot_date = this.formatDateForBackend(this.selectedDate); // Set slot_date as well
+      currentTimeSlot.booking_date = modalDate; // Use the date from the modal
+      currentTimeSlot.slot_date = modalDateStr; // Use the date from the modal
       currentTimeSlot.tee_label = this.selectedTee?.label;
       currentTimeSlot.tee_id = this.selectedTee?.id;
       currentTimeSlot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name
     }
     
-    slot.isSelected = true;
-    slot.participantCount = participantCount; // Use the participant count from modal
-    slot.booking_date = this.selectedDate; // Store the date for this slot
-    slot.slot_date = this.formatDateForBackend(this.selectedDate); // Store the slot_date for individual slot tracking
-    slot.tee_label = this.selectedTee?.label; // Store the tee label for this slot
-    slot.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
-    slot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
-    this.selectedTime = slot.time;
-    this.selectedSlots.push(slot);
+    // Create a copy of the slot to avoid modifying the original
+    const slotCopy = { ...slot };
     
-    console.log('Slot added to selectedSlots with participantCount:', slot.participantCount);
+    slotCopy.isSelected = true;
+    slotCopy.participantCount = participantCount; // Use the participant count from modal
+    slotCopy.booking_date = modalDate; // Use the date from the modal
+    slotCopy.slot_date = modalDateStr; // Use the date from the modal
+    slotCopy.tee_label = this.selectedTee?.label; // Store the tee label for this slot
+    slotCopy.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
+    slotCopy.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
+    
+    console.log('=== SLOT SELECTION DEBUG ===');
+    console.log('Original slot:', {
+      time: slot.time,
+      slot_date: slot.slot_date,
+      booking_date: slot.booking_date,
+      tee_label: slot.tee_label
+    });
+    console.log('Modal date info:', {
+      selectedDate: this.selectedDate,
+      modalDate: modalDate,
+      modalDateStr: modalDateStr
+    });
+    
+    slotCopy.isSelected = true;
+    slotCopy.participantCount = participantCount; // Use the participant count from modal
+    slotCopy.booking_date = modalDate; // Use the date from the modal
+    slotCopy.slot_date = modalDateStr; // Use the date from the modal
+    slotCopy.tee_label = this.selectedTee?.label; // Store the tee label for this slot
+    slotCopy.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
+    slotCopy.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
+    
+    console.log('Slot copy after setting dates:', {
+      time: slotCopy.time,
+      slot_date: slotCopy.slot_date,
+      booking_date: slotCopy.booking_date,
+      tee_label: slotCopy.tee_label
+    });
+    
+    this.selectedTime = slotCopy.time;
+    this.selectedSlots.push(slotCopy);
+    
+    console.log('All selectedSlots after adding:', this.selectedSlots.map(s => ({
+      time: s.time,
+      slot_date: s.slot_date,
+      booking_date: s.booking_date,
+      tee_label: s.tee_label,
+      participantCount: s.participantCount
+    })));
+    console.log('=== END SLOT SELECTION DEBUG ===');
+    
+    console.log('Slot added to selectedSlots with participantCount:', slotCopy.participantCount);
+    console.log('Slot date info - modalDate:', modalDate, 'modalDateStr:', modalDateStr, 'slotCopy.slot_date:', slotCopy.slot_date, 'slotCopy.booking_date:', slotCopy.booking_date);
     console.log('Current time slot updated:', currentTimeSlot);
+    console.log('All selectedSlots after adding:', this.selectedSlots.map(s => ({
+      time: s.time,
+      slot_date: s.slot_date,
+      booking_date: s.booking_date,
+      tee_label: s.tee_label,
+      participantCount: s.participantCount
+    })));
     
     // Update date-based slot selection
     this.updateDateSlotSelection(this.selectedDate);
@@ -1257,6 +1365,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   toggleMultiSelectSlot(slot: TimeSlot): void {
+    // Use the date that was displayed in the modal (this.selectedDate) as the slot's date
+    // This ensures the slot-detail-item shows the same date as the modal
+    const modalDate = this.selectedDate;
+    const modalDateStr = this.formatDateForBackend(modalDate);
+    
     if (slot.isMultiSelected) {
       // Deselect slot
       slot.isMultiSelected = false;
@@ -1274,21 +1387,24 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         currentTimeSlot.isMultiSelected = false;
         currentTimeSlot.participantCount = undefined;
         currentTimeSlot.booking_date = undefined;
-        currentTimeSlot.slot_date = undefined; // Clear slot_date as well
+        // Don't clear slot_date - preserve the original slot date from backend
         currentTimeSlot.tee_label = undefined;
         currentTimeSlot.tee_id = undefined;
         currentTimeSlot.tee_name = undefined;
       }
     } else {
+      // Create a copy of the slot to avoid modifying the original
+      const slotCopy = { ...slot };
+      
       // Select slot with current participant count
-      slot.isMultiSelected = true;
-      slot.participantCount = this.participantCount; // Set participant count for this slot
-      slot.booking_date = this.selectedDate; // Store the date for this slot
-      slot.slot_date = this.formatDateForBackend(this.selectedDate); // Store the slot_date for individual slot tracking
-      slot.tee_label = this.selectedTee?.label; // Store the tee label for this slot
-      slot.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
-      slot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
-      this.selectedSlots.push(slot);
+      slotCopy.isMultiSelected = true;
+      slotCopy.participantCount = this.participantCount; // Set participant count for this slot
+      slotCopy.booking_date = modalDate; // Use the date from the modal
+      slotCopy.slot_date = modalDateStr; // Use the date from the modal
+      slotCopy.tee_label = this.selectedTee?.label; // Store the tee label for this slot
+      slotCopy.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
+      slotCopy.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
+      this.selectedSlots.push(slotCopy);
       
       // Clear all current time slots selection states first
       this.currentTimeSlots.forEach(s => {
@@ -1296,7 +1412,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         s.isMultiSelected = false;
         s.participantCount = undefined;
         s.booking_date = undefined;
-        s.slot_date = undefined; // Clear slot_date as well
+        // Don't clear slot_date - preserve the original slot date from backend
         s.tee_label = undefined;
         s.tee_id = undefined;
         s.tee_name = undefined;
@@ -1308,8 +1424,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         currentTimeSlot.isSelected = false;
         currentTimeSlot.isMultiSelected = true;
         currentTimeSlot.participantCount = this.participantCount;
-        currentTimeSlot.booking_date = this.selectedDate;
-        currentTimeSlot.slot_date = this.formatDateForBackend(this.selectedDate); // Set slot_date as well
+        currentTimeSlot.booking_date = modalDate; // Use the date from the modal
+        currentTimeSlot.slot_date = modalDateStr; // Use the date from the modal
         currentTimeSlot.tee_label = this.selectedTee?.label;
         currentTimeSlot.tee_id = this.selectedTee?.id;
         currentTimeSlot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name
@@ -1328,6 +1444,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // New method that accepts participant count from modal
   toggleMultiSelectSlotWithParticipants(slot: TimeSlot, participantCount: number): void {
     console.log('toggleMultiSelectSlotWithParticipants called with participantCount:', participantCount);
+    
+    // Use the date that was displayed in the modal (this.selectedDate) as the slot's date
+    // This ensures the slot-detail-item shows the same date as the modal
+    const modalDate = this.selectedDate;
+    const modalDateStr = this.formatDateForBackend(modalDate);
     
     if (slot.isMultiSelected) {
       // Deselect slot
@@ -1350,15 +1471,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         currentTimeSlot.tee_id = undefined;
       }
     } else {
+      // Create a copy of the slot to avoid modifying the original
+      const slotCopy = { ...slot };
+      
       // Select slot with participant count from modal
-      slot.isMultiSelected = true;
-      slot.participantCount = participantCount; // Use the participant count from modal
-      slot.booking_date = this.selectedDate; // Store the date for this slot
-      slot.slot_date = this.formatDateForBackend(this.selectedDate); // Store the slot_date for individual slot tracking
-      slot.tee_label = this.selectedTee?.label; // Store the tee label for this slot
-      slot.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
-      slot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
-      this.selectedSlots.push(slot);
+      slotCopy.isMultiSelected = true;
+      slotCopy.participantCount = participantCount; // Use the participant count from modal
+      slotCopy.booking_date = modalDate; // Use the date from the modal
+      slotCopy.slot_date = modalDateStr; // Use the date from the modal
+      slotCopy.tee_label = this.selectedTee?.label; // Store the tee label for this slot
+      slotCopy.tee_id = this.selectedTee?.id; // Store the tee ID for this slot
+      slotCopy.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name from slot or fallback to selected tee label
+      this.selectedSlots.push(slotCopy);
       
       // Clear all current time slots selection states first
       this.currentTimeSlots.forEach(s => {
@@ -1366,7 +1490,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         s.isMultiSelected = false;
         s.participantCount = undefined;
         s.booking_date = undefined;
-        s.slot_date = undefined; // Clear slot_date as well
+        // Don't clear slot_date - preserve the original slot date from backend
         s.tee_label = undefined;
         s.tee_id = undefined;
         s.tee_name = undefined;
@@ -1378,7 +1502,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         currentTimeSlot.isSelected = false;
         currentTimeSlot.isMultiSelected = true;
         currentTimeSlot.participantCount = participantCount;
-        currentTimeSlot.booking_date = this.selectedDate;
+        currentTimeSlot.booking_date = modalDate; // Use the date from the modal
+        currentTimeSlot.slot_date = modalDateStr; // Use the date from the modal
         currentTimeSlot.tee_label = this.selectedTee?.label;
         currentTimeSlot.tee_id = this.selectedTee?.id;
         currentTimeSlot.tee_name = slot.tee_name || this.selectedTee?.label; // Store the exact tee name
@@ -1422,19 +1547,38 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       requestedParticipants = Math.min(this.participantCount, maxAllowed);
     }
     
+    // Ensure the slot has proper date and tee information for display
+    const slotForModal = { ...slot };
+    if (!slotForModal.booking_date && this.selectedDate) {
+      slotForModal.booking_date = this.selectedDate;
+    }
+    if (!slotForModal.slot_date && this.selectedDate) {
+      slotForModal.slot_date = this.formatDateForBackend(this.selectedDate);
+    }
+    if (!slotForModal.tee_label && this.selectedTee) {
+      slotForModal.tee_label = this.selectedTee.label;
+    }
+    if (!slotForModal.tee_name && this.selectedTee) {
+      slotForModal.tee_name = this.selectedTee.label;
+    }
+    if (!slotForModal.tee_id && this.selectedTee) {
+      slotForModal.tee_id = this.selectedTee.id;
+    }
+    
     this.slotModalData = {
-      slot: slot,
+      slot: slotForModal,
       availableSpots: slot.available_spots || 0,
       totalParticipants: slot.total_participants || 0,
       requestedParticipants: requestedParticipants,
       isExistingSlot: isAlreadySelected // Add flag to indicate if this is an existing slot
     };
     
-    console.log('Opening modal for slot:', slot.time);
+    console.log('Opening modal for slot:', slotForModal.time);
     console.log('Is already selected:', isAlreadySelected);
     console.log('Requested participants:', requestedParticipants);
-    console.log('Slot date:', slot.booking_date);
-    console.log('Slot tee:', slot.tee_label);
+    console.log('Slot date:', slotForModal.booking_date);
+    console.log('Slot slot_date:', slotForModal.slot_date);
+    console.log('Slot tee:', slotForModal.tee_label);
     
     this.showSlotModal = true;
   }
@@ -1464,6 +1608,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         updatedSlot.available_spots = slot.available_spots || 0;
         updatedSlot.total_participants = slot.total_participants || 0;
         
+        // Always use the correct date and tee information from the selected slot
+        // This ensures the modal shows the same date as the slot-detail-item
+        updatedSlot.booking_date = selectedSlot.booking_date;
+        updatedSlot.slot_date = selectedSlot.slot_date;
+        updatedSlot.tee_label = selectedSlot.tee_label;
+        updatedSlot.tee_name = selectedSlot.tee_name;
+        updatedSlot.tee_id = selectedSlot.tee_id;
+        
         this.slotModalData = {
           slot: updatedSlot,
           availableSpots: updatedSlot.available_spots,
@@ -1475,6 +1627,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         console.log('Opening modal for existing slot:', updatedSlot.time);
         console.log('Current participant count:', selectedSlot.participantCount);
         console.log('Available spots:', updatedSlot.available_spots);
+        console.log('Slot date:', updatedSlot.booking_date);
+        console.log('Slot slot_date:', updatedSlot.slot_date);
         console.log('Marked as existing slot to prevent duplication');
         
         this.showSlotModal = true;
@@ -1651,14 +1805,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     if (existingSlotIndex !== -1) {
       // Update the existing slot
       this.selectedSlots[existingSlotIndex].participantCount = newParticipantCount;
-      this.selectedSlots[existingSlotIndex].booking_date = this.selectedDate;
+      // Don't overwrite the original date - preserve slot.booking_date
       this.selectedSlots[existingSlotIndex].tee_label = this.selectedTee?.label;
       
       // Update the corresponding slot in currentTimeSlots
       const currentTimeSlot = this.currentTimeSlots.find(s => s.time === slot.time);
       if (currentTimeSlot) {
         currentTimeSlot.participantCount = newParticipantCount;
-        currentTimeSlot.booking_date = this.selectedDate;
+        // Don't overwrite the original date - preserve slot.booking_date
         currentTimeSlot.tee_label = this.selectedTee?.label;
       }
       
@@ -2313,6 +2467,15 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   getAllSelectedSlots(): TimeSlot[] {
     // Return the actual selectedSlots array to ensure all updates are reflected
     // This prevents the issue where participant count updates weren't showing in the UI
+    console.log('getAllSelectedSlots called, returning:', this.selectedSlots.map(s => ({
+      time: s.time,
+      slot_date: s.slot_date,
+      booking_date: s.booking_date,
+      tee_label: s.tee_label,
+      participantCount: s.participantCount,
+      isSelected: s.isSelected,
+      isMultiSelected: s.isMultiSelected
+    })));
     return this.selectedSlots;
   }
 
@@ -2452,11 +2615,45 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     // Group slots by tee label
     allSlots.forEach(slot => {
       const teeLabel = slot.tee_label || 'Unknown Tee';
-      console.log(`Grouping slot ${slot.time} under tee label: ${teeLabel}`);
+      console.log(`=== SLOT GROUPING DEBUG for ${slot.time} ===`);
+      console.log(`Slot details:`, {
+        time: slot.time,
+        slot_date: slot.slot_date,
+        booking_date: slot.booking_date,
+        tee_label: slot.tee_label,
+        tee_id: slot.tee_id
+      });
+      
+      // Add the date property to the slot using the same logic as booking confirmation modal
+      // Ensure the date is always a Date object for proper display in the template
+      let slotDate: Date;
+      if (slot.slot_date) {
+        // If slot_date is a string, parse it to a Date object
+        slotDate = new Date(slot.slot_date);
+        console.log(`Slot ${slot.time}: slot_date string "${slot.slot_date}" converted to Date:`, slotDate);
+      } else if (slot.booking_date) {
+        // Use booking_date if available
+        slotDate = slot.booking_date;
+        console.log(`Slot ${slot.time}: using booking_date:`, slotDate);
+      } else {
+        // Fallback to selectedDate
+        slotDate = this.selectedDate;
+        console.log(`Slot ${slot.time}: fallback to selectedDate:`, slotDate);
+      }
+      
+      const slotWithDate = {
+        ...slot,
+        date: slotDate
+      };
+      
+      console.log(`Slot ${slot.time}: final date property:`, slotWithDate.date);
+      console.log(`Slot ${slot.time}: final slot_date property:`, slotWithDate.slot_date);
+      console.log(`=== END SLOT GROUPING DEBUG for ${slot.time} ===`);
+      
       if (!teeGroups.has(teeLabel)) {
         teeGroups.set(teeLabel, []);
       }
-      teeGroups.get(teeLabel)!.push(slot);
+      teeGroups.get(teeLabel)!.push(slotWithDate);
     });
     
     console.log('Tee groups created:', teeGroups);

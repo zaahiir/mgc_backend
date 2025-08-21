@@ -714,7 +714,7 @@ class NotificationModel(models.Model):
             sender=sender,
             notification_type='join_request',
             title='Join Request',
-            message=f"{sender.firstName} {sender.lastName} wants to join your tee slot at {booking.bookingTime.strftime('%I:%M %p')} on {booking.bookingDate.strftime('%B %d, %Y')}. Approve or Reject.",
+            message=f"{sender.firstName} {sender.lastName} wants to join your tee slot at {booking.bookingTime.strftime('%H:%M')} on {booking.bookingDate.strftime('%B %d, %Y')}. Approve or Reject.",
             related_booking=booking
         )
 
@@ -723,7 +723,7 @@ class NotificationModel(models.Model):
         """Create a join response notification"""
         notification_type = 'join_approved' if is_approved else 'join_rejected'
         title = 'Join Request Approved' if is_approved else 'Join Request Rejected'
-        message = f"Your join request for {booking.bookingTime.strftime('%I:%M %p')} on {booking.bookingDate.strftime('%B %d, %Y')} has been {'approved' if is_approved else 'rejected'}."
+        message = f"Your join request for {booking.bookingTime.strftime('%H:%M')} on {booking.bookingDate.strftime('%B %d, %Y')} has been {'approved' if is_approved else 'rejected'}."
         
         return cls.objects.create(
             recipient=recipient,

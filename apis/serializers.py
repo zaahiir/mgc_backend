@@ -545,14 +545,14 @@ class BookingSerializer(serializers.ModelSerializer):
         """Get the earliest time from all slots"""
         earliest_slot = obj.slots.order_by('booking_time').first()
         if earliest_slot:
-            return earliest_slot.booking_time.strftime('%I:%M %p')
+            return earliest_slot.booking_time.strftime('%H:%M')
         return None
     
     def get_latestTime(self, obj):
         """Get the latest time from all slots"""
         latest_slot = obj.slots.order_by('booking_time').last()
         if latest_slot:
-            return latest_slot.booking_time.strftime('%I:%M %p')
+            return latest_slot.booking_time.strftime('%H:%M')
         return None
     
     def get_teeSummary(self, obj):
@@ -724,7 +724,7 @@ class NotificationSerializer(serializers.ModelSerializer):
                 'id': obj.related_booking.id,
                 'courseName': obj.related_booking.course.courseName,
                 'bookingDate': obj.related_booking.bookingDate.strftime('%d/%m/%y'),
-                'bookingTime': obj.related_booking.bookingTime.strftime('%I:%M %p'),
+                'bookingTime': obj.related_booking.bookingTime.strftime('%H:%M'),  # Changed to 24-hour format
                 'participants': obj.related_booking.participants
             }
         return None

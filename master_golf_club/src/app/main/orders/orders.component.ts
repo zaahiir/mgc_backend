@@ -548,9 +548,9 @@ export class OrdersComponent implements OnInit {
     try {
       const [hours, minutes] = timeString.split(':');
       const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour % 12 || 12;
-      return `${displayHour}:${minutes} ${ampm}`;
+      const minute = parseInt(minutes);
+      // Return 24-hour format (HH:MM)
+      return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     } catch (error) {
       return timeString;
     }
