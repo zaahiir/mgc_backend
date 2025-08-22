@@ -76,7 +76,7 @@ interface BookingDetail {
 interface SlotSelection {
   time: string;
   participants: number;
-  date: Date;
+  date: Date | string;
   tee: Tee;
   slot_date: string;
   tee_id: number;
@@ -701,8 +701,40 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   // Helper methods
-  private getDateKey(date: Date): string {
-    return date.toISOString().split('T')[0];
+  private getDateKey(date: Date | string | any): string {
+    // Handle null/undefined
+    if (date == null) {
+      return '';
+    }
+    
+    // Handle string dates
+    if (typeof date === 'string') {
+      // If it's a string, try to parse it as a date
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        // If parsing fails, return the original string
+        return date;
+      }
+      return dateObj.toISOString().split('T')[0];
+    }
+    
+    // Handle Date objects
+    if (date instanceof Date) {
+      return date.toISOString().split('T')[0];
+    }
+    
+    // Handle other types - try to convert to Date
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        // If conversion fails, return a safe fallback
+        return '';
+      }
+      return dateObj.toISOString().split('T')[0];
+    } catch (error) {
+      console.error('Error converting date in getDateKey:', error, 'Input:', date);
+      return '';
+    }
   }
 
   private formatDateForBackend(date: Date): string {
@@ -744,12 +776,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     if (stored) {
       try {
         const selections = JSON.parse(stored);
+        // Convert date strings back to Date objects
+        const restoredSelections = selections.map((selection: any) => ({
+          ...selection,
+          date: new Date(selection.date)
+        }));
+        
         // Remove existing selections for this date and tee
         this.selectedSlots = this.selectedSlots.filter(s => 
           !(this.getDateKey(s.date) === this.getDateKey(this.selectedDate) && s.tee_id === tee.id)
         );
         // Add restored selections
-        this.selectedSlots.push(...selections);
+        this.selectedSlots.push(...restoredSelections);
       } catch (error) {
         console.error('Error restoring tee selections:', error);
       }
@@ -765,12 +803,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     if (stored) {
       try {
         const selections = JSON.parse(stored);
+        // Convert date strings back to Date objects
+        const restoredSelections = selections.map((selection: any) => ({
+          ...selection,
+          date: new Date(selection.date)
+        }));
+        
         // Remove existing selections for this date and tee
         this.selectedSlots = this.selectedSlots.filter(s => 
           !(this.getDateKey(s.date) === this.getDateKey(date) && s.tee_id === this.selectedTee!.id)
         );
         // Add restored selections
-        this.selectedSlots.push(...selections);
+        this.selectedSlots.push(...restoredSelections);
       } catch (error) {
         console.error('Error restoring date selections:', error);
       }
@@ -934,7 +978,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       .map(([teeLabel, slots]) => ({
         teeLabel,
         slots: slots.sort((a, b) => {
-          const dateComparison = a.date.getTime() - b.date.getTime();
+          // Ensure dates are Date objects before calling getTime()
+          const dateA = typeof a.date === 'string' ? new Date(a.date) : a.date;
+          const dateB = typeof b.date === 'string' ? new Date(b.date) : b.date;
+          const dateComparison = dateA.getTime() - dateB.getTime();
           if (dateComparison !== 0) return dateComparison;
           return a.time.localeCompare(b.time);
         })
