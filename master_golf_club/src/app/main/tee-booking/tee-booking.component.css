@@ -2062,25 +2062,45 @@
     font-size: 1.2rem;
   }
   
-  .booking-id {
-    font-size: 1rem;
-    padding: 8px 16px;
-  }
-  
   .slot-item {
     padding: 12px;
   }
   
-  .slot-header {
+  .slot-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
   
-  .slot-details {
+  .slot-main-info {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 6px;
+    width: 100%;
+  }
+  
+  .slot-tee-info {
+    font-size: 14px;
+  }
+  
+  .slot-date {
+    min-width: auto;
+    text-align: left;
+    font-size: 13px;
+  }
+  
+  .slot-participants {
+    min-width: auto;
+    text-align: left;
+    font-size: 13px;
+  }
+  
+  .slot-booking-id {
+    min-width: auto;
+    width: 100%;
+    text-align: center;
+    font-size: 12px;
+    padding: 8px 12px;
   }
 }
 
@@ -2728,6 +2748,13 @@
   gap: 12px;
 }
 
+.slot-main-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
 .slot-tee-info {
   font-weight: 600;
   font-size: 16px;
@@ -2751,93 +2778,18 @@
   text-align: right;
 }
 
-.booking-ids-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.booking-id-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: #f8f9fa;
+.slot-booking-id {
+  background: #e3f2fd;
+  border: 1px solid #bbdefb;
   border-radius: 6px;
-  border: 1px solid #e9ecef;
-}
-
-/* Single booking styling */
-.value:not(.booking-ids-list) .booking-id-item {
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-.slot-label {
-  font-weight: 600;
-  color: #495057;
-  font-size: 14px;
-  min-width: 60px;
-}
-
-.booking-id {
+  padding: 6px 10px;
   font-family: 'Courier New', monospace;
   font-weight: 600;
   color: #007bff;
-  font-size: 14px;
-  background: #e3f2fd;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #bbdefb;
-}
-
-.slot-details {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.slot-time {
-  font-weight: 600;
-  font-size: 16px;
-  color: #2c3e50;
-}
-
-.slot-info {
-  display: flex;
-  gap: 12px;
-  font-size: 14px;
-  color: #6c757d;
-}
-
-.slot-tee {
-  background: #007bff;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.slot-date {
-  color: #495057;
-}
-
-.slot-participants {
-  font-weight: 500;
-  color: #28a745;
-  font-size: 14px;
-}
-
-.participants-display {
-  font-weight: 600;
-  color: #28a745;
-  font-size: 16px;
-  background: #d4edda;
-  padding: 4px 12px;
-  border-radius: 20px;
-  display: inline-block;
+  font-size: 13px;
+  min-width: 120px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
 }
 
 /* Existing modal styles */
@@ -3060,88 +3012,11 @@
   font-weight: 500;
 }
 
-.booking-id {
-  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
-  color: white !important;
-  padding: 10px 20px;
-  border-radius: 25px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 15px 0;
-  display: inline-block;
-}
-
 .total-bookings {
   color: var(--theme-color) !important;
   font-weight: 600;
   font-size: 1.1rem;
 }
 
-/* Slot details styling */
-.slots-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-top: 10px;
-}
 
-.slot-item {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.slot-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.slot-number {
-  background: var(--theme-color);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 15px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.slot-time {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--theme-color);
-}
-
-.slot-details {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.slot-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.slot-tee, .slot-date {
-  font-size: 0.9rem;
-  color: var(--text-color);
-  font-weight: 500;
-}
-
-.slot-participants {
-  background: #f8f9fa;
-  color: var(--theme-color);
-  padding: 6px 12px;
-  border-radius: 15px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  border: 1px solid var(--theme-color);
-}
 

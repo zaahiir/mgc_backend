@@ -310,6 +310,17 @@ class BookingModel(models.Model):
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        db_table = 'apis_bookingmodel'
+        indexes = [
+            models.Index(fields=['booking_id']),
+            models.Index(fields=['slot_date', 'booking_time', 'tee']),
+            models.Index(fields=['member', 'status']),
+            models.Index(fields=['createdAt']),
+        ]
+        verbose_name = 'Booking'
+        verbose_name_plural = 'Bookings'
+
     def save(self, *args, **kwargs):
         # Generate booking ID if not provided
         if not self.booking_id:
@@ -354,34 +365,71 @@ class BookingModel(models.Model):
     def generate_booking_id(self):
         """Generate unique booking ID in format: MGCBK25AUG00010"""
         from datetime import datetime
+        import time
+        from django.db import transaction
         
-        now = datetime.now()
-        year_suffix = str(now.year)[-2:]  # Last 2 digits of year
-        month_abbr = now.strftime('%b').upper()  # 3-letter month
+        max_retries = 10
+        retry_count = 0
         
-        base_id = f"MGCBK{year_suffix}{month_abbr}"
-        
-        # Get the next sequential number for this month
-        existing_bookings = BookingModel.objects.filter(
-            booking_id__startswith=base_id
-        ).order_by('-booking_id')
-        
-        if existing_bookings.exists():
-            # Extract the last number and increment
-            last_booking_id = existing_bookings.first().booking_id
+        while retry_count < max_retries:
             try:
-                # Extract the number part (last 5 digits)
-                last_number = int(last_booking_id[-5:])
-                next_number = last_number + 1
-            except (ValueError, IndexError):
-                next_number = 1
-        else:
-            next_number = 1
+                with transaction.atomic():
+                    now = datetime.now()
+                    year_suffix = str(now.year)[-2:]  # Last 2 digits of year
+                    month_abbr = now.strftime('%b').upper()  # 3-letter month
+                    
+                    base_id = f"MGCBK{year_suffix}{month_abbr}"
+                    
+                    # Get the next sequential number for this month with row-level locking
+                    existing_bookings = BookingModel.objects.filter(
+                        booking_id__startswith=base_id
+                    ).select_for_update().order_by('-booking_id')
+                    
+                    if existing_bookings.exists():
+                        # Extract the last number and increment
+                        last_booking_id = existing_bookings.first().booking_id
+                        try:
+                            # Extract the number part (last 5 digits)
+                            last_number = int(last_booking_id[-5:])
+                            next_number = last_number + 1
+                        except (ValueError, IndexError):
+                            next_number = 1
+                    else:
+                        next_number = 1
+                    
+                    # Format with leading zeros (5 digits)
+                    booking_id = f"{base_id}{next_number:05d}"
+                    
+                    # Verify this ID doesn't exist (double-check)
+                    if not BookingModel.objects.filter(booking_id=booking_id).exists():
+                        return booking_id
+                    
+                    # If we get here, the ID was taken by another process, retry
+                    retry_count += 1
+                    time.sleep(0.01)  # Small delay before retry
+                    continue
+                    
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    # Fallback: use timestamp-based ID
+                    timestamp = int(time.time() * 1000) % 100000
+                    now = datetime.now()
+                    year_suffix = str(now.year)[-2:]
+                    month_abbr = now.strftime('%b').upper()
+                    base_id = f"MGCBK{year_suffix}{month_abbr}"
+                    return f"{base_id}{timestamp:05d}"
+                
+                time.sleep(0.01)  # Small delay before retry
+                continue
         
-        # Format with leading zeros (5 digits)
-        booking_id = f"{base_id}{next_number:05d}"
-        
-        return booking_id
+        # Final fallback if all else fails
+        now = datetime.now()
+        year_suffix = str(now.year)[-2:]
+        month_abbr = now.strftime('%b').upper()
+        base_id = f"MGCBK{year_suffix}{month_abbr}"
+        timestamp = int(time.time() * 1000) % 100000
+        return f"{base_id}{timestamp:05d}"
     
     @property
     def duration_hours(self):

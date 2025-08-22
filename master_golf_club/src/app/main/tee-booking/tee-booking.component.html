@@ -58,6 +58,14 @@
                   <p>Loading available tees...</p>
                 </div>
               </div>
+              
+              <!-- Debug buttons (remove in production) -->
+              <div class="debug-buttons" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                <button class="btn btn-sm btn-secondary" (click)="debugSessionStorage()" style="margin-right: 5px;">Debug Storage</button>
+                <button class="btn btn-sm btn-warning" (click)="clearAllSelectionsManually()" style="margin-right: 5px;">Clear All</button>
+                <button class="btn btn-sm btn-info" (click)="debugComponentState()" style="margin-right: 5px;">Debug State</button>
+                <button class="btn btn-sm btn-success" (click)="validateSessionStorage()">Validate</button>
+              </div>
             </div>
 
             <!-- Step 2: Date Selection (only visible after tee selected) -->
@@ -483,8 +491,7 @@
       
       <div class="confirmation-message">
         <h4>Your tee time has been booked successfully!</h4>
-        <p class="booking-id">Booking ID: <strong>{{bookingConfirmationData.bookingId}}</strong></p>
-        <p *ngIf="bookingConfirmationData.totalSlots" class="total-bookings">{{bookingConfirmationData.totalSlots}} booking{{bookingConfirmationData.totalSlots > 1 ? 's' : ''}} created</p>
+        <p *ngIf="bookingConfirmationData.totalSlots" class="total-bookings">{{bookingConfirmationData.totalSlots}} individual booking{{bookingConfirmationData.totalSlots > 1 ? 's' : ''}} created</p>
       </div>
       
       <div class="booking-details">
@@ -497,13 +504,15 @@
           <div class="value slots-list">
             <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
               <div class="slot-row">
-                <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
-                <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
-                <span class="slot-participants"> {{slot.participants}}p</span>
+                <div class="slot-main-info">
+                  <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
+                  <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
+                  <span class="slot-participants">{{slot.participants}}p</span>
+                </div>
                 <!-- Show individual booking ID for each slot -->
-                <span class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
-                  <strong>Booking ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
-                </span>
+                <div class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
+                  <strong>ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
+                </div>
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@ import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, NavigationStart } from '@angular/router';
 import { CollectionService } from '../common-service/collection/collection.service';
 import { 
   faUsers, faGolfBall, faCalendarAlt, faClock, faMapMarkerAlt, 
@@ -85,8 +85,6 @@ interface SlotSelection {
 }
 
 interface BookingConfirmationData {
-  bookingId?: string;
-  singleBookingId?: string;
   totalSlots?: number;
   totalParticipants?: number;
   selectedSlots?: Array<{
@@ -104,7 +102,7 @@ interface BookingConfirmationData {
   time?: string;
   participants?: number;
   status?: string;
-  // New fields for individual slot bookings
+  // Individual slot booking details
   slotBookings?: Array<{
     id: number;
     booking_id: string;
@@ -236,6 +234,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   currentSlotParticipants: number = 1;
 
   private destroy$ = new Subject<void>();
+  private pageUnloadHandler: (() => void) | null = null;
 
   constructor(
     private collectionService: CollectionService,
@@ -249,6 +248,23 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       this.loadCourseData();
       this.generateCalendar();
       this.setMinimumDate();
+      
+      // Handle fresh page load
+      this.handleFreshPageLoad();
+      
+      this.loadStoredSelections(); // Load any previously stored selections
+      
+      // Check if this is a page refresh after booking
+      this.checkForPostBookingRefresh();
+      
+      // Setup page unload handler
+      this.setupPageUnloadHandler();
+      
+      // Setup page load handler
+      this.setupPageLoadHandler();
+      
+      // Setup navigation event handlers
+      this.setupNavigationHandlers();
     }, 100);
   }
 
@@ -307,6 +323,16 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Store current selections before destroying component
+    if (this.selectedDate && this.selectedTee) {
+      this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+    }
+    
+    // Remove the page unload event listener
+    if (this.pageUnloadHandler) {
+      window.removeEventListener('beforeunload', this.pageUnloadHandler);
+    }
+    
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -343,13 +369,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     
     // Store current tee's selected slots before switching
     if (this.selectedTee && this.selectedDate) {
-      this.storeCurrentTeeSelections();
+      this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
     }
     
     this.selectedTee = tee;
-    
-    // Restore previously selected slots for this tee and date
-    this.restoreTeeSelections(tee);
     
     // Load time slots if date is already selected
     if (this.selectedDate) {
@@ -422,18 +445,15 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   selectDate(date: Date): void {
     if (this.isDayAvailable(date)) {
+      console.log('Date selected:', date);
+      
       // Store current date's selected slots before switching
       if (this.selectedDate && this.selectedTee) {
-        this.storeCurrentDateSelections();
+        this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
       }
       
       this.selectedDate = new Date(date);
       this.showCalendar = false;
-      
-      // Restore previously selected slots for this date and tee
-      if (this.selectedTee) {
-        this.restoreDateSelections(date);
-      }
       
       // Load time slots if tee is already selected
       if (this.selectedTee) {
@@ -688,7 +708,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         const newSlot: SlotSelection = {
           time: slot.time,
           participants: this.currentSlotParticipants,
-          date: slot.slot_date ? new Date(slot.slot_date) : this.selectedDate,  // Use actual slot date if available
+          date: slot.slot_date ? new Date(slot.slot_date) : this.selectedDate,
           tee: this.selectedTee!,
           slot_date: slot.slot_date || this.formatDateForBackend(this.selectedDate),
           tee_id: slot.tee_id || this.selectedTee!.id,
@@ -696,6 +716,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         };
         
         this.selectedSlots.push(newSlot);
+      }
+      
+      // Store the updated selections for current date and tee
+      if (this.selectedDate && this.selectedTee) {
+        this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
       }
       
       this.closeSlotModal();
@@ -714,6 +739,11 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.getDateKey(s.date) === slotDateKey &&
         s.tee_id === slotTeeId)
     );
+    
+    // Update stored selections for this date and tee
+    if (this.selectedDate && this.selectedTee) {
+      this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+    }
     
     this.updateSlotDisplay();
   }
@@ -759,105 +789,100 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     return date.toISOString().split('T')[0];
   }
 
-  private storeCurrentTeeSelections(): void {
-    if (!this.selectedTee || !this.selectedDate) return;
-    
-    const currentSelections = this.selectedSlots.filter(s => 
-      this.getDateKey(s.date) === this.getDateKey(this.selectedDate) &&
-      s.tee_id === this.selectedTee!.id
-    );
-    
-    // Store in session storage
-    const key = `tee_selections_${this.getDateKey(this.selectedDate)}_${this.selectedTee!.id}`;
-    sessionStorage.setItem(key, JSON.stringify(currentSelections));
+  // Updated session storage methods for date-specific storage
+  private getSessionStorageKey(date: Date, teeId: number): string {
+    const dateKey = this.getDateKey(date);
+    return `tee_booking_selections_${dateKey}_${teeId}`;
   }
 
-  private storeCurrentDateSelections(): void {
-    if (!this.selectedTee || !this.selectedDate) return;
-    
-    const currentSelections = this.selectedSlots.filter(s => 
-      this.getDateKey(s.date) === this.getDateKey(this.selectedDate) &&
-      s.tee_id === this.selectedTee!.id
+  private storeSelectionsForDateAndTee(date: Date, teeId: number): void {
+    const key = this.getSessionStorageKey(date, teeId);
+    const selectionsForDateAndTee = this.selectedSlots.filter(slot => 
+      this.getDateKey(slot.date) === this.getDateKey(date) && slot.tee_id === teeId
     );
     
-    // Store in session storage
-    const key = `date_selections_${this.getDateKey(this.selectedDate)}_${this.selectedTee!.id}`;
-    sessionStorage.setItem(key, JSON.stringify(currentSelections));
-  }
-
-  private restoreTeeSelections(tee: Tee): void {
-    if (!this.selectedDate) return;
-    
-    const key = `tee_selections_${this.getDateKey(this.selectedDate)}_${tee.id}`;
-    const stored = sessionStorage.getItem(key);
-    
-    if (stored) {
-      try {
-        const selections = JSON.parse(stored);
-        // Convert date strings back to Date objects
-        const restoredSelections = selections.map((selection: any) => ({
-          ...selection,
-          date: new Date(selection.date)
-        }));
-        
-        // Remove existing selections for this date and tee
-        this.selectedSlots = this.selectedSlots.filter(s => 
-          !(this.getDateKey(s.date) === this.getDateKey(this.selectedDate) && s.tee_id === tee.id)
-        );
-        // Add restored selections
-        this.selectedSlots.push(...restoredSelections);
-      } catch (error) {
-        console.error('Error restoring tee selections:', error);
-      }
+    if (selectionsForDateAndTee.length > 0) {
+      sessionStorage.setItem(key, JSON.stringify(selectionsForDateAndTee));
+      console.log(`Stored selections for date ${this.getDateKey(date)} and tee ${teeId}:`, selectionsForDateAndTee);
+    } else {
+      sessionStorage.removeItem(key);
+      console.log(`Removed selections for date ${this.getDateKey(date)} and tee ${teeId}`);
     }
   }
 
-  private restoreDateSelections(date: Date): void {
-    if (!this.selectedTee) return;
+  private loadStoredSelections(): void {
+    // Load all stored selections from session storage
+    this.selectedSlots = [];
     
-    const key = `date_selections_${this.getDateKey(date)}_${this.selectedTee.id}`;
-    const stored = sessionStorage.getItem(key);
-    
-    if (stored) {
-      try {
-        const selections = JSON.parse(stored);
-        // Convert date strings back to Date objects
-        const restoredSelections = selections.map((selection: any) => ({
-          ...selection,
-          date: new Date(selection.date)
-        }));
-        
-        // Remove existing selections for this date and tee
-        this.selectedSlots = this.selectedSlots.filter(s => 
-          !(this.getDateKey(s.date) === this.getDateKey(date) && s.tee_id === this.selectedTee!.id)
-        );
-        // Add restored selections
-        this.selectedSlots.push(...restoredSelections);
-      } catch (error) {
-        console.error('Error restoring date selections:', error);
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('tee_booking_selections_')) {
+        try {
+          const stored = sessionStorage.getItem(key);
+          if (stored) {
+            const selections = JSON.parse(stored);
+            // Convert date strings back to Date objects
+            const restoredSelections = selections.map((selection: any) => ({
+              ...selection,
+              date: new Date(selection.date)
+            }));
+            this.selectedSlots.push(...restoredSelections);
+            console.log(`Loaded stored selections from key ${key}:`, restoredSelections);
+          }
+        } catch (error) {
+          console.error('Error loading stored selections:', error);
+          // Remove corrupted data
+          sessionStorage.removeItem(key);
+        }
       }
     }
+    
+    console.log('Total loaded selections:', this.selectedSlots);
+  }
+
+  private clearAllStoredSelections(): void {
+    // Clear all tee booking selections from session storage
+    const keysToRemove: string[] = [];
+    
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('tee_booking_selections_')) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => sessionStorage.removeItem(key));
   }
 
   private restoreSlotSelectionState(): void {
     if (!this.selectedDate || !this.selectedTee) return;
 
+    // Reset all slots to unselected state
     this.currentTimeSlots.forEach(slot => {
       slot.isSelected = false;
       slot.isMultiSelected = false;
       slot.participantCount = undefined;
     });
 
+    // Get selections for current date and tee
     const dateSelectedSlots = this.selectedSlots.filter(slot => 
       this.getDateKey(slot.date) === this.getDateKey(this.selectedDate) &&
       slot.tee_id === this.selectedTee!.id
     );
 
+    console.log(`Restoring slot selection state for date ${this.getDateKey(this.selectedDate)} and tee ${this.selectedTee.id}`);
+    console.log('Available slots:', this.currentTimeSlots.length);
+    console.log('Date-specific selections:', dateSelectedSlots);
+
+    // Mark slots as selected based on stored selections
     dateSelectedSlots.forEach(selectedSlot => {
       const currentSlot = this.currentTimeSlots.find(slot => slot.time === selectedSlot.time);
       if (currentSlot) {
         currentSlot.isSelected = true;
         currentSlot.participantCount = selectedSlot.participants;
+        console.log(`Marked slot ${selectedSlot.time} as selected with ${selectedSlot.participants} participants`);
+      } else {
+        console.log(`Slot ${selectedSlot.time} not found in current time slots`);
       }
     });
   }
@@ -905,28 +930,74 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
 
     try {
-      // Prepare slots data for multi-slot booking
-      const slotsData = this.selectedSlots.map(slot => ({
-        course: this.course.id,
-        tee: slot.tee_id,
-        slotDate: typeof slot.date === 'string' ? slot.date : slot.date.toISOString().split('T')[0],  // Convert Date to YYYY-MM-DD string
-        bookingTime: slot.time,
-        participants: slot.participants
-      }));
-
-      // Use the multi-slot booking API
-      const response = await this.collectionService.createMultiSlotBooking({ slots: slotsData });
-
-      if (response && response.data && response.data.code === 1) {
-        this.successMessage = `Successfully created ${response.data.data.totalBookings} booking(s)!`;
+      // Create individual bookings sequentially to avoid race conditions
+      const successfulBookings = [];
+      const failedBookings = [];
+      
+      for (const slot of this.selectedSlots) {
+        try {
+          const bookingData = {
+            course: this.course.id,
+            tee: slot.tee_id,
+            slotDate: typeof slot.date === 'string' ? slot.date : slot.date.toISOString().split('T')[0],
+            bookingTime: slot.time,
+            participants: slot.participants
+          };
+          
+          const response = await this.collectionService.createBooking(bookingData);
+          
+          if (response && response.data && response.data.code === 1) {
+            successfulBookings.push(response);
+          } else {
+            failedBookings.push({
+              slot,
+              error: response?.data?.message || 'Unknown error'
+            });
+          }
+        } catch (error) {
+          console.error(`Error creating booking for slot ${slot.time}:`, error);
+          failedBookings.push({
+            slot,
+            error: error instanceof Error ? error.message : 'Network error'
+          });
+        }
+      }
+      
+      if (successfulBookings.length === this.selectedSlots.length) {
+        this.successMessage = `Successfully created ${successfulBookings.length} individual booking(s)!`;
+        
+        // Extract individual booking IDs and details
+        const individualBookingIds = successfulBookings.map(response => 
+          response.data.data.booking_id || response.data.data.id
+        );
+        
+        const slotBookings = successfulBookings.map((response, index) => {
+          const slot = this.selectedSlots[index];
+          const bookingData = response.data.data;
+          return {
+            id: bookingData.id,
+            booking_id: bookingData.booking_id || bookingData.id,
+            slot_date: slot.slot_date,
+            booking_time: slot.time,
+            participants: slot.participants,
+            status: 'confirmed',
+            created_at: new Date().toISOString(),
+            formatted_created_date: new Date().toLocaleDateString(),
+            tee: {
+              holeNumber: slot.tee.holeNumber
+            },
+            course: {
+              courseName: this.course.name
+            }
+          };
+        });
         
         this.bookingConfirmationData = {
-          bookingId: response.data.data.singleBookingId,
           courseName: this.course.name,
           teeLabel: this.selectedTee?.label,
           date: this.selectedDate,
-          totalSlots: response.data.data.totalSlots,
-          totalParticipants: response.data.data.totalParticipants,
+          totalSlots: successfulBookings.length,
+          totalParticipants: this.getTotalParticipants(),
           selectedSlots: this.selectedSlots.map(slot => ({
             time: slot.time,
             participants: slot.participants,
@@ -937,17 +1008,31 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             teeId: slot.tee_id
           })),
           status: 'Completed',
-          // Add individual slot booking details
-          slotBookings: response.data.data.slotBookings || [],
-          individualBookingIds: response.data.data.individualBookingIds || []
+          // Individual slot booking details
+          slotBookings: slotBookings,
+          individualBookingIds: individualBookingIds
         };
+        
         this.showBookingModal = true;
       } else {
-        this.errorMessage = response?.data?.message || 'Failed to create multi-slot bookings';
+        // Some bookings failed
+        const failedCount = failedBookings.length;
+        const successCount = successfulBookings.length;
+        
+        if (successCount > 0) {
+          // Partial success - show what succeeded and what failed
+          this.errorMessage = `${successCount} out of ${this.selectedSlots.length} bookings succeeded. ${failedCount} failed.`;
+          
+          // Show details of failed bookings
+          console.error('Failed bookings:', failedBookings);
+        } else {
+          // All bookings failed
+          this.errorMessage = 'All bookings failed. Please try again.';
+        }
       }
     } catch (error) {
-      console.error('Error creating multi-slot bookings:', error);
-      this.errorMessage = 'Failed to create multi-slot bookings. Please try again.';
+      console.error('Error creating individual slot bookings:', error);
+      this.errorMessage = 'Failed to create slot bookings. Please try again.';
     } finally {
       this.isLoading = false;
     }
@@ -957,10 +1042,15 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.showBookingModal = false;
     this.bookingConfirmationData = null;
     
-    // Force a complete page reload to ensure all data is fresh
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
+    // Set a flag to indicate booking was completed
+    sessionStorage.setItem('booking_completed', 'true');
+    
+    // Clear all selected slots and session storage after successful booking
+    this.clearAllSelections();
+    this.clearAllStoredSelections();
+    
+    // Reset the component state
+    this.resetBookingForm();
   }
 
   resetBookingForm(): void {
@@ -974,6 +1064,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.showSlotModal = false;
     this.currentSlotForModal = null;
     this.currentSlotParticipants = 1;
+    
+    // Clear session storage
+    this.clearAllStoredSelections();
     
     // Reload course data to ensure fresh state
     this.loadCourseData();
@@ -1021,9 +1114,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       slot.isMultiSelected = false;
     });
     
-    // Clear session storage
+    // Clear session storage for current date and tee
     if (this.selectedDate && this.selectedTee) {
-      const key = `tee_selections_${this.getDateKey(this.selectedDate)}_${this.selectedTee.id}`;
+      const key = this.getSessionStorageKey(this.selectedDate, this.selectedTee.id);
       sessionStorage.removeItem(key);
     }
   }
@@ -1121,5 +1214,205 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
     
     return this.wifiIcon;
+  }
+
+  private checkForPostBookingRefresh(): void {
+    // Check if this is a page refresh after successful booking
+    const wasBookingCompleted = sessionStorage.getItem('booking_completed');
+    if (wasBookingCompleted === 'true') {
+      // Clear the flag and all stored selections
+      sessionStorage.removeItem('booking_completed');
+      this.clearAllStoredSelections();
+      this.selectedSlots = [];
+    }
+    
+    // Check if this is a manual page refresh
+    this.checkForManualPageRefresh();
+  }
+
+  private checkForManualPageRefresh(): void {
+    // Check if this is a manual page refresh (not navigation)
+    const navigationType = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type;
+    if (navigationType === 'reload') {
+      // Clear all stored selections on manual refresh
+      this.clearAllStoredSelections();
+      this.selectedSlots = [];
+      console.log('Manual page refresh detected, cleared all stored selections');
+    }
+  }
+
+  // Add a method to detect if this is a fresh page load
+  private isFreshPageLoad(): boolean {
+    // Check if this is the first time the page is loaded in this session
+    const hasVisited = sessionStorage.getItem('has_visited_tee_booking');
+    if (!hasVisited) {
+      sessionStorage.setItem('has_visited_tee_booking', 'true');
+      return true;
+    }
+    return false;
+  }
+
+  // Add a method to handle fresh page loads
+  private handleFreshPageLoad(): void {
+    if (this.isFreshPageLoad()) {
+      console.log('Fresh page load detected, clearing any stale data');
+      // Clear any stale booking completion flags
+      sessionStorage.removeItem('booking_completed');
+      // Don't clear stored selections on fresh page load - let user continue where they left off
+    }
+  }
+
+  // Add window beforeunload event listener to clear storage on page refresh
+  private setupPageUnloadHandler(): void {
+    this.pageUnloadHandler = () => {
+      // Clear all stored selections when page is refreshed or closed
+      this.clearAllStoredSelections();
+    };
+    window.addEventListener('beforeunload', this.pageUnloadHandler);
+    
+    // Also listen for page visibility change (when user switches tabs or minimizes)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        // Store current selections when page becomes hidden
+        if (this.selectedDate && this.selectedTee) {
+          this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+        }
+      }
+    });
+  }
+
+  // Add a method to handle page refresh detection
+  private detectPageRefresh(): void {
+    // Use the navigation timing API to detect page refresh
+    if (performance.navigation.type === 1) {
+      console.log('Page refresh detected, clearing all stored selections');
+      this.clearAllStoredSelections();
+      this.selectedSlots = [];
+    }
+  }
+
+  // Add a method to handle page load events
+  private setupPageLoadHandler(): void {
+    // Listen for page load events
+    window.addEventListener('load', () => {
+      this.detectPageRefresh();
+    });
+    
+    // Also check on DOM content loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      this.detectPageRefresh();
+    });
+  }
+
+  private setupNavigationHandlers(): void {
+    // Handle navigation events to ensure proper session storage management
+    this.router.events.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        // Store current selections before navigating away
+        if (this.selectedDate && this.selectedTee) {
+          this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+        }
+      }
+    });
+  }
+
+  // Add a method to debug current session storage state
+  debugSessionStorage(): void {
+    console.log('=== Session Storage Debug ===');
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('tee_booking_selections_')) {
+        const value = sessionStorage.getItem(key);
+        console.log(`${key}:`, value ? JSON.parse(value) : 'null');
+      }
+    }
+    console.log('=== End Debug ===');
+  }
+
+  // Add a method to manually clear all selections (for testing)
+  clearAllSelectionsManually(): void {
+    console.log('Manually clearing all selections');
+    this.selectedSlots = [];
+    this.clearAllStoredSelections();
+    this.currentTimeSlots.forEach(slot => {
+      slot.isSelected = false;
+      slot.isMultiSelected = false;
+      slot.participantCount = undefined;
+    });
+    console.log('All selections cleared');
+  }
+
+  // Add a method to debug current component state
+  debugComponentState(): void {
+    console.log('=== Component State Debug ===');
+    console.log('Selected Tee:', this.selectedTee);
+    console.log('Selected Date:', this.selectedDate);
+    console.log('Current Time Slots:', this.currentTimeSlots);
+    console.log('Selected Slots:', this.selectedSlots);
+    console.log('=== End Component State Debug ===');
+  }
+
+  // Add a method to validate session storage consistency
+  validateSessionStorage(): void {
+    console.log('=== Session Storage Validation ===');
+    
+    // Check if all stored selections are consistent with component state
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('tee_booking_selections_')) {
+        const value = sessionStorage.getItem(key);
+        if (value) {
+          try {
+            const storedSelections = JSON.parse(value);
+            const keyParts = key.split('_');
+            const dateKey = keyParts[3];
+            const teeId = parseInt(keyParts[4]);
+            
+            // Check if these selections exist in component state
+            const componentSelections = this.selectedSlots.filter(slot => 
+              this.getDateKey(slot.date) === dateKey && slot.tee_id === teeId
+            );
+            
+            if (storedSelections.length !== componentSelections.length) {
+              console.warn(`Inconsistency found for key ${key}:`, {
+                stored: storedSelections.length,
+                component: componentSelections.length
+              });
+            }
+          } catch (error) {
+            console.error(`Error parsing stored data for key ${key}:`, error);
+          }
+        }
+      }
+    }
+    console.log('=== End Validation ===');
+  }
+
+  // Add a method to get selections for a specific date and tee
+  getSelectionsForDateAndTee(date: Date, teeId: number): SlotSelection[] {
+    return this.selectedSlots.filter(slot => 
+      this.getDateKey(slot.date) === this.getDateKey(date) && slot.tee_id === teeId
+    );
+  }
+
+  // Add a method to check if a specific slot is selected for a date and tee
+  isSlotSelectedForDateAndTee(slotTime: string, date: Date, teeId: number): boolean {
+    return this.selectedSlots.some(slot => 
+      slot.time === slotTime &&
+      this.getDateKey(slot.date) === this.getDateKey(date) &&
+      slot.tee_id === teeId
+    );
+  }
+
+  // Add a method to get participant count for a specific slot on a specific date and tee
+  getParticipantCountForSlot(slotTime: string, date: Date, teeId: number): number {
+    const selectedSlot = this.selectedSlots.find(slot => 
+      slot.time === slotTime &&
+      this.getDateKey(slot.date) === this.getDateKey(date) &&
+      slot.tee_id === teeId
+    );
+    return selectedSlot ? selectedSlot.participants : 0;
   }
 }
