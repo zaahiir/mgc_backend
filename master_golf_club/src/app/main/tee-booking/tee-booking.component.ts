@@ -104,6 +104,24 @@ interface BookingConfirmationData {
   time?: string;
   participants?: number;
   status?: string;
+  // New fields for individual slot bookings
+  slotBookings?: Array<{
+    id: number;
+    booking_id: string;
+    slot_date: string;
+    booking_time: string;
+    participants: number;
+    status: string;
+    created_at: string;
+    formatted_created_date: string;
+    tee: {
+      holeNumber: number;
+    };
+    course: {
+      courseName: string;
+    };
+  }>;
+  individualBookingIds?: string[];
 }
 
 interface CalendarDay {
@@ -918,7 +936,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             teeHoles: slot.tee.holeNumber,
             teeId: slot.tee_id
           })),
-          status: 'Completed'
+          status: 'Completed',
+          // Add individual slot booking details
+          slotBookings: response.data.data.slotBookings || [],
+          individualBookingIds: response.data.data.individualBookingIds || []
         };
         this.showBookingModal = true;
       } else {

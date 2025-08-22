@@ -329,16 +329,17 @@ class BookingModel(models.Model):
     def clean(self):
         super().clean()
         # Validate slot date is not in the past (using UK time)
-        uk_now = timezone.now().astimezone(UK_TIMEZONE)
-        if self.slot_date < uk_now.date():
-            raise ValidationError("Cannot book for past dates")
+        if self.slot_date:
+            uk_now = timezone.now().astimezone(UK_TIMEZONE)
+            if self.slot_date < uk_now.date():
+                raise ValidationError("Cannot book for past dates")
         
         # Validate participants count
         if self.participants < 1 or self.participants > 4:
             raise ValidationError("Participants must be between 1 and 4")
         
-        # Check for overlapping bookings only if this is not a join request
-        if not self.is_join_request:
+        # Check for overlapping bookings only if this is not a join request and we have required data
+        if not self.is_join_request and self.tee and self.slot_date and self.booking_time:
             overlapping = BookingModel.objects.filter(
                 tee=self.tee,
                 slot_date=self.slot_date,
@@ -546,13 +547,16 @@ class BookingModel(models.Model):
 
     def get_tee_info(self):
         """Get tee information for display"""
-        if not self.slot_date:
-            return "Date not specified"
-        
         if self.tee:
-            return f"{self.tee.holeNumber} Holes on {self.slot_date.strftime('%d/%B/%Y')}"
+            if self.slot_date:
+                return f"{self.tee.holeNumber} Holes on {self.slot_date.strftime('%d/%B/%Y')}"
+            else:
+                return f"{self.tee.holeNumber} Holes"
         else:
-            return f"Tee not specified on {self.slot_date.strftime('%d/%B/%Y')}"
+            if self.slot_date:
+                return f"Tee not specified on {self.slot_date.strftime('%d/%B/%Y')}"
+            else:
+                return "Tee not specified"
 
 
 # BookingSlotModel removed - each slot is now a separate BookingModel

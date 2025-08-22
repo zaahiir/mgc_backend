@@ -2586,6 +2586,15 @@ class BookingViewSet(viewsets.ModelViewSet):
                 print(f"Serialization traceback: {traceback.format_exc()}")
                 raise serializer_error
             
+            # Prepare individual slot booking details for response
+            slot_booking_details = []
+            for slot_booking in created_bookings:
+                slot_serializer = self.get_serializer(slot_booking)
+                slot_details = slot_serializer.data
+                slot_details['created_at'] = slot_booking.createdAt.isoformat() if slot_booking.createdAt else None
+                slot_details['formatted_created_date'] = slot_booking.createdAt.strftime('%d-%b-%Y') if slot_booking.createdAt else 'N/A'
+                slot_booking_details.append(slot_details)
+            
             return Response({
                 'code': 1,
                 'message': 'Multi-slot booking created successfully',
@@ -2593,7 +2602,9 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'booking': booking_data,
                     'singleBookingId': main_booking.booking_id,
                     'totalSlots': len(created_bookings),
-                    'totalParticipants': total_participants
+                    'totalParticipants': total_participants,
+                    'slotBookings': slot_booking_details,  # Individual booking details for each slot
+                    'individualBookingIds': [slot.booking_id for slot in created_bookings]  # Individual booking IDs
                 }
             })
             

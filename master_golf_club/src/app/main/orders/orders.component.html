@@ -143,12 +143,12 @@
                   <td>{{booking.formattedDate}}</td>
                   <td>{{booking.courseName}}</td>
                   <td>
-                    <span class="tee-info">{{booking.teeInfo}}</span>
+                    <span class="tee-info">{{booking.teeInfo || 'Tee not specified'}}</span>
                     <span *ngIf="booking.hasMultipleSlots" class="slot-number">
                       Slot {{booking.slotNumber}}
                     </span>
                   </td>
-                  <td>{{formatDate(booking.bookingDate)}}</td>
+                  <td>{{formatDate(booking.slot_date || booking.slotDate || booking.bookingDate)}}</td>
                   <td>{{booking.booking_time || 'N/A'}}</td>
                   <td>
                     <span class="participants">

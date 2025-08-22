@@ -207,6 +207,11 @@ export class OrdersComponent implements OnInit {
         
         for (const booking of rawBookings) {
           console.log('Processing booking:', booking);
+          console.log('Booking slots:', booking.slots);
+          console.log('Booking teeInfo:', booking.teeInfo);
+          console.log('Booking teeName:', booking.teeName);
+          console.log('Booking booking_time:', booking.booking_time);
+          console.log('Booking slotDate:', booking.slotDate);
           
           if (booking.slots && booking.slots.length > 0) {
             // Create a separate row for each slot
@@ -219,20 +224,21 @@ export class OrdersComponent implements OnInit {
                 slotIndex: i,
                 // Override with slot-specific data
                 tee: slot.tee,
-                teeInfo: slot.teeInfo || `Tee ${slot.tee}`,
-                teeName: slot.teeName,
-                booking_time: slot.booking_time,
+                teeInfo: slot.teeInfo || `Tee ${slot.tee || 'Unknown'}`,
+                teeName: slot.teeName || `Tee ${slot.tee || 'Unknown'}`,
+                booking_time: slot.booking_time || 'Time not specified',
                 participants: slot.participants,
                 slot_status: slot.slot_status,
                 slot_order: slot.slot_order,
                 endTime: slot.endTime,
+                slot_date: slot.slot_date, // Add slot date
                 // Mark as multi-slot
                 hasMultipleSlots: booking.slots.length > 1,
                 isMultiSlotBooking: true,
                 totalSlots: booking.slots.length,
                 slotNumber: i + 1,
-                // Format display data
-                formattedDate: this.formatDate(booking.bookingDate || booking.formattedDate),
+                // Format display data - use created_at as booked date
+                formattedDate: this.formatDate(slot.created_at || slot.formatted_created_date || booking.bookingDate || booking.formattedDate),
                 canCancel: this.canCancelBooking(booking),
                 canJoinSlot: this.canJoinSlot(booking)
               };
@@ -244,7 +250,13 @@ export class OrdersComponent implements OnInit {
             // Single slot or no slots - create single row
             const processedBooking = {
               ...booking,
-              formattedDate: this.formatDate(booking.bookingDate || booking.formattedDate),
+              // For single bookings, use the main booking data
+              teeInfo: booking.teeInfo || `Tee ${booking.tee || 'Unknown'}`,
+              teeName: booking.teeName || `Tee ${booking.tee || 'Unknown'}`,
+              booking_time: booking.booking_time || booking.bookingTime || 'Time not specified',
+              slot_date: booking.slotDate || booking.bookingDate,
+              participants: booking.participants,
+              formattedDate: this.formatDate(booking.createdAt || booking.bookingDate || booking.formattedDate),
               canCancel: this.canCancelBooking(booking),
               canJoinSlot: this.canJoinSlot(booking),
               hasMultipleSlots: false,
@@ -259,6 +271,19 @@ export class OrdersComponent implements OnInit {
         }
         
         console.log('Final processed bookings:', this.bookings);
+        
+        // Debug: Show specific fields for each booking
+        this.bookings.forEach((booking, index) => {
+          console.log(`Booking ${index + 1}:`, {
+            id: booking.id,
+            teeInfo: booking.teeInfo,
+            teeName: booking.teeName,
+            booking_time: booking.booking_time,
+            slot_date: booking.slot_date,
+            formattedDate: booking.formattedDate
+          });
+        });
+        
         this.updateStatusFilterCounts();
       } else {
         console.error('Invalid response format:', response);

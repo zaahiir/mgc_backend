@@ -527,8 +527,8 @@ class BookingSerializer(serializers.ModelSerializer):
     isMultiSlotBooking = serializers.SerializerMethodField(read_only=True)
     totalParticipants = serializers.SerializerMethodField(read_only=True)
     teeName = serializers.SerializerMethodField(read_only=True)
-    slotDate = serializers.DateField(source='slot_date', read_only=True)
-    bookingTime = serializers.TimeField(source='booking_time', read_only=True)
+    slotDate = serializers.DateField(source='slot_date', required=False)
+    bookingTime = serializers.TimeField(source='booking_time', required=False)
     
     # Enhanced approval tracking
     approvedBy = serializers.SerializerMethodField(read_only=True)
@@ -541,20 +541,26 @@ class BookingSerializer(serializers.ModelSerializer):
     # Additional fields for orders display
     teeSummary = serializers.SerializerMethodField(read_only=True)
     
+    # Multi-slot support for orders component
+    slots = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = BookingModel
         fields = [
             'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
-            'teeInfo', 'teeName', 'slotDate', 'bookingTime', 'formattedDate', 'endTime',
+            'tee', 'slot_date', 'booking_time', 'teeInfo', 'teeName', 'slotDate', 'bookingTime', 'formattedDate', 'endTime',
             'participants', 'status', 'notes', 'canCancel',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
             'joinRequests', 'originalBookingInfo', 'is_join_request', 'original_booking',
             'isMultiSlotBooking', 'totalParticipants',
             'approvedBy', 'approvedAt', 'isSlotFull', 'canAcceptMoreParticipants',
-            'teeSummary'
+            'teeSummary', 'slots'
         ]
         extra_kwargs = {
             'member': {'required': False},  # Will be set automatically from authentication
+            'tee': {'required': False},  # Allow null for backward compatibility
+            'slot_date': {'required': False},  # Allow null for backward compatibility
+            'booking_time': {'required': False},  # Allow null for backward compatibility
             'is_join_request': {'required': False, 'default': False},
             'original_booking': {'required': False},
             'group_id': {'required': False}
@@ -567,12 +573,24 @@ class BookingSerializer(serializers.ModelSerializer):
             return "Unknown Member"
     
     def get_teeInfo(self, obj):
-        return obj.get_tee_info()
+        """Get tee info with better null handling"""
+        try:
+            return obj.get_tee_info()
+        except (TypeError, ValueError, AttributeError):
+            if obj.tee:
+                try:
+                    return f"{obj.tee.holeNumber} Holes"
+                except (TypeError, ValueError, AttributeError):
+                    return "Tee not specified"
+            else:
+                return "Tee not specified"
     
     def get_formattedDate(self, obj):
         # Return date in DD/Month/YYYY format for orders component
         if obj.slot_date:
             return obj.slot_date.strftime('%d/%B/%Y')
+        elif obj.createdAt:
+            return obj.createdAt.strftime('%d/%B/%Y')
         else:
             return "Date not specified"
     
@@ -600,6 +618,88 @@ class BookingSerializer(serializers.ModelSerializer):
                 return f"Tee not specified on {date_str} at {time_str}"
         else:
             return f"Tee not specified on {date_str} at {time_str}"
+    
+    def get_slots(self, obj):
+        """Get slots information for multi-slot bookings"""
+        try:
+            # For single-slot bookings, return the current slot as a single-item array
+            if not obj.group_id:
+                return [{
+                    'id': obj.id,
+                    'tee': obj.tee.id if obj.tee else None,
+                    'teeInfo': f"{obj.tee.holeNumber} Holes" if obj.tee else "Tee not specified",
+                    'teeName': f"{obj.tee.holeNumber} Holes" if obj.tee else "Tee not specified",
+                    'courseName': obj.course.courseName if obj.course else "Unknown Course",
+                    'booking_time': obj.booking_time.strftime('%H:%M') if obj.booking_time else "Time not specified",
+                    'participants': obj.participants,
+                    'slot_status': obj.slot_status,
+                    'slot_order': 1,
+                    'endTime': obj.end_time.strftime('%H:%M') if obj.end_time else "Time not specified",
+                    'slot_date': obj.slot_date.strftime('%Y-%m-%d') if obj.slot_date else None,
+                    'created_at': obj.createdAt.isoformat() if obj.createdAt else None,
+                    'formatted_created_date': obj.createdAt.strftime('%d-%b-%Y') if obj.createdAt else 'N/A'
+                }]
+            
+            # For multi-slot bookings, get all slots in the group
+            from .models import BookingModel
+            group_slots = BookingModel.objects.filter(
+                group_id=obj.group_id,
+                hideStatus=0
+            ).order_by('slot_date', 'booking_time')
+            
+            slots_data = []
+            for i, slot in enumerate(group_slots):
+                slots_data.append({
+                    'id': slot.id,
+                    'tee': slot.tee.id if slot.tee else None,
+                    'teeInfo': f"{slot.tee.holeNumber} Holes" if slot.tee else "Tee not specified",
+                    'teeName': f"{slot.tee.holeNumber} Holes" if slot.tee else "Tee not specified",
+                    'courseName': slot.course.courseName if slot.course else "Unknown Course",
+                    'booking_time': slot.booking_time.strftime('%H:%M') if slot.booking_time else "Time not specified",
+                    'participants': slot.participants,
+                    'slot_status': slot.slot_status,
+                    'slot_order': i + 1,
+                    'endTime': slot.end_time.strftime('%H:%M') if slot.end_time else "Time not specified",
+                    'slot_date': slot.slot_date.strftime('%Y-%m-%d') if slot.slot_date else None,
+                    'created_at': slot.createdAt.isoformat() if slot.createdAt else None,
+                    'formatted_created_date': slot.createdAt.strftime('%d-%b-%Y') if slot.createdAt else 'N/A'
+                })
+            
+            return slots_data
+        except Exception as e:
+            # Fallback to single slot if there's an error
+            return [{
+                'id': obj.id,
+                'tee': obj.tee.id if obj.tee else None,
+                'teeInfo': f"{obj.tee.holeNumber} Holes" if obj.tee else "Tee not specified",
+                'teeName': f"{obj.tee.holeNumber} Holes" if obj.tee else "Tee not specified",
+                'courseName': obj.course.courseName if obj.course else "Unknown Course",
+                'booking_time': obj.booking_time.strftime('%H:%M') if obj.booking_time else "Time not specified",
+                'participants': obj.participants,
+                'slot_status': obj.slot_status,
+                'slot_order': 1,
+                'endTime': obj.end_time.strftime('%H:%M') if obj.end_time else "Time not specified",
+                'slot_date': obj.slot_date.strftime('%Y-%m-%d') if obj.slot_date else None,
+                'created_at': obj.createdAt.isoformat() if obj.createdAt else None,
+                'formatted_created_date': obj.createdAt.strftime('%d-%b-%Y') if obj.createdAt else 'N/A'
+            }]
+        except Exception as e:
+            # Fallback to single slot if there's an error
+            return [{
+                'id': obj.id,
+                'tee': obj.tee.id if obj.tee else None,
+                'teeInfo': f"{obj.tee.holeNumber} Holes" if obj.tee else "Tee not specified",
+                'teeName': f"{obj.tee.holeNumber} Holes" if obj.tee else "Tee not specified",
+                'courseName': obj.course.courseName if obj.course else "Unknown Course",
+                'booking_time': obj.booking_time.strftime('%H:%M') if obj.booking_time else "Time not specified",
+                'participants': obj.participants,
+                'slot_status': obj.slot_status,
+                'slot_order': 1,
+                'endTime': obj.end_time.strftime('%H:%M') if obj.end_time else "Time not specified",
+                'slot_date': obj.slot_date.strftime('%Y-%m-%d') if obj.slot_date else None,
+                'created_at': obj.createdAt.isoformat() if obj.createdAt else None,
+                'formatted_created_date': obj.createdAt.strftime('%d-%b-%Y') if obj.createdAt else 'N/A'
+            }]
     
     def get_isMultiSlotBooking(self, obj):
         """Check if this is a multi-slot booking"""

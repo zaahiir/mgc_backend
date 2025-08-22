@@ -492,10 +492,6 @@
           <span class="label">Course:</span>
           <span class="value">{{bookingConfirmationData.courseName || course.name}}</span>
         </div>
-        <div class="detail-item">
-          <span class="label">Date:</span>
-          <span class="value">{{bookingConfirmationData.date ? (bookingConfirmationData.date | date:'MMM d, yyyy') : (selectedDate | date:'MMM d, yyyy')}}</span>
-        </div>
         <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
           <span class="label">Slots:</span>
           <div class="value slots-list">
@@ -504,16 +500,26 @@
                 <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
                 <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
                 <span class="slot-participants"> {{slot.participants}}p</span>
+                <!-- Show individual booking ID for each slot -->
+                <span class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
+                  <strong>Booking ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
+                </span>
               </div>
             </div>
           </div>
         </div>
-        <!-- Show single booking ID for all slots -->
-        <div class="detail-item" *ngIf="bookingConfirmationData.bookingId">
-          <span class="label">Booking ID:</span>
-          <span class="value">
-            <span class="booking-id">{{bookingConfirmationData.bookingId}}</span>
-          </span>
+        <!-- Show individual booking IDs for each slot -->
+        <div class="detail-item" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings.length > 0">
+          <span class="label">Individual Booking IDs:</span>
+          <div class="value booking-ids-list">
+            <div class="booking-id-item" *ngFor="let slotBooking of bookingConfirmationData.slotBookings">
+              <span class="booking-id">{{slotBooking.booking_id}}</span>
+              <span class="booking-details">
+                {{slotBooking.tee?.holeNumber || 'Unknown'}} Holes: {{slotBooking.booking_time}} 
+                ({{slotBooking.slot_date | date:'MMM d, yyyy'}}) - {{slotBooking.participants}}p
+              </span>
+            </div>
+          </div>
         </div>
         <div class="detail-item">
           <span class="label">Status:</span>
