@@ -968,7 +968,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         
         // Extract individual booking IDs and details
         const individualBookingIds = successfulBookings.map(response => 
-          response.data.data.booking_id || response.data.data.id
+          response.data.data.bookingId || response.data.data.booking_id || response.data.data.id
         );
         
         const slotBookings = successfulBookings.map((response, index) => {
@@ -976,7 +976,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           const bookingData = response.data.data;
           return {
             id: bookingData.id,
-            booking_id: bookingData.booking_id || bookingData.id,
+            booking_id: bookingData.bookingId || bookingData.booking_id || bookingData.id,
             slot_date: slot.slot_date,
             booking_time: slot.time,
             participants: slot.participants,
