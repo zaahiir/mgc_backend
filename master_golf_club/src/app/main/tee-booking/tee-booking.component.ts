@@ -86,7 +86,6 @@ interface SlotSelection {
 
 interface BookingConfirmationData {
   totalSlots?: number;
-  totalParticipants?: number;
   selectedSlots?: Array<{
     time: string;
     participants: number;
@@ -997,7 +996,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           teeLabel: this.selectedTee?.label,
           date: this.selectedDate,
           totalSlots: successfulBookings.length,
-          totalParticipants: this.getTotalParticipants(),
           selectedSlots: this.selectedSlots.map(slot => ({
             time: slot.time,
             participants: slot.participants,
@@ -1103,8 +1101,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.teeLabel.localeCompare(b.teeLabel));
   }
 
-  getTotalParticipants(): number {
+  // Computed properties for template
+  get totalParticipants(): number {
     return this.selectedSlots.reduce((sum, slot) => sum + slot.participants, 0);
+  }
+
+  get participantsText(): string {
+    return this.totalParticipants === 1 ? 'participant' : 'participants';
   }
 
   clearAllSelections(): void {

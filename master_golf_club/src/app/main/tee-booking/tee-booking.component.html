@@ -177,7 +177,7 @@
               <div class="summary-header">
                 <h4>Booking Summary</h4>
                 <span class="summary-status">
-                  {{getTotalParticipants()}} participant{{getTotalParticipants() > 1 ? 's' : ''}}
+                  {{totalParticipants}} {{participantsText}}
                 </span>
               </div>
               
@@ -186,10 +186,6 @@
                 <div class="summary-item">
                   <span class="label">Total Slots:</span>
                   <span class="value">{{selectedSlots.length}} slot{{selectedSlots.length > 1 ? 's' : ''}}</span>
-                </div>
-                <div class="summary-item">
-                  <span class="label">Total Participants:</span>
-                  <span class="value">{{getTotalParticipants()}} player{{getTotalParticipants() > 1 ? 's' : ''}}</span>
                 </div>
                 <div class="summary-actions">
                   <button class="clear-all-btn" (click)="clearAllSelections()" title="Clear all selected slots">
