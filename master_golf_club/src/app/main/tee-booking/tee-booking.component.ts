@@ -688,7 +688,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         const newSlot: SlotSelection = {
           time: slot.time,
           participants: this.currentSlotParticipants,
-          date: new Date(slot.slot_date || this.selectedDate.toISOString()),
+          date: slot.slot_date ? new Date(slot.slot_date) : this.selectedDate,  // Use actual slot date if available
           tee: this.selectedTee!,
           slot_date: slot.slot_date || this.formatDateForBackend(this.selectedDate),
           tee_id: slot.tee_id || this.selectedTee!.id,
@@ -909,7 +909,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       const slotsData = this.selectedSlots.map(slot => ({
         course: this.course.id,
         tee: slot.tee_id,
-        slotDate: slot.slot_date,
+        slotDate: typeof slot.date === 'string' ? slot.date : slot.date.toISOString().split('T')[0],  // Convert Date to YYYY-MM-DD string
         bookingTime: slot.time,
         participants: slot.participants
       }));

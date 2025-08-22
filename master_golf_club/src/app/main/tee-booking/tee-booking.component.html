@@ -508,19 +508,7 @@
             </div>
           </div>
         </div>
-        <!-- Show individual booking IDs for each slot -->
-        <div class="detail-item" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings.length > 0">
-          <span class="label">Individual Booking IDs:</span>
-          <div class="value booking-ids-list">
-            <div class="booking-id-item" *ngFor="let slotBooking of bookingConfirmationData.slotBookings">
-              <span class="booking-id">{{slotBooking.booking_id}}</span>
-              <span class="booking-details">
-                {{slotBooking.tee?.holeNumber || 'Unknown'}} Holes: {{slotBooking.booking_time}} 
-                ({{slotBooking.slot_date | date:'MMM d, yyyy'}}) - {{slotBooking.participants}}p
-              </span>
-            </div>
-          </div>
-        </div>
+
         <div class="detail-item">
           <span class="label">Status:</span>
           <span class="value status-pending">{{bookingConfirmationData.status || 'Pending'}}</span>

@@ -41,6 +41,8 @@ interface Booking {
   teeName?: string;
   slot_status?: string;
   slot_order?: number;
+  slotDate?: string;
+  createdAt?: string;
   slots?: Array<{
     id: number;
     tee: number;
@@ -52,6 +54,9 @@ interface Booking {
     slot_order: number;
     slot_status: string;
     endTime: string;
+    slot_date?: string;
+    created_at?: string;
+    formatted_created_date?: string;
   }>;
   earliestTime?: string;
   latestTime?: string;
@@ -279,7 +284,6 @@ export class OrdersComponent implements OnInit {
             teeInfo: booking.teeInfo,
             teeName: booking.teeName,
             booking_time: booking.booking_time,
-            slot_date: booking.slot_date,
             formattedDate: booking.formattedDate
           });
         });
