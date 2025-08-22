@@ -265,20 +265,16 @@ class TeeModel(models.Model):
 
 class BookingModel(models.Model):
     id = models.AutoField(primary_key=True)
-    booking_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Unique booking ID in format MGC25AUG05")
+    booking_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Unique booking ID in format MGCBK25AUG00010")
 
     member = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="bookings")
     course = models.ForeignKey(CourseModel, on_delete=models.CASCADE, related_name="bookings")
+    tee = models.ForeignKey(TeeModel, on_delete=models.CASCADE, related_name="bookings", null=True, blank=True)
     
-    # Remove the single tee field since we'll support multiple tees
-    # tee = models.ForeignKey(TeeModel, on_delete=models.CASCADE, related_name="bookings")
-
-    bookingDate = models.DateField()
-    # Remove single booking time since we'll have multiple slots
-    # bookingTime = models.TimeField()
-    
-    # Total participants across all slots
-    participants = models.PositiveIntegerField(default=1)
+    # Each booking represents a single slot
+    slot_date = models.DateField(help_text="Date for this specific slot", null=True, blank=True)
+    booking_time = models.TimeField(help_text="Time for this specific slot", null=True, blank=True)
+    participants = models.PositiveIntegerField(default=1, help_text="Number of participants for this slot")
 
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -291,9 +287,9 @@ class BookingModel(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
-    # Multi-slot booking is now handled by related BookingSlotModel instances
-    # This field indicates if this booking has multiple slots
-    has_multiple_slots = models.BooleanField(default=False, help_text="Whether this booking has multiple slots")
+    # Multi-slot booking grouping (optional)
+    # If multiple slots are booked together, they can share a group_id
+    group_id = models.CharField(max_length=50, null=True, blank=True, help_text="Group ID for multi-slot bookings")
     
     # Join request functionality
     original_booking = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, 
@@ -319,16 +315,22 @@ class BookingModel(models.Model):
         if not self.booking_id:
             self.booking_id = self.generate_booking_id()
         
+        # Handle migration from old structure
+        if not self.slot_date and hasattr(self, 'bookingDate'):
+            self.slot_date = self.bookingDate
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.member.firstName} - {self.course.courseName} on {self.bookingDate}"
+        if not self.slot_date:
+            return f"{self.member.firstName} - {self.course.courseName} (date not specified)"
+        return f"{self.member.firstName} - {self.course.courseName} on {self.slot_date}"
     
     def clean(self):
         super().clean()
-        # Validate booking date is not in the past (using UK time)
+        # Validate slot date is not in the past (using UK time)
         uk_now = timezone.now().astimezone(UK_TIMEZONE)
-        if self.bookingDate < uk_now.date():
+        if self.slot_date < uk_now.date():
             raise ValidationError("Cannot book for past dates")
         
         # Validate participants count
@@ -337,21 +339,16 @@ class BookingModel(models.Model):
         
         # Check for overlapping bookings only if this is not a join request
         if not self.is_join_request:
-            # Get all slots for this booking
-            slots = self.slots.all()
-            for slot in slots:
-                # Use slot_date if available, otherwise use booking date
-                check_date = slot.slot_date or self.bookingDate
-                
-                overlapping = BookingSlotModel.objects.filter(
-                    tee=slot.tee,
-                    slot_date=check_date,
-                    booking_time=slot.booking_time,
-                    slot_status__in=['pending', 'confirmed', 'completed']
-                ).exclude(booking__id=self.id if self.id else None)
-                
-                if overlapping.exists():
-                    raise ValidationError(f"This time slot is already booked for {slot.tee.holeNumber} holes tee on {check_date}")
+            overlapping = BookingModel.objects.filter(
+                tee=self.tee,
+                slot_date=self.slot_date,
+                booking_time=self.booking_time,
+                status__in=['pending', 'confirmed', 'completed']
+            ).exclude(id=self.id if self.id else None)
+            
+            if overlapping.exists():
+                tee_info = f"{self.tee.holeNumber} holes tee" if self.tee else "tee"
+                raise ValidationError(f"This time slot is already booked for {tee_info} on {self.slot_date}")
     
     def generate_booking_id(self):
         """Generate unique booking ID in format: MGCBK25AUG00010"""
@@ -387,58 +384,59 @@ class BookingModel(models.Model):
     
     @property
     def duration_hours(self):
-        # Calculate total duration based on all slots
-        total_minutes = sum(slot.duration_hours * 60 for slot in self.slots.all())
-        return total_minutes / 60
+        # Fixed 8 minutes duration for all slots
+        return 8 / 60  # 8 minutes in hours
     
     @property
     def end_time(self):
         from datetime import timedelta
         from django.utils import timezone
         
-        # Get the latest end time from all slots
-        latest_end_time = None
-        for slot in self.slots.all():
-            slot_end_time = slot.end_time
-            if latest_end_time is None or slot_end_time > latest_end_time:
-                latest_end_time = slot_end_time
+        # Check if we have the required date and time
+        if not self.slot_date or not self.booking_time:
+            return None
         
-        return latest_end_time
+        # Calculate end time for this specific slot
+        start_datetime = timezone.datetime.combine(self.slot_date, self.booking_time)
+        # Make it timezone-aware with UK time
+        start_datetime = UK_TIMEZONE.localize(start_datetime)
+        duration = timedelta(hours=self.duration_hours)
+        end_datetime = start_datetime + duration
+        return end_datetime.time()
     
     @property
     def can_cancel(self):
-        # Allow cancellation up to 24 hours before the earliest slot (using UK time)
+        # Allow cancellation up to 24 hours before the slot (using UK time)
+        if not self.slot_date or not self.booking_time:
+            return False
+        
         try:
-            earliest_slot = self.slots.order_by('slot_date', 'booking_time').first()
-            if earliest_slot:
-                # Use slot_date if available, otherwise use booking date
-                slot_date = earliest_slot.slot_date or self.bookingDate
-                booking_datetime = timezone.datetime.combine(slot_date, earliest_slot.booking_time)
-                uk_now = timezone.now().astimezone(UK_TIMEZONE)
-                return booking_datetime - uk_now > timezone.timedelta(hours=24)
+            booking_datetime = timezone.datetime.combine(self.slot_date, self.booking_time)
+            uk_now = timezone.now().astimezone(UK_TIMEZONE)
+            return booking_datetime - uk_now > timezone.timedelta(hours=24)
         except (TypeError, ValueError):
             pass
         return True
     
     @property
     def slot_participant_count(self):
-        """Get total participants for all slots in this booking"""
+        """Get total participants for this slot"""
         if self.is_join_request:
             # For join requests, count the original booking participants
             return self.original_booking.participants if self.original_booking else 0
         else:
-            # For regular bookings, count all slots
-            return sum(slot.participants for slot in self.slots.all())
+            # For regular bookings, count this slot's participants
+            return self.participants
     
     @property
     def available_spots(self):
-        """Get available spots across all slots"""
+        """Get available spots for this slot"""
         total_participants = self.slot_participant_count
         return max(0, 4 - total_participants)
     
     @property
     def slot_status(self):
-        """Get overall slot status based on participant count"""
+        """Get slot status based on participant count"""
         total_participants = self.slot_participant_count
         if total_participants == 0:
             return 'available'
@@ -448,13 +446,13 @@ class BookingModel(models.Model):
             return 'booked'
     
     def can_join_slot(self, requested_participants):
-        """Check if a member can join this booking with the requested number of participants"""
+        """Check if a member can join this slot with the requested number of participants"""
         if self.slot_status == 'booked':
             return False
         return self.available_spots >= requested_participants
     
     def get_join_requests(self):
-        """Get all join requests for this booking"""
+        """Get all join requests for this slot"""
         return BookingModel.objects.filter(
             original_booking=self,
             is_join_request=True,
@@ -530,149 +528,34 @@ class BookingModel(models.Model):
         """Check if the slot can accept more participants"""
         return self.slot_participant_count < 4
 
-    # New methods for multi-slot booking system
-    def get_all_slots(self):
-        """Get all slots associated with this booking"""
-        return self.slots.all().order_by('slot_order')
+    # New methods for single-slot booking system
+    def get_slot_info(self):
+        """Get slot information for display"""
+        if not self.tee or not self.slot_date or not self.booking_time:
+            return "Slot information incomplete"
+        
+        return f"{self.tee.holeNumber} Holes on {self.slot_date.strftime('%d/%B/%Y')} at {self.booking_time.strftime('%H:%M')}"
 
     def get_total_participants(self):
-        """Get total participants across all slots"""
-        if self.has_multiple_slots:
-            return sum(slot.participants for slot in self.slots.all())
-        else:
-            return self.participants
-
-    def get_total_price(self):
-        """Get total price across all slots - price functionality removed"""
-        return None
+        """Get total participants for this slot"""
+        return self.participants
 
     def is_multi_slot_booking(self):
-        """Check if this is a multi-slot booking"""
-        return self.has_multiple_slots and self.slots.count() > 1
+        """Check if this is part of a multi-slot booking group"""
+        return self.group_id is not None
 
     def get_tee_info(self):
         """Get tee information for display"""
-        if self.has_multiple_slots:
-            slots = self.slots.all()
-            if slots.count() == 1:
-                slot = slots.first()
-                slot_date = slot.slot_date or self.bookingDate
-                return f"{slot.tee.holeNumber} Holes on {slot_date.strftime('%d/%B/%Y')}"
-            else:
-                tee_summary = {}
-                for slot in slots:
-                    hole_count = slot.tee.holeNumber
-                    slot_date = slot.slot_date or self.bookingDate
-                    date_key = slot_date.strftime('%Y-%m-%d')
-                    
-                    if hole_count not in tee_summary:
-                        tee_summary[hole_count] = {}
-                    
-                    if date_key not in tee_summary[hole_count]:
-                        tee_summary[hole_count][date_key] = 0
-                    
-                    tee_summary[hole_count][date_key] += 1
-                
-                tee_info = []
-                for hole_count, dates in tee_summary.items():
-                    date_info = []
-                    for date_str, count in dates.items():
-                        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-                        if count == 1:
-                            date_info.append(f"{hole_count} Holes on {date_obj.strftime('%d/%B/%Y')}")
-                        else:
-                            date_info.append(f"{hole_count} Holes x{count} on {date_obj.strftime('%d/%B/%Y')}")
-                    
-                    tee_info.extend(date_info)
-                
-                return " + ".join(tee_info)
-        else:
-            # Fallback for single slot
-            first_slot = self.slots.first()
-            if first_slot:
-                slot_date = first_slot.slot_date or self.bookingDate
-                return f"{first_slot.tee.holeNumber} Holes on {slot_date.strftime('%d/%B/%Y')}"
-            return "Unknown Tee"
-
-
-class BookingSlotModel(models.Model):
-    """Model for individual slots within a multi-slot booking"""
-    id = models.AutoField(primary_key=True)
-    booking = models.ForeignKey(BookingModel, on_delete=models.CASCADE, related_name='slots')
-    tee = models.ForeignKey(TeeModel, on_delete=models.CASCADE, related_name='booking_slots')
-    slot_date = models.DateField(help_text="Date for this specific slot", null=True, blank=True)
-    booking_time = models.TimeField(help_text="Time for this specific slot")
-    participants = models.PositiveIntegerField(default=1, help_text="Number of participants for this slot")
-    slot_order = models.PositiveIntegerField(default=1, help_text="Order of this slot in the booking")
-    
-    # Slot status (can be different from main booking status)
-    slot_status = models.CharField(max_length=20, choices=BookingModel.STATUS_CHOICES, default='confirmed')
-    
-    notes = models.TextField(null=True, blank=True)
-    hideStatus = models.IntegerField(default=0)
-    createdAt = models.DateTimeField(auto_now_add=True)
-    updatedAt = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['slot_order']
-        verbose_name = 'Booking Slot'
-        verbose_name_plural = 'Booking Slots'
-
-    def __str__(self):
-        slot_date_str = self.slot_date.strftime('%Y-%m-%d') if self.slot_date else 'No Date'
-        return f"Slot {self.slot_order} - {self.tee.holeNumber} Holes on {slot_date_str} at {self.booking_time}"
-
-    def clean(self):
-        super().clean()
-        # Validate participants count
-        if self.participants < 1 or self.participants > 4:
-            raise ValidationError("Participants must be between 1 and 4")
-        
-        # Check for overlapping slots only if this slot is confirmed
-        if self.slot_status in ['pending', 'confirmed', 'completed']:
-            # Use slot_date if available, otherwise fall back to booking date
-            check_date = self.slot_date or self.booking.bookingDate
-            
-            overlapping = BookingSlotModel.objects.filter(
-                tee=self.tee,
-                slot_date=check_date,
-                booking_time=self.booking_time,
-                slot_status__in=['pending', 'confirmed', 'completed']
-            ).exclude(id=self.id if self.id else None)
-            
-            if overlapping.exists():
-                raise ValidationError(f"This time slot is already booked for {self.tee.holeNumber} holes tee on {check_date}")
-
-    def save(self, *args, **kwargs):
-        # If slot_date is not set, use the booking date as default
         if not self.slot_date:
-            self.slot_date = self.booking.bookingDate
-        super().save(*args, **kwargs)
+            return "Date not specified"
+        
+        if self.tee:
+            return f"{self.tee.holeNumber} Holes on {self.slot_date.strftime('%d/%B/%Y')}"
+        else:
+            return f"Tee not specified on {self.slot_date.strftime('%d/%B/%Y')}"
 
-    @property
-    def duration_hours(self):
-        # Fixed 8 minutes duration for all slots
-        return 8 / 60  # 8 minutes in hours
 
-    @property
-    def end_time(self):
-        from datetime import timedelta
-        from django.utils import timezone
-        # Use the slot date if available, otherwise fall back to booking date
-        slot_date = self.slot_date or self.booking.bookingDate
-        start_datetime = timezone.datetime.combine(slot_date, self.booking_time)
-        # Make it timezone-aware with UK time
-        start_datetime = UK_TIMEZONE.localize(start_datetime)
-        duration = timedelta(hours=self.duration_hours)
-        end_datetime = start_datetime + duration
-        return end_datetime.time()
-    
-    @property
-    def formatted_slot_date(self):
-        """Return formatted slot date for display"""
-        if self.slot_date:
-            return self.slot_date.strftime('%d/%B/%Y')
-        return self.booking.bookingDate.strftime('%d/%B/%Y') if self.booking.bookingDate else 'No Date'
+# BookingSlotModel removed - each slot is now a separate BookingModel
 
 
 class NotificationModel(models.Model):
@@ -718,12 +601,15 @@ class NotificationModel(models.Model):
     @classmethod
     def create_join_request_notification(cls, recipient, sender, booking, join_request):
         """Create a join request notification"""
+        time_str = booking.booking_time.strftime('%H:%M') if booking.booking_time else "Time not specified"
+        date_str = booking.slot_date.strftime('%B %d, %Y') if booking.slot_date else "Date not specified"
+        
         return cls.objects.create(
             recipient=recipient,
             sender=sender,
             notification_type='join_request',
             title='Join Request',
-            message=f"{sender.firstName} {sender.lastName} wants to join your tee slot at {booking.bookingTime.strftime('%H:%M')} on {booking.bookingDate.strftime('%B %d, %Y')}. Approve or Reject.",
+            message=f"{sender.firstName} {sender.lastName} wants to join your tee slot at {time_str} on {date_str}. Approve or Reject.",
             related_booking=booking
         )
 
@@ -732,7 +618,9 @@ class NotificationModel(models.Model):
         """Create a join response notification"""
         notification_type = 'join_approved' if is_approved else 'join_rejected'
         title = 'Join Request Approved' if is_approved else 'Join Request Rejected'
-        message = f"Your join request for {booking.bookingTime.strftime('%H:%M')} on {booking.bookingDate.strftime('%B %d, %Y')} has been {'approved' if is_approved else 'rejected'}."
+        time_str = booking.booking_time.strftime('%H:%M') if booking.booking_time else "Time not specified"
+        date_str = booking.slot_date.strftime('%B %d, %Y') if booking.slot_date else "Date not specified"
+        message = f"Your join request for {time_str} on {date_str} has been {'approved' if is_approved else 'rejected'}."
         
         return cls.objects.create(
             recipient=recipient,

@@ -139,7 +139,7 @@ class MemberModelSerializers(serializers.ModelSerializer):
             try:
                 plan_obj = PlanModel.objects.get(id=instance.plan)
                 representation['plan'] = plan_obj.planName
-            except PlanModel.DoesNotExist:
+            except (PlanModel.DoesNotExist, TypeError, ValueError, AttributeError):
                 representation['plan'] = None
         else:
             representation['plan'] = None
@@ -173,30 +173,43 @@ class MemberQRDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_gender(self, obj):
-        return obj.gender.genderName if obj.gender else None
+        try:
+            return obj.gender.genderName if obj.gender else None
+        except (TypeError, ValueError, AttributeError):
+            return None
 
     def get_nationality(self, obj):
-        return obj.nationality.countryName if obj.nationality else None
+        try:
+            return obj.nationality.countryName if obj.nationality else None
+        except (TypeError, ValueError, AttributeError):
+            return None
 
     def get_plan(self, obj):
         if obj.plan:
             try:
                 plan_obj = PlanModel.objects.get(id=obj.plan)
                 return plan_obj.planName
-            except PlanModel.DoesNotExist:
+            except (PlanModel.DoesNotExist, TypeError, ValueError, AttributeError):
                 return None
         return None
 
     def get_fullName(self, obj):
-        first_name = obj.firstName or ""
-        last_name = obj.lastName or ""
-        return f"{first_name} {last_name}".strip()
+        try:
+            first_name = obj.firstName or ""
+            last_name = obj.lastName or ""
+            return f"{first_name} {last_name}".strip()
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Member"
 
     def get_profilePhotoUrl(self, obj):
         if obj.profilePhoto:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.profilePhoto.url)
+            try:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.profilePhoto.url)
+                return obj.profilePhoto.url
+            except (TypeError, ValueError, AttributeError):
+                return None
         return None
 
 
@@ -211,15 +224,24 @@ class AmenitiesModelSerializers(serializers.ModelSerializer):
     
     def get_amenity_icon_svg(self, obj):
         """Return full SVG content"""
-        return obj.amenity_icon_svg
+        try:
+            return obj.amenity_icon_svg
+        except (TypeError, ValueError, AttributeError):
+            return None
     
     def get_amenity_icon_path(self, obj):
         """Return only the path data for flexible rendering"""
-        return obj.get_icon_path_only()
+        try:
+            return obj.get_icon_path_only()
+        except (TypeError, ValueError, AttributeError):
+            return None
     
     def get_amenity_viewbox(self, obj):
         """Return viewBox for proper scaling"""
-        return obj.get_viewbox()
+        try:
+            return obj.get_viewbox()
+        except (TypeError, ValueError, AttributeError):
+            return "0 0 448 512"
 
 
 class CollectionSerializer(serializers.ModelSerializer):
@@ -242,15 +264,21 @@ class CollectionSerializer(serializers.ModelSerializer):
 
     def get_amenities(self, obj):
         """Return amenity IDs as expected by frontend"""
-        return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
+        try:
+            return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
+        except (TypeError, ValueError, AttributeError):
+            return []
 
     def get_imageUrl(self, obj):
         """Return full image URL"""
         if obj.courseImage:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.courseImage.url)
-            return obj.courseImage.url
+            try:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.courseImage.url)
+                return obj.courseImage.url
+            except (TypeError, ValueError, AttributeError):
+                return 'assets/images/news/default-course.jpg'
         return 'assets/images/news/default-course.jpg'
 
 
@@ -278,22 +306,31 @@ class CourseDetailSerializer(serializers.ModelSerializer):
 
     def get_amenities(self, obj):
         """Return full amenity details with icons and descriptions"""
-        amenities = obj.courseAmenities.filter(hideStatus=0)
-        return AmenitiesModelSerializers(amenities, many=True, context=self.context).data
+        try:
+            amenities = obj.courseAmenities.filter(hideStatus=0)
+            return AmenitiesModelSerializers(amenities, many=True, context=self.context).data
+        except (TypeError, ValueError, AttributeError):
+            return []
 
     def get_imageUrl(self, obj):
         """Return full image URL"""
         if obj.courseImage:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.courseImage.url)
-            return obj.courseImage.url
+            try:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.courseImage.url)
+                return obj.courseImage.url
+            except (TypeError, ValueError, AttributeError):
+                return 'assets/images/news/default-course.jpg'
         return 'assets/images/news/default-course.jpg'
     
     def get_tees(self, obj):
         """Get all available tees for this course"""
-        tees = obj.available_tees
-        return TeeSerializer(tees, many=True).data
+        try:
+            tees = obj.available_tees
+            return TeeSerializer(tees, many=True).data
+        except (TypeError, ValueError, AttributeError):
+            return []
 
 
 class CourseCreateUpdateSerializer(serializers.ModelSerializer):
@@ -422,15 +459,21 @@ class LegacyCollectionSerializer(serializers.ModelSerializer):
 
     def get_amenities(self, obj):
         """Return amenity IDs as expected by frontend"""
-        return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
+        try:
+            return list(obj.courseAmenities.filter(hideStatus=0).values_list('id', flat=True))
+        except (TypeError, ValueError, AttributeError):
+            return []
 
     def get_imageUrl(self, obj):
         """Return full image URL"""
         if obj.courseImage:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.courseImage.url)
-            return obj.courseImage.url
+            try:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.courseImage.url)
+                return obj.courseImage.url
+            except (TypeError, ValueError, AttributeError):
+                return 'assets/images/news/default-course.jpg'
         return 'assets/images/news/default-course.jpg'
 
 
@@ -452,31 +495,17 @@ class TeeSerializer(serializers.ModelSerializer):
         }
     
     def get_label(self, obj):
-        return f"{obj.holeNumber} Holes"
+        try:
+            return f"{obj.holeNumber} Holes"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Tee"
     
     def validate_holeNumber(self, value):
         if value <= 0:
             raise serializers.ValidationError("Hole number must be a positive integer")
         return value
 
-class BookingSlotSerializer(serializers.ModelSerializer):
-    """Serializer for individual booking slots"""
-    teeInfo = serializers.SerializerMethodField(read_only=True)
-    endTime = serializers.TimeField(source='end_time', read_only=True)
-    teeName = serializers.CharField(source='tee.holeNumber', read_only=True)
-    courseName = serializers.CharField(source='tee.course.courseName', read_only=True)
-    slotDate = serializers.DateField(source='slot_date', read_only=True)
-    formattedSlotDate = serializers.CharField(source='formatted_slot_date', read_only=True)
-    
-    class Meta:
-        model = BookingSlotModel
-        fields = [
-            'id', 'tee', 'teeInfo', 'teeName', 'courseName', 'slot_date', 'slotDate', 'formattedSlotDate',
-            'booking_time', 'participants', 'slot_order', 'slot_status', 'notes', 'endTime', 'createdAt', 'updatedAt'
-        ]
-    
-    def get_teeInfo(self, obj):
-        return f"{obj.tee.holeNumber} Holes"
+# BookingSlotSerializer removed - not needed for single-slot approach
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -494,11 +523,12 @@ class BookingSerializer(serializers.ModelSerializer):
     joinRequests = serializers.SerializerMethodField(read_only=True)
     originalBookingInfo = serializers.SerializerMethodField(read_only=True)
     
-    # Multi-slot booking fields - updated for new system
-    hasMultipleSlots = serializers.BooleanField(source='has_multiple_slots', read_only=True)
+    # Single-slot booking fields
     isMultiSlotBooking = serializers.SerializerMethodField(read_only=True)
     totalParticipants = serializers.SerializerMethodField(read_only=True)
-    slots = BookingSlotSerializer(many=True, read_only=True)
+    teeName = serializers.SerializerMethodField(read_only=True)
+    slotDate = serializers.DateField(source='slot_date', read_only=True)
+    bookingTime = serializers.TimeField(source='booking_time', read_only=True)
     
     # Enhanced approval tracking
     approvedBy = serializers.SerializerMethodField(read_only=True)
@@ -509,19 +539,17 @@ class BookingSerializer(serializers.ModelSerializer):
     canAcceptMoreParticipants = serializers.BooleanField(source='can_accept_more_participants', read_only=True)
     
     # Additional fields for orders display
-    earliestTime = serializers.SerializerMethodField(read_only=True)
-    latestTime = serializers.SerializerMethodField(read_only=True)
     teeSummary = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = BookingModel
         fields = [
             'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
-            'teeInfo', 'bookingDate', 'formattedDate', 'endTime', 'earliestTime', 'latestTime',
+            'teeInfo', 'teeName', 'slotDate', 'bookingTime', 'formattedDate', 'endTime',
             'participants', 'status', 'notes', 'canCancel',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
             'joinRequests', 'originalBookingInfo', 'is_join_request', 'original_booking',
-            'hasMultipleSlots', 'isMultiSlotBooking', 'totalParticipants', 'slots',
+            'isMultiSlotBooking', 'totalParticipants',
             'approvedBy', 'approvedAt', 'isSlotFull', 'canAcceptMoreParticipants',
             'teeSummary'
         ]
@@ -529,78 +557,63 @@ class BookingSerializer(serializers.ModelSerializer):
             'member': {'required': False},  # Will be set automatically from authentication
             'is_join_request': {'required': False, 'default': False},
             'original_booking': {'required': False},
-            'has_multiple_slots': {'required': False, 'default': False}
+            'group_id': {'required': False}
         }
     
     def get_memberFullName(self, obj):
-        return f"{obj.member.firstName} {obj.member.lastName}"
+        try:
+            return f"{obj.member.firstName} {obj.member.lastName}"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Member"
     
     def get_teeInfo(self, obj):
         return obj.get_tee_info()
     
     def get_formattedDate(self, obj):
         # Return date in DD/Month/YYYY format for orders component
-        return obj.bookingDate.strftime('%d/%B/%Y')
+        if obj.slot_date:
+            return obj.slot_date.strftime('%d/%B/%Y')
+        else:
+            return "Date not specified"
     
-    def get_earliestTime(self, obj):
-        """Get the earliest time from all slots"""
-        earliest_slot = obj.slots.order_by('booking_time').first()
-        if earliest_slot:
-            return earliest_slot.booking_time.strftime('%H:%M')
-        return None
+    # Removed earliestTime and latestTime methods - not needed for single-slot approach
     
-    def get_latestTime(self, obj):
-        """Get the latest time from all slots"""
-        latest_slot = obj.slots.order_by('booking_time').last()
-        if latest_slot:
-            return latest_slot.booking_time.strftime('%H:%M')
-        return None
+    def get_teeName(self, obj):
+        """Get tee name with null check"""
+        if obj.tee:
+            try:
+                return f"{obj.tee.holeNumber} Holes"
+            except (TypeError, ValueError, AttributeError):
+                return "Tee not specified"
+        else:
+            return "Tee not specified"
     
     def get_teeSummary(self, obj):
-        """Get a summary of all tees in this booking"""
-        slots = obj.slots.all()
-        if not slots.exists():
-            return "No slots"
+        """Get a summary of this slot"""
+        date_str = obj.slot_date.strftime('%d/%B/%Y') if obj.slot_date else "Date not specified"
+        time_str = obj.booking_time.strftime('%H:%M') if obj.booking_time else "Time not specified"
         
-        tee_summary = {}
-        for slot in slots:
-            hole_count = slot.tee.holeNumber
-            slot_date = slot.slot_date or obj.bookingDate
-            date_key = slot_date.strftime('%Y-%m-%d')
-            
-            if hole_count not in tee_summary:
-                tee_summary[hole_count] = {}
-            
-            if date_key not in tee_summary[hole_count]:
-                tee_summary[hole_count][date_key] = {
-                    'holes': hole_count,
-                    'slots': 0,
-                    'participants': 0,
-                    'date': slot_date
-                }
-            
-            tee_summary[hole_count][date_key]['slots'] += 1
-            tee_summary[hole_count][date_key]['participants'] += slot.participants
-        
-        # Format the summary
-        summary_parts = []
-        for hole_count, dates in tee_summary.items():
-            for date_info in dates.values():
-                date_str = date_info['date'].strftime('%d/%B/%Y')
-                if date_info['slots'] == 1:
-                    summary_parts.append(f"{hole_count} Holes on {date_str} ({date_info['participants']}p)")
-                else:
-                    summary_parts.append(f"{hole_count} Holes x{date_info['slots']} on {date_str} ({date_info['participants']}p)")
-        
-        return " + ".join(summary_parts)
+        if obj.tee:
+            try:
+                return f"{obj.tee.holeNumber} Holes on {date_str} at {time_str}"
+            except (TypeError, ValueError, AttributeError):
+                return f"Tee not specified on {date_str} at {time_str}"
+        else:
+            return f"Tee not specified on {date_str} at {time_str}"
     
     def get_isMultiSlotBooking(self, obj):
         """Check if this is a multi-slot booking"""
-        return obj.is_multi_slot_booking()
+        try:
+            return obj.is_multi_slot_booking()
+        except (TypeError, ValueError):
+            return False
     
     def get_totalParticipants(self, obj):
         """Get total participants across all slots"""
-        return obj.get_total_participants()
+        try:
+            return obj.get_total_participants()
+        except (TypeError, ValueError):
+            return 0
     
     def get_canJoinSlot(self, obj):
         """Check if current member can join this slot"""
@@ -626,39 +639,48 @@ class BookingSerializer(serializers.ModelSerializer):
                 return False
             
             # Check if slot has available spots
-            return obj.available_spots > 0
+            try:
+                return obj.available_spots > 0
+            except (TypeError, ValueError):
+                return False
         except MemberModel.DoesNotExist:
             return False
     
     def get_joinRequests(self, obj):
         """Get join requests for this booking"""
         if not obj.is_join_request:  # Only for original bookings
-            requests = obj.get_join_requests()
-            return BookingSerializer(requests, many=True, context=self.context).data
+            try:
+                requests = obj.get_join_requests()
+                return BookingSerializer(requests, many=True, context=self.context).data
+            except (TypeError, ValueError):
+                return []
         return []
     
     def get_originalBookingInfo(self, obj):
         """Get original booking info for join requests"""
         if obj.is_join_request and obj.original_booking:
-            return {
-                'id': obj.original_booking.id,
-                'memberName': f"{obj.original_booking.member.firstName} {obj.original_booking.member.lastName}",
-                'participants': obj.original_booking.participants,
-                'status': obj.original_booking.status
-            }
+                            return {
+                    'id': obj.original_booking.id,
+                    'memberName': f"{obj.original_booking.member.firstName} {obj.original_booking.member.lastName}" if obj.original_booking.member else "Unknown Member",
+                    'participants': obj.original_booking.participants,
+                    'status': obj.original_booking.status
+                }
         return None
     
     def get_approvedBy(self, obj):
         """Get approved by member info"""
         if obj.approved_by:
-            return {
-                'id': obj.approved_by.id,
-                'name': f"{obj.approved_by.firstName} {obj.approved_by.lastName}",
-                'email': obj.approved_by.email
-            }
+            try:
+                return {
+                    'id': obj.approved_by.id,
+                    'name': f"{obj.approved_by.firstName} {obj.approved_by.lastName}",
+                    'email': obj.approved_by.email
+                }
+            except (TypeError, ValueError, AttributeError):
+                return None
         return None
     
-    def validate_bookingDate(self, value):
+    def validate_slot_date(self, value):
         if value < timezone.now().date():
             raise serializers.ValidationError("Cannot book for past dates")
         return value
@@ -677,8 +699,11 @@ class BookingSerializer(serializers.ModelSerializer):
             
             # Check if slot has enough available spots
             requested_participants = data.get('participants', 1)
-            if not original_booking.can_join_slot(requested_participants):
-                raise serializers.ValidationError("Not enough available spots in this slot")
+            try:
+                if not original_booking.can_join_slot(requested_participants):
+                    raise serializers.ValidationError("Not enough available spots in this slot")
+            except (TypeError, ValueError, AttributeError):
+                raise serializers.ValidationError("Unable to validate slot availability")
             
             # Check if member has already requested to join this slot
             member = data.get('member')
@@ -713,21 +738,33 @@ class NotificationSerializer(serializers.ModelSerializer):
     
     def get_senderName(self, obj):
         if obj.sender:
-            return f"{obj.sender.firstName} {obj.sender.lastName}"
+            try:
+                return f"{obj.sender.firstName} {obj.sender.lastName}"
+            except (TypeError, ValueError, AttributeError):
+                return "Unknown Sender"
         return None
     
     def get_recipientName(self, obj):
-        return f"{obj.recipient.firstName} {obj.recipient.lastName}"
+        try:
+            return f"{obj.recipient.firstName} {obj.recipient.lastName}"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Recipient"
     
     def get_relatedBookingInfo(self, obj):
         if obj.related_booking:
-            return {
-                'id': obj.related_booking.id,
-                'courseName': obj.related_booking.course.courseName,
-                'bookingDate': obj.related_booking.bookingDate.strftime('%d/%m/%y'),
-                'bookingTime': obj.related_booking.bookingTime.strftime('%H:%M'),  # Changed to 24-hour format
-                'participants': obj.related_booking.participants
-            }
+            try:
+                date_str = obj.related_booking.slot_date.strftime('%d/%m/%y') if obj.related_booking.slot_date else "Date not specified"
+                time_str = obj.related_booking.booking_time.strftime('%H:%M') if obj.related_booking.booking_time else "Time not specified"
+                
+                return {
+                    'id': obj.related_booking.id,
+                    'courseName': obj.related_booking.course.courseName if obj.related_booking.course else "Unknown Course",
+                    'bookingDate': date_str,
+                    'bookingTime': time_str,  # Changed to 24-hour format
+                    'participants': obj.related_booking.participants
+                }
+            except (TypeError, ValueError, AttributeError):
+                return None
         return None
 
 
@@ -809,7 +846,7 @@ class MemberEnquiryModelSerializers(serializers.ModelSerializer):
                     'id': plan_obj.id,
                     'planName': plan_obj.planName
                 }
-            except PlanModel.DoesNotExist:
+            except (PlanModel.DoesNotExist, TypeError, ValueError, AttributeError):
                 representation['memberEnquiryPlan'] = None
         else:
             representation['memberEnquiryPlan'] = None
@@ -874,17 +911,20 @@ class EventModelSerializer(serializers.ModelSerializer):
                     'is_interested': interest.is_interested if interest else False,
                     'interest_id': interest.id if interest else None
                 }
-            except MemberModel.DoesNotExist:
+            except (MemberModel.DoesNotExist, TypeError, ValueError, AttributeError):
                 return {'is_interested': False, 'interest_id': None}
         return {'is_interested': False, 'interest_id': None}
     
     def get_EventImageUrl(self, obj):
         """Return full event image URL"""
         if obj.EventImage:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.EventImage.url)
-            return obj.EventImage.url
+            try:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.EventImage.url)
+                return obj.EventImage.url
+            except (TypeError, ValueError, AttributeError):
+                return None
         return None
     
     def get_EventDetailImages(self, obj):
@@ -896,11 +936,14 @@ class EventModelSerializer(serializers.ModelSerializer):
         images = []
         for img in [obj.EventActivitiesimageOne, obj.EventActivitiesimageTwo]:
             if img:
-                request = self.context.get('request')
-                if request:
-                    images.append(request.build_absolute_uri(img.url))
-                else:
-                    images.append(img.url)
+                try:
+                    request = self.context.get('request')
+                    if request:
+                        images.append(request.build_absolute_uri(img.url))
+                    else:
+                        images.append(img.url)
+                except (TypeError, ValueError, AttributeError):
+                    continue
         return images
     
     def validate(self, data):
@@ -997,7 +1040,10 @@ class EventInterestSerializer(serializers.ModelSerializer):
         }
     
     def get_memberFullName(self, obj):
-        return f"{obj.member.firstName} {obj.member.lastName}"
+        try:
+            return f"{obj.member.firstName} {obj.member.lastName}"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Member"
 
     def validate(self, data):
         # Ensure member can only have one interest per event
@@ -1056,10 +1102,13 @@ class InstructorModelSerializer(serializers.ModelSerializer):
 
     def get_instructorPhotoUrl(self, obj):
         if obj.instructorPhoto:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.instructorPhoto.url)
-            return obj.instructorPhoto.url
+            try:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.instructorPhoto.url)
+                return obj.instructorPhoto.url
+            except (TypeError, ValueError, AttributeError):
+                return None
         return None
 
     def validate_instructorName(self, value):

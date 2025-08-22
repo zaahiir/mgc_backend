@@ -1,0 +1,303 @@
+# Comprehensive Tee-Booking Workflow
+
+## 1. Page Initialization
+
+### Course & Tee Setup
+- When tee-booking page loads, system displays all available tees for the selected course
+- **Initial State:** Only tee list is shown, no slots displayed
+- Each tee operates independently with its own time slots
+- **Slot Structure (not shown initially):**
+  - Operating hours: 6:00 AM to 7:00 PM
+  - Slot duration: 8 minutes each
+  - Time slots: 6:00, 6:08, 6:16, 6:24, 6:32... up to 7:00 PM
+  - Each slot can accommodate 1-4 participants maximum
+
+## 2. Tee Selection & Date Navigation
+
+### Initial Display
+- User clicks/selects a tee from available options
+- **Only after tee selection:** System shows slots for current date
+- **Calendar Restrictions:**
+  - Only 7 days available: current date + next 6 days
+  - All other dates grayed out/disabled
+  - Current date automatically selected by default
+- **Current Day Slot Filtering:**
+  - Shows only slots after current time (e.g., if current time is 10:30 AM, shows slots from 10:32 AM onwards)
+  - Past time slots for current date are hidden/disabled
+- **Slot Status Indicators:**
+  - **Available** - 0 participants
+  - **Partially Available** - 1-3 participants
+  - **Selected** - User's chosen slots
+  - **Fully Booked** - 4 participants or under review (disabled from selection)
+
+### Date Changes
+- When user changes date in calendar, system shows slots for that specific date
+- **Session Management:**
+  - Selected slots stored with their respective dates in browser session
+  - When switching dates, previously selected slots for that date display as "Selected"
+  - Session persists during page refresh or tee changes
+
+### Tee Changes
+- When switching tees, system applies same date-based slot restoration
+- Each tee maintains separate slot selections per date
+
+## 3. Slot Selection Process
+
+### Slot Modal Interaction
+- User clicks on available/partially available slot
+- Modal opens with:
+  - **Participant Selector:** 1-4 participants (dropdown/counter)
+  - **Slot Information Panel:**
+    - Course name
+    - Current tee name
+    - Slot date (selected calendar date)
+    - Slot time (e.g., 6:08 AM)
+    - Current status (Available/Partially Available)
+
+### Slot Confirmation
+- User sets participant count and clicks "Select Slot"
+- Slot stored in session with complete details:
+  - Date, tee, time, participant count, course name
+- Slot immediately shows as "Selected" in time grid
+- Booking summary updates with new slot entry
+
+## 4. Booking Summary Management
+
+### Summary Display
+- Shows all selected slots organized by:
+  - Tee name
+  - Individual slots with date, time and participant count
+  - Slots can be from different dates mixed together
+- Example format:
+  ```
+  Tee 1:
+    22-Aug-2025: 6:00 (2p), 
+    21-Aug-2025: 8:56 (1p), 
+    22-Aug-2025: 15:26 (2p)
+    23-Aug-2025: 16:54 (3p), 
+    23-Aug-2025: 18:56 (4p)
+  
+  Tee 2:
+    21-Aug-2025: 6:00 (2p), 
+    24-Aug-2025: 8:56 (1p), 
+    26-Aug-2025: 15:26 (2p)
+    28-Aug-2025: 16:54 (3p), 
+    23-Aug-2025: 18:56 (4p)
+  ```
+
+### Slot Modification
+- User clicks on any slot in booking summary
+- **Update Modal opens** with:
+  - Same slot information as selection modal
+  - Current participant count pre-selected
+  - Option to update participant count or remove slot
+  - All slot details (date, tee, time) displayed for reference
+
+## 5. Multi-Slot Booking System
+
+### Selection Flexibility
+- Users can select multiple slots across:
+  - Different dates
+  - Different tees
+  - Different times
+- Each selection stored separately in session with full context
+
+### Booking Types
+- **Single Slot Booking:** One slot selection
+- **Multi-Slot Booking:** Multiple slots across dates/tees
+- All slots processed together in single booking transaction
+
+## 6. Booking Confirmation Process
+
+### Booking Execution
+- User clicks "Book Tee Time" button
+- System validates all selected slots for continued availability
+- **Mixed Booking Processing:**
+  - **Available Slots:** Complete booking immediately, generate individual booking IDs
+  - **Partially Available Slots:** Create join requests with "Pending" status
+- Creates booking records for available slots and join requests for partial slots
+
+### Confirmation Modal
+- **Success Message:** "Tee time has been booked successfully!"
+- **Course Name Display**
+- **Detailed Booking Breakdown:**
+  ```
+  Confirmed Bookings:
+  Tee 1:
+    22-Aug-2025: 6:00 (2p) - Booking ID: MGCBK25AUG00001 [Confirmed]
+                 15:26 (2p) - Booking ID: MGCBK25AUG00003 [Confirmed]
+  
+  Pending Requests:
+  Tee 1:
+    21-Aug-2025: 8:56 (1p) - Request ID: MGCBK25AUG00002 [Pending Approval]
+    23-Aug-2025: 16:54 (3p) - Request ID: MGCBK25AUG00004 [Pending Approval]
+  ```
+- Available slots receive immediate booking IDs with "Confirmed" status
+- Partial slots show as "Pending Approval" with request IDs
+- **Booking ID Format:** MGCBK[YY][MMM][NNNNN] (e.g., MGCBK25AUG00009)
+- All booking IDs generated by backend system
+
+## 7. Slot Availability & Join Request System
+
+### Booking Status Logic
+- **Fully Booked:** 4 participants = removed from available slots
+- **Partially Booked:** 1-3 participants = shows as "Partially Available"
+- **Under Review:** Partially booked slot with pending join request = hidden from new users
+
+### Join Request Workflow
+
+#### For New Members (User2)
+1. User2 sees partially available slots
+2. Selects slot and sets participant count
+3. If total participants (existing + new) ≤ 4:
+   - Available slots: Complete normal booking
+   - Partially booked slots: Generate join request
+4. System creates booking with "Pending Approval" status
+
+#### For Original Bookers (User1)
+1. Receives notification of join request
+2. Reviews request details in Orders component
+3. **Approval Options:**
+   - **Approve:** User2's booking confirmed, merged with original booking ID
+   - **Reject:** Slot returns to partially available status
+
+#### Status Management
+- Approved requests: Status changes to "Confirmed"
+- Rejected requests: Slot becomes available again
+- Pending requests: Slot hidden from other users
+
+## 8. Orders Component Management
+
+### Booking Statistics Dashboard
+- **Dynamic Counters (Auto-updating):**
+  - Total Bookings: [Number]
+  - Confirmed: [Number]
+  - Pending Requests: [Number]
+  - Requests Accepted: [Number]
+  - Accept/Reject Actions Available: [Number]
+  - Cancelled: [Number]
+- **Filter Options:** Filter by status type
+
+### Bookings Table
+- **Table Structure:**
+  | Booking ID | Booked Date | Course Name | Tee | Slot Date | Slot Time | Participants | Status | Action |
+  |------------|-------------|-------------|-----|-----------|-----------|--------------|--------|--------|
+  | MGCBK25AUG00001 | 20-Aug-2025 | Pine Valley | Tee 1 | 22-Aug-2025 | 6:00 AM | 2 | Confirmed | View Details |
+  | MGCBK25AUG00002 | 20-Aug-2025 | Pine Valley | Tee 1 | 21-Aug-2025 | 8:56 AM | 1 | Pending | View Details |
+
+### Booking ID Format
+- **Format Structure:** MGCBK[YY][MMM][NNNNN]
+- **Example:** MGCBK25AUG00009
+  - MGCBK: Prefix identifier
+  - 25: Year (2025)
+  - AUG: Month abbreviation
+  - 00009: Sequential number (5 digits)
+- **Backend Generation:** All booking IDs automatically generated by backend system
+- **Uniqueness:** Each booking receives unique sequential ID
+
+### Action Options by Status
+- **Fully Booked Slots (4 participants):**
+  - Action: "View Details" → Opens modal with complete booking information
+  
+- **Partially Booked Slots (Own bookings with 1-3 participants):**
+  - Action: "Add Participants" → If slot has available spots, allow adding more participants
+  - Action: "View Details" → Show booking information and remaining capacity
+
+### Booking Types in Orders
+- **Confirmed Bookings:** Complete bookings with assigned booking IDs
+- **Pending Requests:** Join requests awaiting approval from original bookers
+- **Partially Booked Slots:** Own bookings with space for additional participants
+
+### Join Request Management
+- **Incoming Requests:** Other users requesting to join partially booked slots
+- **Request Actions:**
+  - View requester details and participant count
+  - Approve or reject with notification to requester
+  - Track request status and history
+
+## 9. Session & State Management
+
+### Critical Requirements
+- **Date-Specific Storage:** All slots stored with exact date association
+- **Cross-Session Persistence:** Selections survive page refresh/navigation
+- **Tee-Specific Restoration:** Switching tees restores appropriate date-based selections
+- **Real-Time Updates:** Slot availability updates reflect other users' bookings
+- **Conflict Prevention:** Multiple users cannot book same slot simultaneously
+
+### Data Structure Example
+```json
+{
+  "session_selections": {
+    "2025-08-22": {
+      "tee_1": [
+        {"time": "6:00", "participants": 2, "booking_id": null},
+        {"time": "8:56", "participants": 1, "booking_id": null}
+      ],
+      "tee_2": [
+        {"time": "15:26", "participants": 3, "booking_id": null}
+      ]
+    },
+    "2025-08-23": {
+      "tee_1": [
+        {"time": "16:54", "participants": 4, "booking_id": null}
+      ]
+    }
+  }
+}
+```
+
+## 11. Notification Management System
+
+### Header Notification Display
+- **Notification Bell/Icon** in application header
+- **Unread Count Badge:** Shows number of unread notifications
+- **Notification Dropdown/Panel:** Click to view notification list
+
+### Notification Types
+
+#### 1. Join Request Received
+- **Trigger:** When another user requests to join your partially booked slot
+- **Message:** "New join request for [Course Name] - [Tee Name] on [Date] at [Time]"
+- **Action:** Click notification → Mark as read → Redirect to /orders page
+- **Status:** Unread until clicked
+
+#### 2. Join Request Approved
+- **Trigger:** When your join request is approved by original booker
+- **Message:** "Your join request approved for [Course Name] - [Tee Name] on [Date] at [Time]"
+- **Action:** Click notification → Mark as read → Redirect to /orders page
+- **Status:** Unread until clicked
+
+#### 3. Join Request Rejected
+- **Trigger:** When your join request is rejected by original booker
+- **Message:** "Your join request rejected for [Course Name] - [Tee Name] on [Date] at [Time]"
+- **Action:** Click notification → Mark as read → Redirect to /orders page
+- **Status:** Unread until clicked
+
+### Notification Behavior
+- **Real-time Updates:** Notifications appear immediately when events occur
+- **Unread Indicator:** Badge count decreases when notifications are clicked
+- **Auto-redirect:** All notifications redirect to /orders page when clicked
+- **Persistent Storage:** Notifications remain until manually cleared or expire
+- **Chronological Order:** Latest notifications appear at top
+
+### Integration with Orders Component
+- When user arrives at /orders from notification, relevant booking/request is highlighted
+- Orders page shows corresponding join request management options
+- Status updates reflect current state of requests
+
+### Notification States
+- **Unread:** Bold text, highlighted background, counted in badge
+- **Read:** Normal text, standard background, not counted in badge
+- **Expired:** Automatically removed after set time period (e.g., 30 days)
+
+### Concurrent Booking Prevention
+- Real-time slot availability updates
+- Server-side validation before booking confirmation
+- Lock mechanism during booking process
+- Conflict resolution for simultaneous selections
+
+### Notification System
+- Join request notifications
+- Approval/rejection notifications
+- Booking confirmation alerts
+- System updates for availability changes

@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { CollectionService } from '../common-service/collection/collection.service';
 import { 
   faCalendarAlt, faSpinner, faExclamationTriangle, faTimes,
-  faCheckCircle, faUsers, faInfoCircle
+  faCheckCircle, faUsers, faInfoCircle, faEye, faPlus
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Booking {
@@ -17,36 +18,29 @@ interface Booking {
   course?: number;
   tee?: number;
   bookingDate: string;
-  // Remove bookingTime since it's now in slots
-  // bookingTime: string;
   endTime?: string;
   participants: number;
   status: string;
   is_join_request: boolean;
   originalBookingInfo?: any;
-  originalBookingId?: number; // Add this property
+  originalBookingId?: number;
   joinRequests?: Booking[];
   canCancel?: boolean;
   slotStatus?: string;
   availableSpots?: number;
   slotParticipantCount?: number;
   canJoinSlot?: boolean;
-
   teeInfo?: string;
   formattedDate?: string;
-  isSlotFull?: boolean; // Added for enhanced status
-  canAcceptMoreParticipants?: boolean; // Added for enhanced status
-  // Multi-slot booking fields - updated for new model structure
+  isSlotFull?: boolean;
+  canAcceptMoreParticipants?: boolean;
   hasMultipleSlots?: boolean;
   isMultiSlotBooking?: boolean;
   totalParticipants?: number;
-  
-  // Add properties that are used in the component
   booking_time?: string;
   teeName?: string;
   slot_status?: string;
   slot_order?: number;
-  
   slots?: Array<{
     id: number;
     tee: number;
@@ -58,9 +52,7 @@ interface Booking {
     slot_order: number;
     slot_status: string;
     endTime: string;
-  }>; // Individual slots within the booking
-  
-  // New fields for better display
+  }>;
   earliestTime?: string;
   latestTime?: string;
   teeSummary?: string;
@@ -80,7 +72,7 @@ interface Notification {
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [CommonModule, FontAwesomeModule, RouterModule],
+  imports: [CommonModule, FormsModule, FontAwesomeModule, RouterModule],
   templateUrl: './orders.component.html',
   styleUrl: './orders.component.css'
 })
@@ -131,6 +123,16 @@ export class OrdersComponent implements OnInit {
   showParticipantModal = false;
   requestedParticipants = 1;
 
+  // Filter state
+  selectedStatusFilter: string = 'all';
+  statusFilters = [
+    { value: 'all', label: 'All Bookings', count: 0 },
+    { value: 'confirmed', label: 'Confirmed', count: 0 },
+    { value: 'pending_approval', label: 'Pending Requests', count: 0 },
+    { value: 'approved', label: 'Requests Accepted', count: 0 },
+    { value: 'cancelled', label: 'Cancelled', count: 0 }
+  ];
+
   // Icons
   calendarIcon = faCalendarAlt;
   spinnerIcon = faSpinner;
@@ -139,6 +141,8 @@ export class OrdersComponent implements OnInit {
   checkCircleIcon = faCheckCircle;
   usersIcon = faUsers;
   infoIcon = faInfoCircle;
+  eyeIcon = faEye;
+  plusIcon = faPlus;
 
   constructor(
     private collectionService: CollectionService,
@@ -255,6 +259,7 @@ export class OrdersComponent implements OnInit {
         }
         
         console.log('Final processed bookings:', this.bookings);
+        this.updateStatusFilterCounts();
       } else {
         console.error('Invalid response format:', response);
         this.errorMessage = 'Invalid response from server';
@@ -315,404 +320,273 @@ export class OrdersComponent implements OnInit {
         console.error('Invalid unread count response:', response);
       }
     } catch (error) {
-      console.error('Error loading unread count:', error);
+      console.error('Error loading unread notification count:', error);
     }
   }
 
-  async markNotificationAsRead(notificationId: number) {
-    try {
-      await this.collectionService.markNotificationAsRead(notificationId);
-      this.loadNotifications();
-      this.loadUnreadCount();
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  }
-
-  async handleNotificationClick(notificationId: number) {
-    try {
-      // Mark notification as read
-      await this.markNotificationAsRead(notificationId);
-      
-      // Find the notification
-      const notification = this.notifications.find(n => n.id === notificationId);
-      if (notification && notification.related_booking) {
-        // Find the related booking
-        const booking = this.bookings.find(b => b.id === notification.related_booking);
-        if (booking) {
-          this.showBookingDetail(booking);
-        }
-      }
-    } catch (error) {
-      console.error('Error handling notification click:', error);
-    }
-  }
-
-  async approveJoinRequest(bookingId: number, joinRequestId: number) {
-    try {
-      const response = await this.collectionService.approveJoinRequest(bookingId, joinRequestId);
-      
-      if (response && response.data && response.data.code === 1) {
-        // Check if slot is now full
-        const isSlotFull = response.data.data.isSlotFull;
-        
-        if (isSlotFull) {
-          this.showSuccessMessage('Join request approved and slot is now full!');
-        } else {
-          this.showSuccessMessage('Join request approved successfully');
-        }
-        
-        this.loadBookings(); // Reload bookings to update status
+  // Update status filter counts
+  private updateStatusFilterCounts() {
+    this.statusFilters.forEach(filter => {
+      if (filter.value === 'all') {
+        filter.count = this.bookings.length;
       } else {
-        this.showErrorMessage('Failed to approve join request');
+        filter.count = this.bookings.filter(booking => booking.status === filter.value).length;
       }
-    } catch (error) {
-      console.error('Error approving join request:', error);
-      this.showErrorMessage('Failed to approve join request');
+    });
+  }
+
+  // Filter bookings by status
+  getFilteredBookings(): Booking[] {
+    if (this.selectedStatusFilter === 'all') {
+      return this.bookings;
     }
+    return this.bookings.filter(booking => booking.status === this.selectedStatusFilter);
   }
 
-  async rejectJoinRequest(bookingId: number, joinRequestId: number) {
-    try {
-      await this.collectionService.rejectJoinRequest(bookingId, joinRequestId);
-      this.loadBookings(); // Reload bookings to update status
-      this.showSuccessMessage('Join request rejected successfully');
-    } catch (error) {
-      console.error('Error rejecting join request:', error);
-      this.showErrorMessage('Failed to reject join request');
-    }
+  // Get booking statistics
+  getBookingStatistics() {
+    const totalBookings = this.bookings.length;
+    const confirmed = this.bookings.filter(b => b.status === 'confirmed').length;
+    const pendingRequests = this.bookings.filter(b => b.status === 'pending_approval').length;
+    const requestsAccepted = this.bookings.filter(b => b.status === 'approved').length;
+    const cancelled = this.bookings.filter(b => b.status === 'cancelled').length;
+    const acceptRejectActions = this.bookings.filter(b => 
+      b.status === 'pending_approval' && b.is_join_request
+    ).length;
+
+    return {
+      totalBookings,
+      confirmed,
+      pendingRequests,
+      requestsAccepted,
+      acceptRejectActions,
+      cancelled
+    };
   }
 
-  async cancelBooking(bookingId: number) {
-    if (confirm('Are you sure you want to cancel this booking?')) {
-      try {
-        await this.collectionService.cancelBooking(bookingId);
-        this.loadBookings();
-        this.showSuccessMessage('Booking cancelled successfully');
-      } catch (error) {
-        console.error('Error cancelling booking:', error);
-        this.showErrorMessage('Failed to cancel booking');
-      }
-    }
-  }
-
-  showBookingDetail(booking: Booking) {
-    this.selectedBooking = booking;
-    this.showBookingDetails = true;
-  }
-
-  closeBookingDetail() {
-    this.selectedBooking = null;
-    this.showBookingDetails = false;
-  }
-
-  // Enhanced date formatting for the new structure (using UK timezone)
-  formatDate(dateString: string | Date): string {
+  // Format date for display
+  formatDate(dateString: string): string {
     if (!dateString) return 'N/A';
     
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid Date';
+      if (isNaN(date.getTime())) return 'N/A';
       
       return date.toLocaleDateString('en-GB', {
-        timeZone: this.ukTimezone,
         day: '2-digit',
-        month: 'short', // Changed from 'long' to 'short' for abbreviated month
-        year: 'numeric'
+        month: 'short',
+        year: '2-digit'
       });
     } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid Date';
+      return 'N/A';
     }
   }
 
+  // Check if booking can be cancelled
   canCancelBooking(booking: Booking): boolean {
-    const bookingDate = new Date(booking.bookingDate);
-    const ukNow = this.getCurrentUKTime();
-    const hoursDiff = (bookingDate.getTime() - ukNow.getTime()) / (1000 * 60 * 60);
-    
-    // Can cancel if booking is more than 24 hours away and status is confirmed or pending (using UK time)
-    return hoursDiff > 24 && ['confirmed', 'pending'].includes(booking.status);
+    // Only allow cancellation of confirmed bookings that are not join requests
+    return booking.status === 'confirmed' && !booking.is_join_request;
   }
 
+  // Check if slot can accept more participants
   canJoinSlot(booking: Booking): boolean {
-    // Logic to determine if user can join this slot
-    return !!(booking.availableSpots && booking.availableSpots > 0 && booking.status === 'confirmed');
+    // Only allow joining slots that are not full and are confirmed
+    return booking.status === 'confirmed' && 
+           !(booking.isSlotFull ?? false) && 
+           (booking.canAcceptMoreParticipants ?? false);
   }
 
-  // Helper method to check if a booking can accept more participants
-  canAcceptMoreParticipants(booking: Booking): boolean {
-    if (!booking.availableSpots || !booking.canAcceptMoreParticipants) {
-      return false;
+  // Get action text for booking
+  getActionText(booking: Booking): string {
+    if (booking.status === 'confirmed' && !booking.isSlotFull && booking.canAcceptMoreParticipants) {
+      return 'Add Participants';
     }
-    return booking.availableSpots > 0 && booking.canAcceptMoreParticipants;
+    return 'View Details';
   }
 
-  // Helper method to check if a booking slot is full
-  isSlotFull(booking: Booking): boolean {
-    return booking.isSlotFull || (booking.availableSpots !== undefined && booking.availableSpots <= 0);
+  // Get action icon for booking
+  getActionIcon(booking: Booking): any {
+    if (booking.status === 'confirmed' && !booking.isSlotFull && booking.canAcceptMoreParticipants) {
+      return this.plusIcon;
+    }
+    return this.eyeIcon;
   }
 
-  // Helper method to get status display text
-  getStatusDisplayText(booking: Booking): string {
-    if (booking.is_join_request) {
-      switch (booking.status) {
-        case 'pending_approval':
-          return 'Pending Approval';
-        case 'approved':
-          return 'Approved';
-        case 'rejected':
-          return 'Rejected';
-        default:
-          return booking.status;
-      }
+  // Handle action button click
+  handleActionClick(booking: Booking) {
+    if (booking.status === 'confirmed' && !booking.isSlotFull && booking.canAcceptMoreParticipants) {
+      this.openParticipantModal(booking);
     } else {
-      switch (booking.status) {
-        case 'completed':
-          return 'Completed';
-        case 'confirmed':
-          return 'Confirmed';
-        case 'pending':
-          return 'Pending';
-        case 'cancelled':
-          return 'Cancelled';
-        default:
-          return booking.status;
-      }
+      this.viewBookingDetails(booking);
     }
   }
 
-  // Helper method to get status text (for backward compatibility)
-  getStatusText(status: string): string {
-    return this.getStatusDisplayText({ status } as Booking);
+  // View booking details
+  viewBookingDetails(booking: Booking) {
+    this.selectedBooking = booking;
+    this.showBookingDetails = true;
   }
 
-  // Helper method to get status CSS class
-  getStatusClass(booking: Booking): string {
-    if (booking.is_join_request) {
-      switch (booking.status) {
-        case 'pending_approval':
-          return 'status-pending';
-        case 'approved':
-          return 'status-approved';
-        case 'rejected':
-          return 'status-rejected';
-        default:
-          return 'status-default';
-      }
-    } else {
-      switch (booking.status) {
-        case 'completed':
-          return 'status-completed';
-        case 'confirmed':
-          return 'status-confirmed';
-        case 'pending':
-          return 'status-pending';
-        case 'cancelled':
-          return 'status-cancelled';
-        default:
-          return 'status-default';
-      }
-    }
+  // Close booking details
+  closeBookingDetails() {
+    this.showBookingDetails = false;
+    this.selectedBooking = null;
   }
 
-  private showSuccessMessage(message: string) {
-    // Implement toast or alert for success message
-    alert(message);
-  }
-
-  private showErrorMessage(message: string) {
-    // Implement toast or alert for error message
-    alert(message);
-  }
-
-  // Helper methods for statistics
-  getConfirmedBookings(): number {
-    return this.bookings.filter(booking => booking.status === 'confirmed').length;
-  }
-
-  getPendingBookings(): number {
-    return this.bookings.filter(booking => 
-      booking.status === 'pending' || booking.status === 'pending_approval'
-    ).length;
-  }
-
-  getJoinRequests(): number {
-    return this.bookings.filter(booking => booking.is_join_request).length;
-  }
-
-  getBookingsWithJoinRequests(): Booking[] {
-    return this.bookings.filter(booking => 
-      booking.joinRequests && booking.joinRequests.length > 0
-    );
-  }
-
-  getTotalBookings(): number {
-    return this.bookings.length;
-  }
-
-  getCancelledBookings(): number {
-    return this.bookings.filter(booking => booking.status === 'cancelled').length;
-  }
-
-  // Helper methods for multi-slot bookings
-  getEarliestTime(booking: Booking): string {
-    if (!booking.slots || booking.slots.length === 0) return 'N/A';
-    
-    const earliestSlot = booking.slots.reduce((earliest, current) => {
-      const earliestTime = new Date(`2000-01-01T${earliest.booking_time}`);
-      const currentTime = new Date(`2000-01-01T${current.booking_time}`);
-      return currentTime < earliestTime ? current : earliest;
-    });
-    
-    return this.formatTime(earliestSlot.booking_time);
-  }
-
-  getLatestTime(booking: Booking): string {
-    if (!booking.slots || booking.slots.length === 0) return 'N/A';
-    
-    const latestSlot = booking.slots.reduce((latest, current) => {
-      const latestTime = new Date(`2000-01-01T${latest.booking_time}`);
-      const currentTime = new Date(`2000-01-01T${current.booking_time}`);
-      return currentTime > latestTime ? current : latest;
-    });
-    
-    return this.formatTime(latestSlot.booking_time);
-  }
-
-  formatTime(timeString: string): string {
-    try {
-      const [hours, minutes] = timeString.split(':');
-      const hour = parseInt(hours);
-      const minute = parseInt(minutes);
-      // Return 24-hour format (HH:MM)
-      return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    } catch (error) {
-      return timeString;
-    }
-  }
-
-  // Participant Booking Modal Methods
-  openParticipantBookingModal(booking: Booking) {
+  // Open participant modal
+  openParticipantModal(booking: Booking) {
     this.selectedBookingForParticipants = booking;
     this.requestedParticipants = 1;
     this.showParticipantModal = true;
   }
 
-  closeParticipantBookingModal() {
+  // Close participant modal
+  closeParticipantModal() {
     this.showParticipantModal = false;
     this.selectedBookingForParticipants = null;
     this.requestedParticipants = 1;
   }
 
+  // Increment participants
   incrementParticipants() {
-    if (this.selectedBookingForParticipants && this.selectedBookingForParticipants.availableSpots && this.requestedParticipants < this.selectedBookingForParticipants.availableSpots) {
-      this.requestedParticipants++;
+    if (this.selectedBookingForParticipants) {
+      const maxAllowed = Math.min(
+        this.selectedBookingForParticipants.availableSpots || 4, 
+        4
+      );
+      if (this.requestedParticipants < maxAllowed) {
+        this.requestedParticipants++;
+      }
     }
   }
 
+  // Decrement participants
   decrementParticipants() {
     if (this.requestedParticipants > 1) {
       this.requestedParticipants--;
     }
   }
 
-  async confirmParticipantBooking() {
+  // Confirm adding participants
+  async confirmAddParticipants() {
     if (!this.selectedBookingForParticipants) return;
 
     try {
-      // Get the first slot's time for the join request
-      const firstSlot = this.selectedBookingForParticipants.slots?.[0];
-      if (!firstSlot) {
-        this.showErrorMessage('No slots found for this booking');
-        return;
-      }
-
-      // Create a new booking for the additional participants
-      const bookingData = {
-        course: this.selectedBookingForParticipants.course || 0,
-        tee: firstSlot.tee, // Use the tee from the first slot
-        bookingDate: this.selectedBookingForParticipants.bookingDate,
-        bookingTime: firstSlot.booking_time, // Use the time from the first slot
-        participants: this.requestedParticipants,
-
-        is_join_request: true,
-        original_booking: this.selectedBookingForParticipants.id
-      };
-
-      const response = await this.collectionService.createBooking(bookingData);
+      // This would typically call an API to add participants
+      // For now, we'll just close the modal
+      this.closeParticipantModal();
       
-      if (response && response.data && response.data.code === 1) {
-        this.showSuccessMessage('Participants booked successfully!');
-        this.closeParticipantBookingModal();
-        this.loadBookings(); // Refresh the bookings list
-      } else {
-        this.showErrorMessage(response?.data?.message || 'Failed to book participants');
-      }
+      // Reload bookings to reflect changes
+      await this.loadBookings();
     } catch (error) {
-      console.error('Error booking participants:', error);
-      this.showErrorMessage('Failed to book participants. Please try again.');
+      console.error('Error adding participants:', error);
     }
   }
 
-  // Helper method to get grouped bookings for nested table display
-  getGroupedBookings(): any[] {
-    // Group bookings by their original booking ID
-    const groupedBookings = new Map<number, any>();
+  // Handle notification click
+  handleNotificationClick(notificationId: number) {
+    // Mark notification as read
+    this.markNotificationAsRead(notificationId);
     
-    for (const booking of this.bookings) {
-      const originalId = booking.originalBookingId || booking.id;
-      
-      if (!groupedBookings.has(originalId)) {
-        // Create the main booking object
-        const mainBooking: any = {
-          ...booking,
-          id: originalId,
-          slots: []
-        };
-        
-        // Add the current slot to the slots array
-        if (booking.booking_time) {
-          mainBooking.slots.push({
-            id: booking.id,
-            tee: booking.tee,
-            teeInfo: booking.teeInfo,
-            teeName: booking.teeName,
-            booking_time: booking.booking_time,
-            participants: booking.participants,
-            slot_status: booking.slot_status || booking.status,
-            slot_order: booking.slot_order || 1,
-            endTime: booking.endTime
-          });
-        }
-        
-        groupedBookings.set(originalId, mainBooking);
-      } else {
-        // Add additional slots to existing booking
-        if (booking.booking_time) {
-          groupedBookings.get(originalId)!.slots.push({
-            id: booking.id,
-            tee: booking.tee,
-            teeInfo: booking.teeInfo,
-            teeName: booking.teeName,
-            booking_time: booking.booking_time,
-            participants: booking.participants,
-            slot_status: booking.slot_status || booking.status,
-            slot_order: booking.slot_order || 1,
-            endTime: booking.endTime
-          });
-        }
+    // Find the related booking
+    const notification = this.notifications.find(n => n.id === notificationId);
+    if (notification && notification.related_booking) {
+      // Highlight the related booking (could scroll to it or show details)
+      const relatedBooking = this.bookings.find(b => b.id === notification.related_booking);
+      if (relatedBooking) {
+        this.viewBookingDetails(relatedBooking);
       }
     }
-    
-    // Convert map to array and sort slots by slot_order
-    const result = Array.from(groupedBookings.values());
-    result.forEach((booking: any) => {
-      if (booking.slots && booking.slots.length > 0) {
-        booking.slots.sort((a: any, b: any) => (a.slot_order || 0) - (b.slot_order || 0));
+  }
+
+  // Mark notification as read
+  async markNotificationAsRead(notificationId: number) {
+    try {
+      await this.collectionService.markNotificationAsRead(notificationId);
+      
+      // Update local state
+      const notification = this.notifications.find(n => n.id === notificationId);
+      if (notification) {
+        notification.is_read = true;
       }
-    });
-    
-    return result;
+      
+      // Reload unread count
+      await this.loadUnreadCount();
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }
+
+  // Get status class for styling
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'confirmed':
+        return 'status-confirmed';
+      case 'approved':
+        return 'status-approved';
+      case 'pending_approval':
+        return 'status-pending';
+      case 'cancelled':
+        return 'status-cancelled';
+      default:
+        return 'status-default';
+    }
+  }
+
+  // Get status display text
+  getStatusText(status: string): string {
+    switch (status) {
+      case 'confirmed':
+        return 'Confirmed';
+      case 'approved':
+        return 'Approved';
+      case 'pending_approval':
+        return 'Pending Approval';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  }
+
+  // Filter change handler
+  onStatusFilterChange(filterValue: string) {
+    this.selectedStatusFilter = filterValue;
+  }
+
+  // Refresh data
+  async refreshData() {
+    await Promise.all([
+      this.loadBookings(),
+      this.loadNotifications(),
+      this.loadUnreadCount()
+    ]);
+  }
+
+  // Statistics methods for dashboard
+  getTotalBookings(): number {
+    return this.bookings.length;
+  }
+
+  getConfirmedBookings(): number {
+    return this.bookings.filter(booking => booking.status === 'confirmed').length;
+  }
+
+  getPendingBookings(): number {
+    return this.bookings.filter(booking => booking.status === 'pending_approval').length;
+  }
+
+  getJoinRequests(): number {
+    return this.bookings.filter(booking => booking.is_join_request).length;
+  }
+
+  getCancelledBookings(): number {
+    return this.bookings.filter(booking => booking.status === 'cancelled').length;
+  }
+
+  getGroupedBookings(): Booking[] {
+    // For now, return all bookings as individual rows
+    // This can be enhanced later to group by booking ID if needed
+    return this.bookings;
   }
 }

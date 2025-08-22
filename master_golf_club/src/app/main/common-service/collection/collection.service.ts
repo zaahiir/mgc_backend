@@ -30,25 +30,25 @@ interface Tee {
 interface BookingData {
   course: number;
   tee: number;
-  bookingDate: string;
-  slotDate?: string;  // Add optional slot date for individual slots
+  slotDate: string;  // Date for this specific slot
   bookingTime: string;
   participants: number;
   status?: 'pending' | 'confirmed' | 'cancelled' | 'pending_approval' | 'approved' | 'rejected' | 'completed';
   is_join_request?: boolean;
   original_booking?: number;
+  group_id?: string;  // For grouping multi-slot bookings
 }
 
 interface MultiSlotBookingData {
   slots: Array<{
     course: number;
     tee: number;
-    bookingDate: string;
-    slotDate?: string;  // Add optional slot date for individual slots
+    slotDate: string;  // Date for this specific slot
     bookingTime: string;
     participants: number;
     is_join_request?: boolean;
     original_booking?: number;
+    group_id?: string;  // For grouping multi-slot bookings
   }>;
 }
 

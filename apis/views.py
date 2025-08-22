@@ -2061,10 +2061,10 @@ class TeeViewSet(viewsets.ModelViewSet):
             
             current_bookings = BookingModel.objects.filter(
                 tee=tee,
-                bookingDate=today,
+                slot_date=today,
                 status__in=['confirmed', 'pending', 'completed'],
                 is_join_request=False
-            ).order_by('bookingTime')
+            ).order_by('booking_time')
             
             # Calculate slot availability for today
             slots_info = []
@@ -2081,7 +2081,7 @@ class TeeViewSet(viewsets.ModelViewSet):
                 formatted_time = slot_time.strftime('%H:%M')  # Changed to 24-hour format
                 
                 # Get existing bookings for this slot and tee
-                existing_bookings = current_bookings.filter(bookingTime=slot_time)
+                existing_bookings = current_bookings.filter(booking_time=slot_time)
                 total_participants = sum(booking.participants for booking in existing_bookings)
                 available_spots = 4 - total_participants
                 
@@ -2145,12 +2145,12 @@ class BookingViewSet(viewsets.ModelViewSet):
             return BookingModel.objects.filter(
                 member=member,
                 hideStatus=0
-            ).prefetch_related('slots__tee__course').order_by('-createdAt')
+            ).prefetch_related('tee__course').order_by('-createdAt')
         except MemberModel.DoesNotExist:
             return BookingModel.objects.none()
 
     def list(self, request, *args, **kwargs):
-        """Custom list method to handle multi-slot bookings with the new model structure"""
+        """Custom list method to handle single-slot bookings"""
         try:
             # Get the base queryset
             queryset = self.get_queryset()
@@ -2159,8 +2159,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(queryset, many=True)
             bookings_data = serializer.data
             
-            # The new model structure automatically handles multi-slot bookings
-            # through the related 'slots' field, so we just return the data as is
+            # Each booking represents a single slot
             return Response({
                 'code': 1,
                 'message': 'Bookings retrieved successfully',
@@ -2210,7 +2209,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'bookingId': booking.booking_id,
                     'courseName': booking.course.courseName,
                     'teeLabel': booking.get_tee_info(),
-                    'date': booking.bookingDate,
+                    'date': booking.slot_date,
                     'participants': booking.participants,
                     'status': booking.status,
                     'isJoinRequest': booking.is_join_request
@@ -2228,8 +2227,8 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': str(e)
             }, status=400)
 
-    @action(detail=True, methods=['patch'])
-    def cancel_booking(self, request, pk=None):
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
         """Cancel a booking"""
         try:
             booking = self.get_object()
@@ -2403,7 +2402,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             first_slot = slots_data[0]
             
             # Validate required fields for the first slot
-            required_fields = ['course', 'tee', 'bookingDate', 'participants']
+            required_fields = ['course', 'tee', 'participants']
             for field in required_fields:
                 if field not in first_slot:
                     return Response({
@@ -2412,32 +2411,80 @@ class BookingViewSet(viewsets.ModelViewSet):
                     }, status=400)
             
             # Create the main booking with the first slot's data
-            from .models import BookingModel, BookingSlotModel
+            from .models import BookingModel
             
-            # Create main booking data
+            # Create main booking data - use slot_date if available, otherwise use bookingDate for backward compatibility
+            slot_date = first_slot.get('slotDate') or first_slot.get('bookingDate')
+            if not slot_date:
+                return Response({
+                    'code': 0,
+                    'message': 'Either slotDate or bookingDate is required'
+                }, status=400)
+            
+            # Get the first slot's booking time for the main booking
+            first_booking_time = first_slot.get('bookingTime')
+            if not first_booking_time:
+                return Response({
+                    'code': 0,
+                    'message': 'bookingTime is required for the first slot'
+                }, status=400)
+            
+            # Convert date string to date object if needed
+            if isinstance(slot_date, str):
+                try:
+                    from datetime import datetime
+                    slot_date = datetime.strptime(slot_date, '%Y-%m-%d').date()
+                except ValueError:
+                    return Response({
+                        'code': 0,
+                        'message': 'Invalid date format. Expected YYYY-MM-DD'
+                    }, status=400)
+            
+            # Convert time string to time object if needed
+            if isinstance(first_booking_time, str):
+                try:
+                    from datetime import datetime
+                    first_booking_time = datetime.strptime(first_booking_time, '%H:%M').time()
+                except ValueError:
+                    return Response({
+                        'code': 0,
+                        'message': 'Invalid time format. Expected HH:MM'
+                    }, status=400)
+            
             main_booking_data = {
                 'member': member.id,
                 'course': first_slot['course'],
-                'bookingDate': first_slot['bookingDate'],
+                'tee': first_slot['tee'],  # Add tee to main booking
+                'slot_date': slot_date,
+                'booking_time': first_booking_time,  # Add booking_time to main booking
                 'participants': first_slot['participants'],
-                'has_multiple_slots': len(slots_data) > 1,
                 'status': 'confirmed'
             }
             
+            print(f"Creating main booking with data: {main_booking_data}")
+            print(f"slot_date type: {type(slot_date)}, value: {slot_date}")
+            
             # Create the main booking
             main_booking_serializer = self.get_serializer(data=main_booking_data)
-            main_booking_serializer.is_valid(raise_exception=True)
+            if not main_booking_serializer.is_valid():
+                print(f"Main booking serializer errors: {main_booking_serializer.errors}")
+                return Response({
+                    'code': 0,
+                    'message': f'Main booking validation error: {main_booking_serializer.errors}'
+                }, status=400)
+            
+            print(f"Main booking serializer is valid, attempting to save...")
             main_booking = main_booking_serializer.save()
             
             print(f"Created main booking: ID={main_booking.id}, booking_id={main_booking.booking_id}")
             
-            # Create slots for all the requested times/tees
-            created_slots = []
+            # Create individual bookings for all the requested times/tees
+            created_bookings = []
             total_participants = 0
             
             for i, slot_data in enumerate(slots_data):
-                # Validate slot data
-                required_fields = ['course', 'tee', 'bookingDate', 'bookingTime', 'participants']
+                # Validate slot data - support both old and new field names for backward compatibility
+                required_fields = ['course', 'tee', 'participants']
                 for field in required_fields:
                     if field not in slot_data:
                         return Response({
@@ -2445,41 +2492,99 @@ class BookingViewSet(viewsets.ModelViewSet):
                             'message': f'Missing required field: {field}'
                         }, status=400)
                 
-                # Create slot data
-                # Get the tee instance for this slot
+                # Check for either slotDate/bookingDate and bookingTime
+                slot_date = slot_data.get('slotDate') or slot_data.get('bookingDate')
+                booking_time = slot_data.get('bookingTime')
+                
+                if not slot_date or not booking_time:
+                    return Response({
+                        'code': 0,
+                        'message': f'Slot {i + 1}: Either slotDate/bookingDate and bookingTime are required'
+                    }, status=400)
+                
+                # Convert date string to date object if needed
+                if isinstance(slot_date, str):
+                    try:
+                        from datetime import datetime
+                        slot_date = datetime.strptime(slot_date, '%Y-%m-%d').date()
+                    except ValueError:
+                        return Response({
+                            'code': 0,
+                            'message': f'Slot {i + 1}: Invalid date format. Expected YYYY-MM-DD'
+                        }, status=400)
+                
+                # Convert time string to time object if needed
+                if isinstance(booking_time, str):
+                    try:
+                        from datetime import datetime
+                        booking_time = datetime.strptime(booking_time, '%H:%M').time()
+                    except ValueError:
+                        return Response({
+                            'code': 0,
+                            'message': f'Slot {i + 1}: Invalid time format. Expected HH:MM'
+                        }, status=400)
+                
+                # Validate tee exists
                 try:
-                    slot_tee = TeeModel.objects.get(id=slot_data['tee'])
+                    TeeModel.objects.get(id=slot_data['tee'])
                 except TeeModel.DoesNotExist:
                     return Response({
                         'code': 0,
                         'message': f'Tee with ID {slot_data["tee"]} not found'
                     }, status=400)
                 
-                slot_data_dict = {
-                    'booking': main_booking,
-                    'tee': slot_tee,
-                    'slot_date': slot_data.get('slotDate', slot_data['bookingDate']),  # Use slotDate if provided, otherwise use bookingDate
-                    'booking_time': slot_data['bookingTime'],
+                # Create individual booking for this slot
+                slot_booking_data = {
+                    'member': member.id,
+                    'course': slot_data['course'],
+                    'tee': slot_data['tee'],
+                    'slot_date': slot_date,
+                    'booking_time': booking_time,
                     'participants': slot_data['participants'],
-                    'slot_order': i + 1,
-                    'slot_status': 'confirmed'
+                    'status': 'confirmed',
+                    'group_id': main_booking.booking_id,  # Link to main booking
+                    'hideStatus': 0
                 }
                 
-                # Create the slot
-                slot = BookingSlotModel.objects.create(**slot_data_dict)
-                created_slots.append(slot)
+                print(f"Creating slot booking {i + 1} with data: {slot_booking_data}")
+                print(f"slot_date type: {type(slot_date)}, value: {slot_date}")
+                print(f"booking_time type: {type(booking_time)}, value: {booking_time}")
                 
-                total_participants += slot_data['participants']
-                
-                print(f"Created slot {i + 1}: ID={slot.id}, tee={slot.tee.holeNumber} Holes, time={slot.booking_time}")
+                # Create the individual booking
+                slot_booking_serializer = self.get_serializer(data=slot_booking_data)
+                if slot_booking_serializer.is_valid():
+                    print(f"Serializer is valid, attempting to save...")
+                    slot_booking = slot_booking_serializer.save()
+                    created_bookings.append(slot_booking)
+                    total_participants += slot_data['participants']
+                    
+                    print(f"Created slot booking {i + 1}: ID={slot_booking.id}, tee={slot_data['tee']} Holes, time={slot_booking.booking_time}")
+                else:
+                    print(f"Failed to create slot booking {i + 1}: {slot_booking_serializer.errors}")
+                    return Response({
+                        'code': 0,
+                        'message': f'Validation error for slot {i + 1}: {slot_booking_serializer.errors}'
+                    }, status=400)
             
             # Update main booking with totals
             main_booking.participants = total_participants
             main_booking.save()
             
-            # Get the updated booking data with slots
-            updated_serializer = self.get_serializer(main_booking)
-            booking_data = updated_serializer.data
+            print(f"About to serialize main booking for response...")
+            print(f"main_booking.slot_date: {main_booking.slot_date}")
+            print(f"main_booking.booking_time: {main_booking.booking_time}")
+            print(f"main_booking.tee: {main_booking.tee}")
+            
+            # Get the updated booking data
+            try:
+                updated_serializer = self.get_serializer(main_booking)
+                booking_data = updated_serializer.data
+                print(f"Successfully serialized main booking data")
+            except Exception as serializer_error:
+                print(f"Error during serialization: {serializer_error}")
+                import traceback
+                print(f"Serialization traceback: {traceback.format_exc()}")
+                raise serializer_error
             
             return Response({
                 'code': 1,
@@ -2487,13 +2592,15 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'data': {
                     'booking': booking_data,
                     'singleBookingId': main_booking.booking_id,
-                    'totalSlots': len(created_slots),
+                    'totalSlots': len(created_bookings),
                     'totalParticipants': total_participants
                 }
             })
             
         except Exception as e:
+            import traceback
             print(f"Error creating multi-slot booking: {str(e)}")
+            print(f"Full traceback: {traceback.format_exc()}")
             return Response({
                 'code': 0,
                 'message': f'Error creating multi-slot booking: {str(e)}'
@@ -2608,21 +2715,22 @@ class BookingViewSet(viewsets.ModelViewSet):
             slot_time = current_time.time()
             formatted_time = slot_time.strftime('%H:%M')  # Changed to 24-hour format
             
-            # Get existing bookings for this specific slot, date, and tee
+            # Get existing bookings for this specific slot, date, and tee using the new single-slot approach
             try:
-                existing_bookings = BookingSlotModel.objects.filter(
+                existing_bookings = BookingModel.objects.filter(
                     tee=tee,
-                    slot_date=booking_date,  # Use slot_date field
+                    slot_date=booking_date,
                     booking_time=slot_time,
-                    slot_status__in=['pending', 'confirmed', 'completed'],
-                    booking__hideStatus=0
+                    status__in=['pending', 'confirmed', 'completed'],
+                    is_join_request=False,  # Only count original bookings, not join requests
+                    hideStatus=0
                 )
                 print(f"Query executed successfully for slot {slot_time}")
             except Exception as query_error:
                 print(f"Error in booking query: {query_error}")
                 import traceback
                 print(f"Query traceback: {traceback.format_exc()}")
-                existing_bookings = BookingSlotModel.objects.none()
+                existing_bookings = BookingModel.objects.none()
             
             # Calculate total participants in this slot for this specific tee
             total_participants = sum(booking.participants for booking in existing_bookings)
@@ -2644,12 +2752,14 @@ class BookingViewSet(viewsets.ModelViewSet):
                 booking_details = []
                 if existing_bookings.exists():
                     for booking in existing_bookings:
+                        # Check if tee exists before accessing holeNumber
+                        hole_number = booking.tee.holeNumber if booking.tee else None
                         booking_details.append({
-                            'booking_id': booking.booking.id,
-                            'member_name': f"{booking.booking.member.firstName} {booking.booking.member.lastName}",
+                            'booking_id': booking.booking_id,
+                            'member_name': f"{booking.member.firstName} {booking.member.lastName}",
                             'participants': booking.participants,
-                            'status': booking.slot_status,
-                            'hole_number': booking.tee.holeNumber,
+                            'status': booking.status,
+                            'hole_number': hole_number,
                             'start_time': booking.booking_time.strftime('%H:%M'),  # Changed to 24-hour format
                             'end_time': booking.end_time.strftime('%H:%M')  # Changed to 24-hour format
                         })

@@ -10,10 +10,6 @@
               <fa-icon [icon]="locationIcon"></fa-icon>
               {{course.lane}}, {{course.address}}
             </li>
-            <!-- <li class="breadcrumb-item">
-              <fa-icon [icon]="clockIcon"></fa-icon>
-              {{course.timing}}
-            </li> -->
           </ol>
         </nav>
       </div>
@@ -34,24 +30,22 @@
           </div>
 
           <div class="booking-form">
-            
-
-                         <!-- Step 1: Tee Selection -->
-             <div class="form-section">
-               <div class="label-with-icon">
-                 <div class="label-group">
-                   <fa-icon [icon]="golfIcon" class="section-icon"></fa-icon>
-                   <label>Select Tee</label>
-                 </div>
-               </div>
-               
-               <div class="tee-options">
-                 <button class="tee-option" 
-                         *ngFor="let tee of availableTees"
-                         [class.selected]="selectedTee?.id === tee.id"
-                         (click)="selectTee(tee)">
-                   <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
-                 </button>
+            <!-- Step 1: Tee Selection -->
+            <div class="form-section">
+              <div class="label-with-icon">
+                <div class="label-group">
+                  <fa-icon [icon]="golfIcon" class="section-icon"></fa-icon>
+                  <label>Select Tee</label>
+                </div>
+              </div>
+              
+              <div class="tee-options">
+                <button class="tee-option" 
+                        *ngFor="let tee of availableTees"
+                        [class.selected]="selectedTee?.id === tee.id"
+                        (click)="selectTee(tee)">
+                  <span class="tee-name">{{tee.label || (tee.holeNumber + ' Holes')}}</span>
+                </button>
                 
                 <!-- Show message when no tees available -->
                 <div *ngIf="availableTees.length === 0 && !isLoading" class="no-tees-message">
@@ -66,8 +60,8 @@
               </div>
             </div>
 
-                         <!-- Step 2: Date Selection (only visible after tee selected) -->
-             <div class="form-section" *ngIf="selectedTee">
+            <!-- Step 2: Date Selection (only visible after tee selected) -->
+            <div class="form-section" *ngIf="selectedTee">
               <div class="label-with-icon">
                 <div class="label-group">
                   <fa-icon [icon]="calendarIcon" class="section-icon"></fa-icon>
@@ -115,8 +109,8 @@
               </div>
             </div>
 
-                         <!-- Step 3: Time Selection (only visible after date selected) -->
-             <div class="form-section" *ngIf="selectedDate && selectedTee">
+            <!-- Step 3: Time Selection (only visible after date selected) -->
+            <div class="form-section" *ngIf="selectedDate && selectedTee">
               <div class="label-with-icon">
                 <div class="label-group">
                   <fa-icon [icon]="clockIcon" class="section-icon"></fa-icon>
@@ -159,10 +153,7 @@
                           <div class="dimple"></div>
                         </div>
                       </div>
-
-
                     </div>
-
                   </button>
                 </div>
                 
@@ -173,101 +164,84 @@
               </div>
             </div>
 
-             <!-- Booking Summary (only visible when all steps completed) -->
-             <div class="booking-summary" *ngIf="canBook()">
-               <div class="summary-header">
-                 <h4>Booking Summary</h4>
-                 <span class="summary-status" *ngIf="slotSummary" [class]="slotSummary.status">
-                   {{slotSummary.status}}
-                 </span>
-               </div>
-               
-               <!-- Single Slot Booking Summary -->
-               <div class="summary-details" *ngIf="getAllSelectedSlots().length === 0 && selectedTime">
-                 <div class="summary-item">
-                   <span class="label">Tee:</span>
-                   <span class="value">{{selectedTee?.label}}</span>
-                 </div>
-                 <div class="summary-item">
-                   <span class="label">Date:</span>
-                   <span class="value">{{slot.slot_date ? (slot.slot_date | date:'EEEE, MMMM d, yyyy') : (slot.formatted_slot_date || (selectedDate | date:'EEEE, MMMM d, yyyy'))}}</span>
-                 </div>
-                 <div class="summary-item">
-                   <span class="label">Time:</span>
-                   <span class="value">{{selectedTime}}</span>
-                 </div>
-               </div>
-               
-               <!-- Multi-Slot Booking Summary -->
-               <div class="summary-details" *ngIf="getAllSelectedSlots().length > 0">
-                 <div class="summary-item">
-                   <span class="label">Total Slots:</span>
-                   <span class="value">{{getAllSelectedSlots().length}} slot{{getAllSelectedSlots().length > 1 ? 's' : ''}}</span>
-                 </div>
-                 <div class="summary-item">
-                   <span class="label">Total Dates:</span>
-                   <span class="value">{{getTotalDatesWithSelections()}} date{{getTotalDatesWithSelections() > 1 ? 's' : ''}}</span>
-                 </div>
-                 <div class="summary-actions">
-                   <button class="clear-all-btn" (click)="clearAllSelections()" title="Clear all selected slots across all dates">
-                     Clear All
-                   </button>
-                 </div>
-               </div>
-               
-               <!-- Detailed Slot Information for Multi-Select - Grouped by Tee -->
-               <div class="selected-slots-details" *ngIf="getAllSelectedSlots().length > 0">
-                 <div class="slots-details-header">
-                   <h5>Slot Details</h5>
-                 </div>
-                 
-                 <!-- Group slots by tee -->
-                 <div *ngFor="let teeGroup of getSlotsGroupedByTee(); let teeIndex = index" class="tee-group">
-                   <div class="tee-group-header">
-                     <h6>{{teeGroup.teeLabel}}</h6>
-                     <span class="tee-slot-count">{{teeGroup.slots.length}} slot{{teeGroup.slots.length > 1 ? 's' : ''}}</span>
-                   </div>
-                   
-                   <!-- Slots for this tee -->
-                   <div class="slot-detail-item" *ngFor="let slot of teeGroup.slots; let i = index" 
-                        (click)="openExistingSlotModal(slot)" 
-                        style="cursor: pointer;">
-                     <div class="slot-detail-header">
-                       <span class="slot-number">Slot {{i + 1}}</span>
-                       <button class="clear-slot-btn" (click)="deselectSlot(slot); $event.stopPropagation()" title="Remove this slot">
-                         ×
-                       </button>
-                     </div>
-                     <div class="slot-detail-content">
-
-                       <div class="slot-detail-row">
-                         <span class="label">Date:</span>
-                         <span class="value">{{slot.slot_date ? (slot.slot_date | date:'EEEE, MMMM d, yyyy') : (slot.formatted_slot_date || (selectedDate | date:'EEEE, MMMM d, yyyy'))}}</span>
-                       </div>
-                       <div class="slot-detail-row">
-                         <span class="label">Time:</span>
-                         <span class="value">{{slot.formatted_time}}</span>
-                       </div>
-                       <div class="slot-detail-row">
-                         <span class="label">Participants:</span>
-                         <span class="value">{{slot.participantCount || 1}} player{{(slot.participantCount || 1) > 1 ? 's' : ''}}</span>
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             </div>
+            <!-- Booking Summary (only visible when slots are selected) -->
+            <div class="booking-summary" *ngIf="canBook()">
+              <div class="summary-header">
+                <h4>Booking Summary</h4>
+                <span class="summary-status">
+                  {{getTotalParticipants()}} participant{{getTotalParticipants() > 1 ? 's' : ''}}
+                </span>
+              </div>
+              
+              <!-- Multi-Slot Booking Summary -->
+              <div class="summary-details" *ngIf="selectedSlots.length > 0">
+                <div class="summary-item">
+                  <span class="label">Total Slots:</span>
+                  <span class="value">{{selectedSlots.length}} slot{{selectedSlots.length > 1 ? 's' : ''}}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">Total Participants:</span>
+                  <span class="value">{{getTotalParticipants()}} player{{getTotalParticipants() > 1 ? 's' : ''}}</span>
+                </div>
+                <div class="summary-actions">
+                  <button class="clear-all-btn" (click)="clearAllSelections()" title="Clear all selected slots">
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Detailed Slot Information - Grouped by Tee -->
+              <div class="selected-slots-details" *ngIf="selectedSlots.length > 0">
+                <div class="slots-details-header">
+                  <h5>Slot Details</h5>
+                </div>
+                
+                <!-- Group slots by tee -->
+                <div *ngFor="let teeGroup of getSlotsGroupedByTee(); let teeIndex = index" class="tee-group">
+                  <div class="tee-group-header">
+                    <h6>{{teeGroup.teeLabel}}</h6>
+                    <span class="tee-slot-count">{{teeGroup.slots.length}} slot{{teeGroup.slots.length > 1 ? 's' : ''}}</span>
+                  </div>
+                  
+                  <!-- Slots for this tee -->
+                  <div class="slot-detail-item" *ngFor="let slot of teeGroup.slots; let i = index" 
+                       (click)="openSlotModal(slot)" 
+                       style="cursor: pointer;">
+                    <div class="slot-detail-header">
+                      <span class="slot-number">Slot {{i + 1}}</span>
+                      <button class="clear-slot-btn" (click)="deselectSlot(slot); $event.stopPropagation()" title="Remove this slot">
+                        ×
+                      </button>
+                    </div>
+                    <div class="slot-detail-content">
+                      <div class="slot-detail-row">
+                        <span class="label">Date:</span>
+                        <span class="value">{{slot.date | date:'EEEE, MMMM d, yyyy'}}</span>
+                      </div>
+                      <div class="slot-detail-row">
+                        <span class="label">Time:</span>
+                        <span class="value">{{slot.time}}</span>
+                      </div>
+                      <div class="slot-detail-row">
+                        <span class="label">Participants:</span>
+                        <span class="value">{{slot.participants}} player{{slot.participants > 1 ? 's' : ''}}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <button class="theme-btn w-100"
                     [disabled]="!canBook()"
                     [class.loading]="isLoading"
                     (click)="bookTeeTime()">
-                             {{isLoading ? 'Booking...' : 
-                 (getAllSelectedSlots().length > 0 ? 
-                   ('Book ' + getAllSelectedSlots().length + ' Slot' + (getAllSelectedSlots().length > 1 ? 's' : '')) : 
-                   (isJoinRequest() ? 'Request to Join' : 'Book Now')
-                 )
-               }}
+              {{isLoading ? 'Booking...' : 
+                (selectedSlots.length > 0 ? 
+                  ('Book ' + selectedSlots.length + ' Slot' + (selectedSlots.length > 1 ? 's' : '')) : 
+                  'Book Now'
+                )
+              }}
             </button>
             
             <!-- Login prompt for unauthenticated users -->
@@ -329,8 +303,6 @@
               <span>Share Location</span>
             </button>
           </div>
-
-
         </div>
       </div>
 
@@ -342,25 +314,12 @@
                alt="{{course.name}}"
                class="hero-image">
 
-          <!-- Hours Information (Moved here) -->
-          <!-- <div class="hours-section">
-            <div class="hours-info">
-              <fa-icon [icon]="clockIcon" class="hours-icon"></fa-icon>
-              <div class="hours-content">
-                <span class="hours-label">Hours</span>
-                <span class="hours-value">{{course.timing}}</span>
-              </div>
-              <div class="status-badge open">OPEN</div>
-            </div>
-          </div> -->
-
           <!-- Course Information -->
           <div class="content-section">
             <h2>About {{course.name}}</h2>
             <p *ngIf="course.description">{{course.description}}</p>
             <p *ngIf="!course.description">Experience exceptional golfing conditions with our meticulously maintained fairways, challenging layout, and stunning natural surroundings. Perfect for golfers of all skill levels.</p>
 
-            
             <h3>Our facilities include</h3>
             <div class="amenities-grid" *ngIf="course.amenities && course.amenities.length > 0">
               <div class="amenity-item" *ngFor="let amenity of course.amenities; trackBy: trackByAmenity">
@@ -414,23 +373,98 @@
                 </div>
               </div>
             </div>
-
-            <!-- Benefit Section -->
-            <!-- <div class="benefit-section">
-              <img src="https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80"
-                   alt="Golf Experience" class="benefit-image">
-              <div class="benefit-content">
-                <h3>Why Choose Our Course?</h3>
-                <p>Experience exceptional golfing conditions with our meticulously maintained fairways, challenging layout, and stunning natural surroundings. Perfect for golfers of all skill levels.</p>
-                <p><strong>Price:</strong> Contact for pricing</p>
-              </div>
-            </div> -->
           </div>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- Slot Selection Modal (Integrated into booking flow) -->
+<div class="slot-modal-overlay" *ngIf="showSlotModal" (click)="closeSlotModal()">
+  <div class="slot-modal-content" (click)="$event.stopPropagation()">
+    <div class="slot-modal-header">
+      <h3 class="slot-modal-title">Slot Details</h3>
+      <button class="slot-modal-close" (click)="closeSlotModal()">
+        ×
+      </button>
+    </div>
+    
+    <div class="slot-modal-body" *ngIf="currentSlotForModal">
+      <!-- Participant Selector in Modal -->
+      <div class="slot-modal-section">
+        <div class="slot-modal-section-title">
+          <div class="slot-modal-section-icon">
+            <fa-icon [icon]="usersIcon"></fa-icon>
+          </div>
+          Add Participants
+        </div>
+        <div class="player-selector modal-player-selector">
+          <button class="circle-btn" (click)="decrementModalParticipants()" [disabled]="currentSlotParticipants === 1">-</button>
+          <span class="player-count">{{currentSlotParticipants}}</span>
+          <button class="circle-btn" (click)="incrementModalParticipants()" [disabled]="currentSlotParticipants >= (currentSlotForModal.available_spots || 4)">+</button>
+        </div>
+                  <div class="slot-info-text small-text">
+            (Max: {{getMaxModalParticipants()}} participants)
+          </div>
+      </div>
+
+      <!-- Slot Information Row -->
+      <div class="slot-modal-section">
+        <div class="slot-modal-section-title">
+          <div class="slot-modal-section-icon">
+            <fa-icon [icon]="golfIcon"></fa-icon>
+          </div>
+          Slot Information
+        </div>
+        <div class="slot-info-row">
+          <div class="slot-info-item">
+            <span class="slot-info-label">Course:</span>
+            <span class="slot-info-value course-name">{{course.name}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Tee:</span>
+            <span class="slot-info-value tee-name">{{currentSlotForModal.tee_name || selectedTee?.label || (selectedTee?.holeNumber + ' Holes')}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Date:</span>
+            <span class="slot-info-value slot-date">
+              {{currentSlotForModal.slot_date ? (currentSlotForModal.slot_date | date:'EEEE, MMMM d, yyyy') : (selectedDate | date:'EEEE, MMMM d, yyyy')}}
+            </span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Time:</span>
+            <span class="slot-info-value slot-time">{{currentSlotForModal.formatted_time}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Status:</span>
+            <span class="slot-info-value slot-status">{{ currentSlotForModal.slot_status === 'available' ? 'Available' : (currentSlotForModal.slot_status === 'partially_available' ? 'Partially Available' : currentSlotForModal.slot_status) }}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Available Spots:</span>
+            <span class="slot-info-value available-spots">{{currentSlotForModal.available_spots}}</span>
+          </div>
+          <div class="slot-info-item">
+            <span class="slot-info-label">Current Participants:</span>
+            <span class="slot-info-value current-participants">{{currentSlotForModal.total_participants}}/4</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="slot-modal-actions">
+        <button class="slot-modal-btn secondary" (click)="closeSlotModal()">
+          Cancel
+        </button>
+        <button class="slot-modal-btn primary" 
+                (click)="confirmSlotSelection()"
+                [disabled]="currentSlotParticipants > (currentSlotForModal.available_spots || 4)">
+          Select Slot
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Booking Confirmation Modal -->
 <div class="modal-overlay" *ngIf="showBookingModal" (click)="closeBookingModal()">
@@ -448,10 +482,9 @@
       </div>
       
       <div class="confirmation-message">
-        <h4 *ngIf="!bookingConfirmationData.totalBookings">Your tee time has been booked successfully!</h4>
-        <h4 *ngIf="bookingConfirmationData.totalBookings">Your bookings have been created successfully!</h4>
+        <h4>Your tee time has been booked successfully!</h4>
         <p class="booking-id">Booking ID: <strong>{{bookingConfirmationData.bookingId}}</strong></p>
-        <p *ngIf="bookingConfirmationData.totalBookings" class="total-bookings">{{bookingConfirmationData.totalBookings}} booking{{bookingConfirmationData.totalBookings > 1 ? 's' : ''}} created</p>
+        <p *ngIf="bookingConfirmationData.totalSlots" class="total-bookings">{{bookingConfirmationData.totalSlots}} booking{{bookingConfirmationData.totalSlots > 1 ? 's' : ''}} created</p>
       </div>
       
       <div class="booking-details">
@@ -462,14 +495,6 @@
         <div class="detail-item">
           <span class="label">Date:</span>
           <span class="value">{{bookingConfirmationData.date ? (bookingConfirmationData.date | date:'MMM d, yyyy') : (selectedDate | date:'MMM d, yyyy')}}</span>
-        </div>
-        <div class="detail-item" *ngIf="!bookingConfirmationData.selectedSlots">
-          <span class="label">Time:</span>
-          <span class="value">{{bookingConfirmationData.time || selectedTime}}</span>
-        </div>
-        <div class="detail-item" *ngIf="!bookingConfirmationData.selectedSlots">
-          <span class="label">Participants:</span>
-          <span class="value participants-display">{{bookingConfirmationData.participants || participantCount}} player{{(bookingConfirmationData.participants || participantCount) > 1 ? 's' : ''}}</span>
         </div>
         <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
           <span class="label">Slots:</span>
@@ -500,94 +525,6 @@
         <button class="theme-btn" (click)="closeBookingModal()">
           <fa-icon [icon]="golfIcon"></fa-icon>
           Continue Booking
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Slot Interaction Modal -->
-<div class="slot-modal-overlay" *ngIf="showSlotModal" (click)="closeSlotModal()">
-  <div class="slot-modal-content" (click)="$event.stopPropagation()">
-    <div class="slot-modal-header">
-      <h3 class="slot-modal-title">Slot Details</h3>
-      <button class="slot-modal-close" (click)="closeSlotModal()">
-        ×
-      </button>
-    </div>
-    
-    <div class="slot-modal-body" *ngIf="slotModalData">
-
-
-      <!-- Participant Selector in Modal -->
-      <div class="slot-modal-section">
-        <div class="slot-modal-section-title">
-          <div class="slot-modal-section-icon">
-            <fa-icon [icon]="usersIcon"></fa-icon>
-          </div>
-          Add Participants
-        </div>
-        <div class="player-selector modal-player-selector">
-          <button class="circle-btn" (click)="decrementModalParticipants()" [disabled]="slotModalData.requestedParticipants === 1">-</button>
-          <span class="player-count">{{slotModalData.requestedParticipants}}</span>
-          <button class="circle-btn" (click)="incrementModalParticipants()" [disabled]="slotModalData.requestedParticipants === getMaxModalParticipants()">+</button>
-        </div>
-        <div class="slot-info-text small-text">
-          (Max: {{getMaxModalParticipants()}} participants)
-        </div>
-      </div>
-
-      <!-- Slot Information Row -->
-      <div class="slot-modal-section">
-        <div class="slot-modal-section-title">
-          <div class="slot-modal-section-icon">
-            <fa-icon [icon]="golfIcon"></fa-icon>
-          </div>
-          Slot Information
-        </div>
-        <div class="slot-info-row">
-          <div class="slot-info-item">
-            <span class="slot-info-label">Course:</span>
-            <span class="slot-info-value course-name">{{course.name}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Tee:</span>
-            <span class="slot-info-value tee-name">{{slotModalData.slot.tee_name || slotModalData.slot.tee_label || selectedTee?.label || (selectedTee?.holeNumber + ' Holes')}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Date:</span>
-            <span class="slot-info-value slot-date">
-              {{formatSlotDateForDisplay(slotModalData.slot)}}
-            </span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Time:</span>
-            <span class="slot-info-value slot-time">{{slotModalData.slot.formatted_time}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Status:</span>
-            <span class="slot-info-value slot-status">{{ slotModalData.slot.slot_status === 'available' ? 'Available' : (slotModalData.slot.slot_status === 'partially_available' ? 'Partially Available' : slotModalData.slot.slot_status) }}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Available Spots:</span>
-            <span class="slot-info-value available-spots">{{slotModalData.availableSpots}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Current Participants:</span>
-            <span class="slot-info-value current-participants">{{slotModalData.totalParticipants}}/4</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="slot-modal-actions">
-        <button class="slot-modal-btn secondary" (click)="closeSlotModal()">
-          Cancel
-        </button>
-        <button class="slot-modal-btn primary" 
-                (click)="confirmSlotSelection()"
-                [disabled]="slotModalData.availableSpots < slotModalData.requestedParticipants">
-          Select Slot
         </button>
       </div>
     </div>
