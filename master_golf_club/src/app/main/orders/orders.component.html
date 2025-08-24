@@ -98,14 +98,15 @@
                   class="form-control" 
                   [(ngModel)]="selectedStatusFilter"
                   (change)="onStatusFilterChange($event.target.value)">
-                  <option *ngFor="let filter of statusFilters" 
-                          [value]="filter.value">
+                  <option 
+                    *ngFor="let filter of statusFilters" 
+                    [value]="filter.value">
                     {{filter.label}} ({{filter.count}})
                   </option>
                 </select>
               </div>
             </div>
-            <div class="col-md-6 text-md-end">
+            <div class="col-md-6 text-end">
               <button class="btn btn-outline-primary" (click)="refreshData()">
                 <fa-icon [icon]="spinnerIcon" *ngIf="isLoading"></fa-icon>
                 Refresh
@@ -114,218 +115,233 @@
           </div>
         </div>
 
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="isEmptyState() && !isLoading">
+          <div class="text-center py-5">
+            <div class="empty-icon mb-3">
+              <fa-icon [icon]="calendarIcon" size="3x"></fa-icon>
+            </div>
+            <h3>No Bookings Found</h3>
+            <p class="text-muted">You haven't made any bookings yet.</p>
+            <button class="btn btn-primary" (click)="navigateToTeeBooking()">
+              Book Tee Time
+            </button>
+          </div>
+        </div>
+
         <!-- Bookings Table -->
-        <div class="bookings-table-container">
+        <div class="bookings-table" *ngIf="!isEmptyState() && !isLoading">
           <div class="table-responsive">
             <table class="table table-hover">
               <thead>
                 <tr>
-                  <th>Booking ID</th>
-                  <th>Booked Date</th>
-                  <th>Course Name</th>
-                  <th>Tee</th>
-                  <th>Slot Date</th>
-                  <th>Slot Time</th>
-                  <th>Participants</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <th>BOOKING ID</th>
+                  <th>BOOKED DATE</th>
+                  <th>COURSE NAME</th>
+                  <th>TEE</th>
+                  <th>SLOT DATE</th>
+                  <th>SLOT TIME</th>
+                  <th>PARTICIPANTS</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let booking of getFilteredBookings()" 
-                    [class.highlighted]="selectedBooking?.id === booking.id">
+                <tr *ngFor="let booking of getFilteredBookings()" [class]="getStatusClass(booking.status)">
                   <td>
-                    <span class="booking-id">{{booking.booking_id}}</span>
-                    <span *ngIf="booking.hasMultipleSlots" class="multi-slot-badge">
-                      Multi-slot
+                    <strong>{{booking.booking_id}}</strong>
+                    <span *ngIf="booking.hasMultipleSlots" class="badge badge-info ms-1">
+                      Slot {{booking.slotNumber}}
                     </span>
                   </td>
                   <td>{{booking.formattedDate}}</td>
                   <td>{{booking.courseName}}</td>
+                  <td>{{booking.teeInfo}}</td>
+                  <td>{{formatDate(booking.slot_date)}}</td>
+                  <td>{{booking.booking_time}}</td>
                   <td>
-                    <span class="tee-info">{{booking.teeInfo || 'Tee not specified'}}</span>
-                    <span *ngIf="booking.hasMultipleSlots" class="slot-number">
-                      Slot {{booking.slotNumber}}
-                    </span>
-                  </td>
-                  <td>{{formatDate(booking.slot_date || booking.slotDate || booking.bookingDate)}}</td>
-                  <td>{{booking.booking_time || 'N/A'}}</td>
-                  <td>
-                    <span class="participants">
-                      {{booking.participants}} player{{booking.participants > 1 ? 's' : ''}}
-                    </span>
-                    <span *ngIf="booking.availableSpots && booking.availableSpots > 0" 
-                          class="available-spots">
-                      ({{booking.availableSpots}} spots left)
+                    <span [class]="getStatusBadgeClass(booking)">
+                      {{getParticipantDisplayText(booking)}}
                     </span>
                   </td>
                   <td>
-                    <span class="status-badge" [class]="getStatusClass(booking.status)">
-                      {{getStatusText(booking.status)}}
+                    <span [class]="getStatusBadgeClass(booking)">
+                      {{getStatusDisplayText(booking)}}
                     </span>
                   </td>
                   <td>
-                    <button class="btn btn-sm action-btn" 
-                            [class]="getActionText(booking) === 'Add Participants' ? 'btn-success' : 'btn-primary'"
-                            (click)="handleActionClick(booking)">
-                      <fa-icon [icon]="getActionIcon(booking)"></fa-icon>
-                      {{getActionText(booking)}}
+                    <button 
+                      class="btn btn-sm"
+                      [class]="getActionButton(booking).color === 'green' ? 'btn-success' : 
+                               getActionButton(booking).color === 'purple' ? 'btn-warning' : 
+                               getActionButton(booking).color === 'blue' ? 'btn-primary' : 'btn-secondary'"
+                      (click)="handleActionButtonClick(booking)"
+                      [disabled]="!getActionButton(booking).enabled">
+                      <fa-icon [icon]="getActionButton(booking).action === 'addParticipants' ? plusIcon : 
+                                     getActionButton(booking).action === 'reviewRequest' ? infoIcon : eyeIcon"
+                               class="me-1"></fa-icon>
+                      {{getActionButton(booking).text}}
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
 
-          <!-- No Bookings Message -->
-          <div *ngIf="getFilteredBookings().length === 0 && !isLoading" class="no-bookings">
-            <div class="text-center py-5">
-              <fa-icon [icon]="infoIcon" class="no-bookings-icon"></fa-icon>
-              <h4>No Bookings Found</h4>
-              <p *ngIf="selectedStatusFilter === 'all'">
-                You haven't made any bookings yet. 
-                <a routerLink="/tee-booking">Book your first tee time</a>
-              </p>
-              <p *ngIf="selectedStatusFilter !== 'all'">
-                No {{getStatusText(selectedStatusFilter).toLowerCase()}} bookings found.
-              </p>
-            </div>
-          </div>
+        <!-- Loading State -->
+        <div class="loading-state text-center py-5" *ngIf="isLoading">
+          <fa-icon [icon]="spinnerIcon" size="2x" class="fa-spin"></fa-icon>
+          <p class="mt-3">Loading bookings...</p>
+        </div>
 
-          <!-- Loading State -->
-          <div *ngIf="isLoading" class="loading-state">
-            <div class="text-center py-5">
-              <fa-icon [icon]="spinnerIcon" class="spinner"></fa-icon>
-              <p>Loading bookings...</p>
-            </div>
-          </div>
+        <!-- Error State -->
+        <div class="error-state text-center py-5" *ngIf="errorMessage && !isLoading">
+          <fa-icon [icon]="exclamationTriangleIcon" size="2x" class="text-danger"></fa-icon>
+          <p class="mt-3 text-danger">{{errorMessage}}</p>
+          <button class="btn btn-outline-primary" (click)="refreshData()">Try Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-          <!-- Error State -->
-          <div *ngIf="errorMessage" class="error-state">
-            <div class="alert alert-danger">
-              <fa-icon [icon]="exclamationTriangleIcon"></fa-icon>
-              {{errorMessage}}
-              <button class="btn btn-sm btn-outline-danger ms-2" (click)="refreshData()">
-                Retry
-              </button>
-            </div>
+<!-- Add Participants Modal -->
+<div class="modal fade" [class.show]="showParticipantModal" [style.display]="showParticipantModal ? 'block' : 'none'">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add More Participants</h5>
+        <button type="button" class="btn-close" (click)="closeParticipantModal()"></button>
+      </div>
+      <div class="modal-body" *ngIf="selectedBookingForParticipants">
+        <div class="booking-details mb-3">
+          <p><strong>Course:</strong> {{selectedBookingForParticipants.courseName}}</p>
+          <p><strong>Tee:</strong> {{selectedBookingForParticipants.teeInfo}}</p>
+          <p><strong>Date:</strong> {{formatDate(selectedBookingForParticipants.slot_date)}}</p>
+          <p><strong>Time:</strong> {{selectedBookingForParticipants.booking_time}}</p>
+          <p><strong>Current:</strong> {{selectedBookingForParticipants.participants}} participants</p>
+          <p><strong>Available:</strong> {{4 - selectedBookingForParticipants.participants}} spots remaining</p>
+        </div>
+        
+        <div class="form-group">
+          <label for="participants">Add Participants:</label>
+          <div class="input-group">
+            <button type="button" class="btn btn-outline-secondary" (click)="decrementParticipants()">-</button>
+            <input type="number" class="form-control text-center" 
+                   [(ngModel)]="requestedParticipants" 
+                   [min]="1" 
+                   [max]="4 - selectedBookingForParticipants.participants"
+                   readonly>
+            <button type="button" class="btn btn-outline-secondary" (click)="incrementParticipants()">+</button>
           </div>
         </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeParticipantModal()">Cancel</button>
+        <button type="button" class="btn btn-success" (click)="confirmAddParticipants()">
+          <fa-icon [icon]="plusIcon" class="me-1"></fa-icon>
+          Add Participants
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Review Join Request Modal -->
+<div class="modal fade" [class.show]="showReviewRequestModal" [style.display]="showReviewRequestModal ? 'block' : 'none'">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Review Join Request</h5>
+        <button type="button" class="btn-close" (click)="closeReviewRequestModal()"></button>
+      </div>
+      <div class="modal-body" *ngIf="selectedJoinRequest">
+        <div class="requester-info mb-3">
+          <h6>Requester Information:</h6>
+          <p><strong>Name:</strong> {{selectedJoinRequest.requesterName}}</p>
+          <p><strong>Email:</strong> {{selectedJoinRequest.requesterEmail}}</p>
+          <p><strong>Request Date:</strong> {{selectedJoinRequest.formattedDate}}</p>
+        </div>
+        
+        <div class="booking-details mb-3">
+          <h6>Booking Details:</h6>
+          <p><strong>Course:</strong> {{selectedJoinRequest.courseName}}</p>
+          <p><strong>Tee:</strong> {{selectedJoinRequest.teeInfo}}</p>
+          <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slot_date)}}</p>
+          <p><strong>Time:</strong> {{selectedJoinRequest.booking_time}}</p>
+          <p><strong>Current Participants:</strong> {{selectedJoinRequest.participants}} (You)</p>
+          <p><strong>Requested Participants:</strong> {{selectedJoinRequest.participants}}</p>
+          <p><strong>Total if Approved:</strong> {{selectedJoinRequest.participants + selectedJoinRequest.participants}} participants</p>
+        </div>
+        
+        <div class="form-group">
+          <label>Action:</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="reviewAction" id="approve" 
+                   [(ngModel)]="reviewAction" value="approve" checked>
+            <label class="btn btn-outline-success" for="approve">
+              <fa-icon [icon]="checkIcon" class="me-1"></fa-icon>
+              Approve
+            </label>
+            
+            <input type="radio" class="btn-check" name="reviewAction" id="reject" 
+                   [(ngModel)]="reviewAction" value="reject">
+            <label class="btn btn-outline-danger" for="reject">
+              <fa-icon [icon]="banIcon" class="me-1"></fa-icon>
+              Reject
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeReviewRequestModal()">Cancel</button>
+        <button type="button" 
+                [class]="reviewAction === 'approve' ? 'btn-success' : 'btn-danger'"
+                (click)="confirmReviewRequest()">
+          <fa-icon [icon]="reviewAction === 'approve' ? checkIcon : banIcon" class="me-1"></fa-icon>
+          {{reviewAction === 'approve' ? 'Approve' : 'Reject'}}
+        </button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Booking Details Modal -->
-<div class="modal-overlay" *ngIf="showBookingDetails" (click)="closeBookingDetails()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3>Booking Details</h3>
-      <button class="modal-close" (click)="closeBookingDetails()">
-        <fa-icon [icon]="timesIcon"></fa-icon>
-      </button>
-    </div>
-    
-    <div class="modal-body" *ngIf="selectedBooking">
-      <div class="booking-details">
-        <div class="detail-row">
-          <span class="label">Booking ID:</span>
-          <span class="value">{{selectedBooking.booking_id}}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">Course:</span>
-          <span class="value">{{selectedBooking.courseName}}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">Tee:</span>
-          <span class="value">{{selectedBooking.teeInfo}}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">Date:</span>
-          <span class="value">{{selectedBooking.formattedDate}}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">Time:</span>
-          <span class="value">{{selectedBooking.booking_time || 'N/A'}}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">Participants:</span>
-          <span class="value">{{selectedBooking.participants}} player{{selectedBooking.participants > 1 ? 's' : ''}}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">Status:</span>
-          <span class="value status-badge" [class]="getStatusClass(selectedBooking.status)">
-            {{getStatusText(selectedBooking.status)}}
-          </span>
-        </div>
-        
-        <!-- Multi-slot information -->
-        <div *ngIf="selectedBooking.hasMultipleSlots" class="multi-slot-info">
-          <h5>Multi-Slot Booking</h5>
-          <p>This booking contains {{selectedBooking.totalSlots}} slots</p>
-          <div *ngIf="selectedBooking.slots" class="slots-list">
-            <div *ngFor="let slot of selectedBooking.slots" class="slot-item">
-              <span class="slot-time">{{slot.booking_time}}</span>
-              <span class="slot-participants">{{slot.participants}}p</span>
-              <span class="slot-status" [class]="getStatusClass(slot.slot_status)">
-                {{getStatusText(slot.slot_status)}}
-              </span>
-            </div>
+<div class="modal fade" [class.show]="showBookingDetails" [style.display]="showBookingDetails ? 'block' : 'none'">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Booking Details</h5>
+        <button type="button" class="btn-close" (click)="closeBookingDetails()"></button>
+      </div>
+      <div class="modal-body" *ngIf="selectedBooking">
+        <div class="booking-info">
+          <p><strong>Booking ID:</strong> {{selectedBooking.booking_id}}</p>
+          <p><strong>Status:</strong> 
+            <span [class]="getStatusBadgeClass(selectedBooking)">
+              {{getStatusDisplayText(selectedBooking)}}
+            </span>
+          </p>
+          <p><strong>Booked Date:</strong> {{selectedBooking.formattedDate}}</p>
+          <p><strong>Course:</strong> {{selectedBooking.courseName}}</p>
+          <p><strong>Tee:</strong> {{selectedBooking.teeInfo}}</p>
+          <p><strong>Slot Date:</strong> {{formatDate(selectedBooking.slot_date)}}</p>
+          <p><strong>Slot Time:</strong> {{selectedBooking.booking_time}}</p>
+          <p><strong>Participants:</strong> {{getParticipantDisplayText(selectedBooking)}}</p>
+          
+          <div *ngIf="selectedBooking.hasMultipleSlots" class="mt-3">
+            <h6>Multi-Slot Booking:</h6>
+            <p>This is part of a {{selectedBooking.totalSlots}}-slot booking (Slot {{selectedBooking.slotNumber}})</p>
           </div>
         </div>
       </div>
-    </div>
-    
-    <div class="modal-footer">
-      <button class="btn btn-secondary" (click)="closeBookingDetails()">Close</button>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeBookingDetails()">Close</button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Add Participants Modal -->
-<div class="modal-overlay" *ngIf="showParticipantModal" (click)="closeParticipantModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3>Add Participants</h3>
-      <button class="modal-close" (click)="closeParticipantModal()">
-        <fa-icon [icon]="timesIcon"></fa-icon>
-      </button>
-    </div>
-    
-    <div class="modal-body" *ngIf="selectedBookingForParticipants">
-      <div class="participant-form">
-        <div class="form-group">
-          <label>Current Participants: {{selectedBookingForParticipants.participants}}</label>
-          <label>Available Spots: {{selectedBookingForParticipants.availableSpots || 0}}</label>
-        </div>
-        
-        <div class="participant-selector">
-          <label>Add Participants:</label>
-          <div class="selector-controls">
-            <button class="btn btn-outline-secondary" 
-                    (click)="decrementParticipants()" 
-                    [disabled]="requestedParticipants === 1">
-              -
-            </button>
-            <span class="participant-count">{{requestedParticipants}}</span>
-            <button class="btn btn-outline-secondary" 
-                    (click)="incrementParticipants()" 
-                    [disabled]="requestedParticipants >= (selectedBookingForParticipants.availableSpots || 4)">
-              +
-            </button>
-          </div>
-          <small class="form-text text-muted">
-            Maximum: {{Math.min(selectedBookingForParticipants.availableSpots || 4, 4)}} participants
-          </small>
-        </div>
-      </div>
-    </div>
-    
-    <div class="modal-footer">
-      <button class="btn btn-secondary" (click)="closeParticipantModal()">Cancel</button>
-      <button class="btn btn-primary" (click)="confirmAddParticipants()">
-        Add Participants
-      </button>
-    </div>
-  </div>
-</div>
+<!-- Modal Backdrop -->
+<div class="modal-backdrop fade show" *ngIf="showParticipantModal || showReviewRequestModal || showBookingDetails"></div>

@@ -6,7 +6,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { CollectionService } from '../common-service/collection/collection.service';
 import { 
   faCalendarAlt, faSpinner, faExclamationTriangle, faTimes,
-  faCheckCircle, faUsers, faInfoCircle, faEye, faPlus
+  faCheckCircle, faUsers, faInfoCircle, faEye, faPlus, faCheck, faBan
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Booking {
@@ -20,8 +20,10 @@ interface Booking {
   bookingDate: string;
   endTime?: string;
   participants: number;
+  maxParticipants?: number;
   status: string;
   is_join_request: boolean;
+  original_booking?: number;
   originalBookingInfo?: any;
   originalBookingId?: number;
   joinRequests?: Booking[];
@@ -61,6 +63,12 @@ interface Booking {
   earliestTime?: string;
   latestTime?: string;
   teeSummary?: string;
+  // New fields for order management
+  isOwnBooking?: boolean;
+  canAddParticipants?: boolean;
+  isIncomingRequest?: boolean;
+  requesterName?: string;
+  requesterEmail?: string;
 }
 
 interface Notification {
@@ -72,6 +80,15 @@ interface Notification {
   createdAt: string;
   relatedBookingInfo?: any;
   related_booking?: number;
+}
+
+interface OrderStatistics {
+  total: number;
+  confirmed: number;
+  pendingRequests: number;
+  requestsAccepted: number;
+  acceptRejectActions: number;
+  cancelled: number;
 }
 
 @Component({
@@ -127,6 +144,11 @@ export class OrdersComponent implements OnInit {
   selectedBookingForParticipants: Booking | null = null;
   showParticipantModal = false;
   requestedParticipants = 1;
+  
+  // New modal states
+  showReviewRequestModal = false;
+  selectedJoinRequest: Booking | null = null;
+  reviewAction: 'approve' | 'reject' = 'approve';
 
   // Filter state
   selectedStatusFilter: string = 'all';
@@ -148,6 +170,8 @@ export class OrdersComponent implements OnInit {
   infoIcon = faInfoCircle;
   eyeIcon = faEye;
   plusIcon = faPlus;
+  checkIcon = faCheck;
+  banIcon = faBan;
 
   constructor(
     private collectionService: CollectionService,
@@ -159,6 +183,7 @@ export class OrdersComponent implements OnInit {
     this.loadBookings();
     this.loadNotifications();
     this.loadUnreadCount();
+    this.loadOrderStatistics();
     
     // Check if redirected from notification
     this.checkNotificationRedirect();
@@ -177,6 +202,18 @@ export class OrdersComponent implements OnInit {
         });
       }
     });
+  }
+
+  async loadOrderStatistics() {
+    try {
+      const response = await this.collectionService.getOrderStatistics();
+      if (response && response.data && response.data.code === 1) {
+        const stats = response.data.data;
+        this.updateStatusFilterCounts(stats);
+      }
+    } catch (error) {
+      console.error('Error loading order statistics:', error);
+    }
   }
 
   async loadBookings() {
@@ -222,55 +259,12 @@ export class OrdersComponent implements OnInit {
             // Create a separate row for each slot
             for (let i = 0; i < booking.slots.length; i++) {
               const slot = booking.slots[i];
-              const slotBooking = {
-                ...booking,
-                id: `${booking.id}-slot-${i + 1}`, // Create unique ID for display
-                originalBookingId: booking.id, // Keep reference to original booking
-                slotIndex: i,
-                // Override with slot-specific data
-                tee: slot.tee,
-                teeInfo: slot.teeInfo || `Tee ${slot.tee || 'Unknown'}`,
-                teeName: slot.teeName || `Tee ${slot.tee || 'Unknown'}`,
-                booking_time: slot.booking_time || 'Time not specified',
-                participants: slot.participants,
-                slot_status: slot.slot_status,
-                slot_order: slot.slot_order,
-                endTime: slot.endTime,
-                slot_date: slot.slot_date, // Add slot date
-                // Mark as multi-slot
-                hasMultipleSlots: booking.slots.length > 1,
-                isMultiSlotBooking: true,
-                totalSlots: booking.slots.length,
-                slotNumber: i + 1,
-                // Format display data - use created_at as booked date
-                formattedDate: this.formatDate(slot.created_at || slot.formatted_created_date || booking.bookingDate || booking.formattedDate),
-                canCancel: this.canCancelBooking(booking),
-                canJoinSlot: this.canJoinSlot(booking)
-              };
-              
-              console.log('Created slot booking:', slotBooking);
+              const slotBooking = this.processSlotBooking(booking, slot, i);
               this.bookings.push(slotBooking);
             }
           } else {
             // Single slot or no slots - create single row
-            const processedBooking = {
-              ...booking,
-              // For single bookings, use the main booking data
-              teeInfo: booking.teeInfo || `Tee ${booking.tee || 'Unknown'}`,
-              teeName: booking.teeName || `Tee ${booking.tee || 'Unknown'}`,
-              booking_time: booking.booking_time || booking.bookingTime || 'Time not specified',
-              slot_date: booking.slotDate || booking.bookingDate,
-              participants: booking.participants,
-              formattedDate: this.formatDate(booking.createdAt || booking.bookingDate || booking.formattedDate),
-              canCancel: this.canCancelBooking(booking),
-              canJoinSlot: this.canJoinSlot(booking),
-              hasMultipleSlots: false,
-              isMultiSlotBooking: false,
-              totalSlots: 1,
-              slotNumber: 1
-            };
-            
-            console.log('Created single booking:', processedBooking);
+            const processedBooking = this.processSingleBooking(booking);
             this.bookings.push(processedBooking);
           }
         }
@@ -299,6 +293,101 @@ export class OrdersComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  private processSlotBooking(booking: any, slot: any, index: number): Booking {
+    const slotBooking = {
+      ...booking,
+      id: `${booking.id}-slot-${index + 1}`, // Create unique ID for display
+      originalBookingId: booking.id, // Keep reference to original booking
+      slotIndex: index,
+      // Override with slot-specific data
+      tee: slot.tee,
+      teeInfo: slot.teeInfo || `Tee ${slot.tee || 'Unknown'}`,
+      teeName: slot.teeName || `Tee ${slot.tee || 'Unknown'}`,
+      booking_time: slot.booking_time || 'Time not specified',
+      participants: slot.participants,
+      slot_status: slot.slot_status,
+      slot_order: slot.slot_order,
+      endTime: slot.endTime,
+      slot_date: slot.slot_date, // Add slot date
+      // Mark as multi-slot
+      hasMultipleSlots: booking.slots.length > 1,
+      isMultiSlotBooking: true,
+      totalSlots: booking.slots.length,
+      slotNumber: index + 1,
+      // Format display data - use created_at as booked date
+      formattedDate: this.formatDate(slot.created_at || slot.formatted_created_date || booking.bookingDate || booking.formattedDate),
+      canCancel: this.canCancelBooking(booking),
+      canJoinSlot: this.canJoinSlot(booking),
+      // New order management fields
+      isOwnBooking: !booking.is_join_request,
+      canAddParticipants: this.canAddParticipants(booking, slot),
+      maxParticipants: 4,
+      isIncomingRequest: this.isIncomingRequest(booking),
+      requesterName: this.getRequesterName(booking),
+      requesterEmail: this.getRequesterEmail(booking)
+    };
+    
+    console.log('Created slot booking:', slotBooking);
+    return slotBooking;
+  }
+
+  private processSingleBooking(booking: any): Booking {
+    const processedBooking = {
+      ...booking,
+      // For single bookings, use the main booking data
+      originalBookingId: booking.id, // Keep reference to original booking
+      teeInfo: booking.teeInfo || `Tee ${booking.tee || 'Unknown'}`,
+      teeName: booking.teeName || `Tee ${booking.tee || 'Unknown'}`,
+      booking_time: booking.booking_time || booking.bookingTime || 'Time not specified',
+      slot_date: booking.slotDate || booking.bookingDate,
+      participants: booking.participants,
+      formattedDate: this.formatDate(booking.createdAt || booking.bookingDate || booking.formattedDate),
+      canCancel: this.canCancelBooking(booking),
+      canJoinSlot: this.canJoinSlot(booking),
+      hasMultipleSlots: false,
+      isMultiSlotBooking: false,
+      totalSlots: 1,
+      slotNumber: 1,
+      // New order management fields
+      isOwnBooking: !booking.is_join_request,
+      canAddParticipants: this.canAddParticipants(booking, null),
+      maxParticipants: 4,
+      isIncomingRequest: this.isIncomingRequest(booking),
+      requesterName: this.getRequesterName(booking),
+      requesterEmail: this.getRequesterEmail(booking)
+    };
+    
+    console.log('Created single booking:', processedBooking);
+    return processedBooking;
+  }
+
+  // New helper methods for order management
+  private canAddParticipants(booking: any, slot: any): boolean {
+    if (booking.is_join_request) return false;
+    if (booking.status !== 'confirmed') return false;
+    
+    const currentParticipants = slot ? slot.participants : booking.participants;
+    return currentParticipants < 4;
+  }
+
+  private isIncomingRequest(booking: any): boolean {
+    return booking.original_booking && booking.is_join_request;
+  }
+
+  private getRequesterName(booking: any): string {
+    if (this.isIncomingRequest(booking)) {
+      return `${booking.memberName || 'Unknown'} ${booking.memberFullName || ''}`.trim();
+    }
+    return '';
+  }
+
+  private getRequesterEmail(booking: any): string {
+    if (this.isIncomingRequest(booking)) {
+      return booking.member?.email || '';
+    }
+    return '';
   }
 
   async loadNotifications() {
@@ -354,14 +443,24 @@ export class OrdersComponent implements OnInit {
   }
 
   // Update status filter counts
-  private updateStatusFilterCounts() {
-    this.statusFilters.forEach(filter => {
-      if (filter.value === 'all') {
-        filter.count = this.bookings.length;
-      } else {
-        filter.count = this.bookings.filter(booking => booking.status === filter.value).length;
-      }
-    });
+  private updateStatusFilterCounts(stats?: OrderStatistics) {
+    if (stats) {
+      this.statusFilters.forEach(filter => {
+        if (filter.value === 'all') {
+          filter.count = stats.total;
+        } else {
+          filter.count = stats[filter.value as keyof OrderStatistics] || 0;
+        }
+      });
+    } else {
+      this.statusFilters.forEach(filter => {
+        if (filter.value === 'all') {
+          filter.count = this.bookings.length;
+        } else {
+          filter.count = this.bookings.filter(booking => booking.status === filter.value).length;
+        }
+      });
+    }
   }
 
   // Filter bookings by status
@@ -501,15 +600,197 @@ export class OrdersComponent implements OnInit {
     if (!this.selectedBookingForParticipants) return;
 
     try {
-      // This would typically call an API to add participants
-      // For now, we'll just close the modal
-      this.closeParticipantModal();
+      // Use the original booking ID, not the slot-based ID
+      const bookingId = this.selectedBookingForParticipants.originalBookingId || this.selectedBookingForParticipants.id;
       
-      // Reload bookings to reflect changes
-      await this.loadBookings();
+      console.log('Adding participants to booking:', {
+        displayId: this.selectedBookingForParticipants.id,
+        originalBookingId: this.selectedBookingForParticipants.originalBookingId,
+        finalBookingId: bookingId,
+        requestedParticipants: this.requestedParticipants,
+        fullBookingObject: this.selectedBookingForParticipants
+      });
+      
+      // Call API to add participants
+      const response = await this.collectionService.addParticipants(
+        bookingId,
+        this.requestedParticipants
+      );
+      
+      if (response && response.data && response.data.code === 1) {
+        // Success - close modal and reload data
+        this.closeParticipantModal();
+        await this.refreshData();
+      } else {
+        console.error('Failed to add participants:', response);
+        // Handle error - could show toast message
+      }
     } catch (error) {
       console.error('Error adding participants:', error);
+      // Handle error - could show toast message
     }
+  }
+
+  // New methods for order management
+  openReviewRequestModal(booking: Booking) {
+    this.selectedJoinRequest = booking;
+    this.reviewAction = 'approve';
+    this.showReviewRequestModal = true;
+  }
+
+  closeReviewRequestModal() {
+    this.showReviewRequestModal = false;
+    this.selectedJoinRequest = null;
+  }
+
+  async confirmReviewRequest() {
+    if (!this.selectedJoinRequest) return;
+
+    try {
+      // Use the original booking ID, not the slot-based ID
+      const bookingId = this.selectedJoinRequest.originalBookingId || this.selectedJoinRequest.id;
+      
+      // Call API to review join request
+      const response = await this.collectionService.reviewJoinRequest(
+        bookingId,
+        this.reviewAction
+      );
+      
+      if (response && response.data && response.data.code === 1) {
+        // Success - close modal and reload data
+        this.closeReviewRequestModal();
+        await this.refreshData();
+      } else {
+        console.error('Failed to review join request:', response);
+        // Handle error - could show toast message
+      }
+    } catch (error) {
+      console.error('Error reviewing join request:', error);
+      // Handle error - could show toast message
+    }
+  }
+
+  // Enhanced action handling methods
+  getActionButton(booking: Booking): any {
+    if (booking.status === 'confirmed') {
+      if (booking.isOwnBooking && booking.canAddParticipants) {
+        return {
+          text: '+ Add Participants',
+          color: 'green',
+          action: 'addParticipants',
+          enabled: true
+        };
+      }
+      return {
+        text: 'View Details',
+        color: 'blue',
+        action: 'viewDetails'
+      };
+    } else if (booking.status === 'pending_approval') {
+      if (booking.isIncomingRequest) {
+        return {
+          text: 'Accept / Reject',
+          color: 'purple',
+          action: 'reviewRequest',
+          enabled: true
+        };
+      }
+      return {
+        text: 'View Details',
+        color: 'gray',
+        action: 'viewDetails'
+      };
+    } else if (booking.status === 'cancelled') {
+      return {
+        text: 'View Details',
+        color: 'gray',
+        action: 'viewDetails'
+      };
+    }
+    
+    return {
+      text: 'View Details',
+      color: 'blue',
+      action: 'viewDetails'
+    };
+  }
+
+  handleActionButtonClick(booking: Booking) {
+    const actionButton = this.getActionButton(booking);
+    
+    switch (actionButton.action) {
+      case 'addParticipants':
+        this.openParticipantModal(booking);
+        break;
+      case 'reviewRequest':
+        this.openReviewRequestModal(booking);
+        break;
+      case 'viewDetails':
+      default:
+        this.viewBookingDetails(booking);
+        break;
+    }
+  }
+
+  // Get participant display text
+  getParticipantDisplayText(booking: Booking): string {
+    if (booking.status === 'confirmed') {
+      if (booking.participants < 4) {
+        const spotsLeft = 4 - booking.participants;
+        return `${booking.participants} player${booking.participants > 1 ? 's' : ''} (${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left)`;
+      } else {
+        return `${booking.participants} players`;
+      }
+    }
+    return `${booking.participants} player${booking.participants > 1 ? 's' : ''}`;
+  }
+
+  // Get status badge class
+  getStatusBadgeClass(booking: Booking): string {
+    switch (booking.status) {
+      case 'confirmed':
+        return 'badge-success';
+      case 'pending_approval':
+        if (booking.isIncomingRequest) {
+          return 'badge-warning';
+        }
+        return 'badge-info';
+      case 'approved':
+        return 'badge-success';
+      case 'cancelled':
+        return 'badge-danger';
+      default:
+        return 'badge-secondary';
+    }
+  }
+
+  // Get status display text with context
+  getStatusDisplayText(booking: Booking): string {
+    switch (booking.status) {
+      case 'confirmed':
+        return 'CONFIRMED';
+      case 'pending_approval':
+        if (booking.isIncomingRequest) {
+          return 'REVIEW REQUEST';
+        }
+        return 'PENDING REQUEST';
+      case 'approved':
+        return 'CONFIRMED';
+      case 'cancelled':
+        return 'CANCELLED';
+      default:
+        return booking.status.toUpperCase();
+    }
+  }
+
+  // Check if booking is empty state
+  isEmptyState(): boolean {
+    return this.bookings.length === 0;
+  }
+
+  // Navigate to tee booking
+  navigateToTeeBooking() {
+    this.router.navigate(['/tee-booking']);
   }
 
   // Handle notification click

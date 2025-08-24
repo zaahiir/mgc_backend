@@ -423,4 +423,109 @@ export class CollectionService {
   listCourse(id: string = '0') {
     return this.getCourseListing(id);
   }
+
+  // Order Management API endpoints
+  getOrders() {
+    const url = `${this.apiUrl}orders/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  // Add participants to existing booking
+  addParticipants(bookingId: number, additionalParticipants: number) {
+    const url = `${this.apiUrl}booking/${bookingId}/add_participants/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    console.log('Calling addParticipants API:', {
+      url,
+      bookingId,
+      additionalParticipants,
+      config
+    });
+    
+    return axios.post(url, { additional_participants: additionalParticipants }, config);
+  }
+
+  // Review join request (approve/reject)
+  reviewJoinRequest(requestId: number, action: 'approve' | 'reject') {
+    const url = `${this.apiUrl}booking/${requestId}/review_join_request/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, { action: action }, config);
+  }
+
+  // Get order statistics
+  getOrderStatistics() {
+    const url = `${this.apiUrl}orders/statistics/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  // Get filtered orders by status
+  getOrdersByStatus(status: string) {
+    const url = `${this.apiUrl}orders/by_status/`;
+    const config: any = { 
+      params: { status: status } 
+    };
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  // Get notifications for header
+  getHeaderNotifications() {
+    const url = `${this.apiUrl}notification/header/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
 }

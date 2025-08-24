@@ -2149,6 +2149,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         except MemberModel.DoesNotExist:
             return BookingModel.objects.none()
 
+
+
     def list(self, request, *args, **kwargs):
         """Custom list method to handle single-slot bookings"""
         try:
@@ -2800,6 +2802,200 @@ class BookingViewSet(viewsets.ModelViewSet):
         print(f"Total slots generated: {len(slots)}")
         return slots
 
+    @action(detail=True, methods=['post'])
+    def add_participants(self, request, pk=None):
+        """Add participants to an existing booking"""
+        try:
+            print(f"add_participants called with pk: {pk}, request data: {request.data}")
+            
+            # Get the booking object directly by ID
+            try:
+                booking = get_object_or_404(BookingModel, id=pk, hideStatus=0)
+                print(f"Found booking: {booking.id}, member: {booking.member.id if booking.member else 'None'}")
+            except Exception as e:
+                print(f"Error getting booking object: {str(e)}")
+                return Response({
+                    'code': 0,
+                    'message': f'Error getting booking: {str(e)}'
+                }, status=500)
+            
+            additional_participants = request.data.get('additional_participants', 1)
+            print(f"Additional participants requested: {additional_participants}")
+            
+            if not additional_participants or additional_participants <= 0:
+                return Response({
+                    'code': 0,
+                    'message': 'Additional participants must be greater than 0'
+                }, status=400)
+            
+            # For now, just update the booking without authentication check
+            # TODO: Add proper authentication later
+            
+            # Check if slot can accommodate more participants
+            total_participants = booking.participants + additional_participants
+            if total_participants > 4:
+                return Response({
+                    'code': 0,
+                    'message': f'Cannot add {additional_participants} participants. Maximum 4 participants allowed.'
+                }, status=400)
+            
+            # Update booking with new participant count
+            old_participants = booking.participants
+            booking.participants = total_participants
+            booking.save()
+            
+            print(f"Successfully updated booking {booking.id}: {old_participants} -> {total_participants} participants")
+            
+            return Response({
+                'code': 1,
+                'message': f'Successfully added {additional_participants} participants',
+                'data': {
+                    'bookingId': booking.booking_id,
+                    'newTotalParticipants': total_participants,
+                    'previousParticipants': old_participants
+                }
+            })
+            
+        except Exception as e:
+            print(f"Error in add_participants: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'code': 0,
+                'message': f'Error adding participants: {str(e)}'
+            }, status=500)
+
+    @action(detail=True, methods=['post'])
+    def review_join_request(self, request, pk=None):
+        """Review and approve/reject a join request"""
+        try:
+            original_booking = get_object_or_404(BookingModel, id=pk, hideStatus=0)
+            action = request.data.get('action')
+            
+            if action not in ['approve', 'reject']:
+                return Response({
+                    'code': 0,
+                    'message': 'Action must be either "approve" or "reject"'
+                }, status=400)
+            
+            # Get the authenticated member from the request
+            try:
+                # Try to get member from the token
+                member_id = request.user.id if hasattr(request.user, 'id') else None
+                if not member_id:
+                    # Try to get from token payload
+                    auth_header = request.headers.get('Authorization', '')
+                    if auth_header.startswith('Bearer '):
+                        token = auth_header.split(' ')[1]
+                        # Decode token to get member_id
+                        from rest_framework_simplejwt.tokens import UntypedToken
+                        try:
+                            token_data = UntypedToken(token)
+                            member_id = token_data.get('member_id')
+                        except:
+                            pass
+                
+                if not member_id:
+                    return Response({
+                        'code': 0,
+                        'message': 'Authentication required'
+                    }, status=401)
+                
+                member = MemberModel.objects.get(id=member_id)
+            except MemberModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Member not found'
+                }, status=404)
+            
+            # Check if this is the original booker
+            if original_booking.member.id != member.id:
+                return Response({
+                    'code': 0,
+                    'message': 'Only the original booker can review join requests'
+                }, status=403)
+            
+            # Get the join request to review
+            join_request_id = request.data.get('join_request_id')
+            if not join_request_id:
+                return Response({
+                    'code': 0,
+                    'message': 'Join request ID is required'
+                }, status=400)
+            
+            try:
+                join_request = BookingModel.objects.get(
+                    id=join_request_id,
+                    original_booking=original_booking,
+                    is_join_request=True,
+                    status='pending_approval'
+                )
+            except BookingModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Join request not found'
+                }, status=404)
+            
+            if action == 'approve':
+                # Approve the join request
+                success = original_booking.approve_join_request(join_request_id, original_booking.member)
+                
+                if success:
+                    # Create approval notification
+                    NotificationModel.create_join_response_notification(
+                        recipient=join_request.member,
+                        sender=original_booking.member,
+                        booking=original_booking,
+                        is_approved=True
+                    )
+                    
+                    return Response({
+                        'code': 1,
+                        'message': 'Join request approved successfully',
+                        'data': {
+                            'action': 'approved',
+                            'joinRequestId': join_request.id,
+                            'newTotalParticipants': original_booking.slot_participant_count
+                        }
+                    })
+                else:
+                    return Response({
+                        'code': 0,
+                        'message': 'Failed to approve join request'
+                    }, status=400)
+            else:
+                # Reject the join request
+                success = original_booking.reject_join_request(join_request_id)
+                
+                if success:
+                    # Create rejection notification
+                    NotificationModel.create_join_response_notification(
+                        recipient=join_request.member,
+                        sender=original_booking.member,
+                        booking=original_booking,
+                        is_approved=False
+                    )
+                    
+                    return Response({
+                        'code': 1,
+                        'message': 'Join request rejected successfully',
+                        'data': {
+                            'action': 'rejected',
+                            'joinRequestId': join_request.id
+                        }
+                    })
+                else:
+                    return Response({
+                        'code': 0,
+                        'message': 'Failed to reject join request'
+                    }, status=400)
+                    
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error reviewing join request: {str(e)}'
+            }, status=500)
+
 
 class NotificationViewSet(viewsets.ModelViewSet):
     """ViewSet for managing notifications"""
@@ -2882,6 +3078,48 @@ class NotificationViewSet(viewsets.ModelViewSet):
                 'code': 0,
                 'message': 'Member not found'
             }, status=400)
+
+    @action(detail=False, methods=['GET'])
+    def header(self, request):
+        """Get notifications for header display (limited count)"""
+        try:
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                member = MemberModel.objects.get(email=request.user.email)
+                
+                # Get recent unread notifications (limit to 5)
+                notifications = NotificationModel.objects.filter(
+                    recipient=member,
+                    is_read=False,
+                    hideStatus=0
+                ).order_by('-createdAt')[:5]
+                
+                # Get total unread count
+                unread_count = NotificationModel.objects.filter(
+                    recipient=member,
+                    is_read=False,
+                    hideStatus=0
+                ).count()
+                
+                serializer = NotificationSerializer(notifications, many=True)
+                
+                return Response({
+                    'code': 1,
+                    'data': {
+                        'notifications': serializer.data,
+                        'unread_count': unread_count
+                    },
+                    'message': 'Header notifications retrieved successfully'
+                })
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=400)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving header notifications: {str(e)}'
+            }, status=500)
 
 
 class BlogViewSet(viewsets.ModelViewSet):
@@ -4246,4 +4484,133 @@ class FAQViewSet(viewsets.ModelViewSet):
             'message': 'Active FAQs retrieved successfully',
             'data': serializer.data
         })
+
+
+class OrdersViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing orders and order statistics"""
+    serializer_class = BookingSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get all bookings for the authenticated member"""
+        try:
+            member = MemberModel.objects.get(email=self.request.user.email)
+            return BookingModel.objects.filter(
+                member=member,
+                hideStatus=0
+            ).prefetch_related('tee__course').order_by('-createdAt')
+        except MemberModel.DoesNotExist:
+            return BookingModel.objects.none()
+
+    @action(detail=False, methods=['GET'])
+    def statistics(self, request):
+        """Get order statistics for the authenticated member"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Get all bookings for this member
+            all_bookings = BookingModel.objects.filter(
+                member=member,
+                hideStatus=0
+            ).prefetch_related('tee__course')
+            
+            # Get own confirmed bookings
+            own_confirmed = all_bookings.filter(
+                status='confirmed',
+                is_join_request=False
+            )
+            
+            # Get approved join requests
+            approved_requests = all_bookings.filter(
+                status='approved',
+                is_join_request=True
+            )
+            
+            # Get pending join requests (outgoing)
+            pending_requests = all_bookings.filter(
+                status='pending_approval',
+                is_join_request=True
+            )
+            
+            # Get cancelled bookings
+            cancelled_bookings = all_bookings.filter(status='cancelled')
+            
+            # Get incoming join requests that need review
+            incoming_requests = BookingModel.objects.filter(
+                original_booking__member=member,
+                is_join_request=True,
+                status='pending_approval',
+                hideStatus=0
+            )
+            
+            # Calculate statistics
+            total_bookings = all_bookings.count()
+            confirmed = own_confirmed.count() + approved_requests.count()
+            pending_requests_count = pending_requests.count()
+            requests_accepted = approved_requests.count()
+            actions_required = incoming_requests.count()
+            cancelled = cancelled_bookings.count()
+            
+            return Response({
+                'code': 1,
+                'message': 'Order statistics retrieved successfully',
+                'data': {
+                    'total': total_bookings,
+                    'confirmed': confirmed,
+                    'pendingRequests': pending_requests_count,
+                    'requestsAccepted': requests_accepted,
+                    'acceptRejectActions': actions_required,
+                    'cancelled': cancelled
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving order statistics: {str(e)}'
+            }, status=500)
+
+    @action(detail=False, methods=['GET'])
+    def by_status(self, request):
+        """Get orders filtered by status"""
+        try:
+            status = request.query_params.get('status', 'all')
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            queryset = self.get_queryset()
+            
+            if status == 'confirmed':
+                queryset = queryset.filter(
+                    Q(status='confirmed', is_join_request=False) |
+                    Q(status='approved', is_join_request=True)
+                )
+            elif status == 'pending_approval':
+                queryset = queryset.filter(
+                    status='pending_approval',
+                    is_join_request=True
+                )
+            elif status == 'approved':
+                queryset = queryset.filter(
+                    status='approved',
+                    is_join_request=True
+                )
+            elif status == 'cancelled':
+                queryset = queryset.filter(status='cancelled')
+            # 'all' shows everything (no additional filtering)
+            
+            serializer = self.get_serializer(queryset, many=True)
+            
+            return Response({
+                'code': 1,
+                'message': f'Orders filtered by {status} retrieved successfully',
+                'data': serializer.data,
+                'count': queryset.count()
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error filtering orders: {str(e)}'
+            }, status=500)
 
