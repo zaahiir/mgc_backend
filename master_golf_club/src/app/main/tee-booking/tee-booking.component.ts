@@ -388,9 +388,17 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Date management
   setMinimumDate(): void {
-    const today = this.getCurrentDateUK();
-    if (this.selectedDate < today) {
-      this.selectedDate = today;
+    // Use consistent UK timezone date comparison
+    const now = new Date();
+    const ukNow = this.convertToUKTime(now);
+    const todayStart = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    
+    const ukSelectedDate = this.convertToUKTime(this.selectedDate);
+    const selectedDateStart = new Date(ukSelectedDate.getFullYear(), ukSelectedDate.getMonth(), ukSelectedDate.getDate());
+    
+    if (selectedDateStart < todayStart) {
+      this.selectedDate = new Date(todayStart);
+      console.log('Minimum date set to today:', this.selectedDate.toISOString());
     }
   }
 
@@ -493,24 +501,45 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   isToday(date: Date): boolean {
-    const today = this.getCurrentDateUK();
-    return date.toDateString() === today.toDateString();
+    // Use the same reliable date comparison logic
+    const now = new Date();
+    const ukNow = this.convertToUKTime(now);
+    const todayStart = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    
+    const ukDate = this.convertToUKTime(date);
+    const dateStart = new Date(ukDate.getFullYear(), ukDate.getMonth(), ukDate.getDate());
+    
+    return dateStart.getTime() === todayStart.getTime();
   }
 
   isSelectedDateToday(): boolean {
-    return this.selectedDate && this.isTodayUK(this.selectedDate);
+    if (!this.selectedDate) return false;
+    
+    // Use the same reliable date comparison logic as filterTimeSlotsForDate
+    const now = new Date();
+    const ukNow = this.convertToUKTime(now);
+    const todayStart = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    
+    const ukSelectedDate = this.convertToUKTime(this.selectedDate);
+    const selectedDateStart = new Date(ukSelectedDate.getFullYear(), ukSelectedDate.getMonth(), ukSelectedDate.getDate());
+    
+    return selectedDateStart.getTime() === todayStart.getTime();
   }
 
   isDayAvailable(date: Date): boolean {
-    const today = this.getCurrentDateUK();
-    today.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
+    // Use consistent UK timezone date comparison
+    const now = new Date();
+    const ukNow = this.convertToUKTime(now);
+    const todayStart = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    
+    const ukDate = this.convertToUKTime(date);
+    const dateStart = new Date(ukDate.getFullYear(), ukDate.getMonth(), ukDate.getDate());
     
     // Only allow next 7 days from today (including today)
-    const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + 6);
+    const maxDate = new Date(todayStart);
+    maxDate.setDate(todayStart.getDate() + 6);
     
-    return date >= today && date <= maxDate;
+    return dateStart >= todayStart && dateStart <= maxDate;
   }
 
   // Time slot management
@@ -568,11 +597,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.currentTimeSlots = filteredSlots.map((slot: any) => {
           // Always use the current selected date for slot_date to ensure proper date matching
           const slotDate = this.formatDateForBackendUK(this.selectedDate);
-          const formattedSlotDate = this.selectedDate.toLocaleDateString('en-US', { 
-            day: '2-digit', 
-            month: 'long', 
-            year: 'numeric' 
-          });
+          const formattedSlotDate = this.formatDateForDisplayUK(this.selectedDate);
           
           const mappedSlot = {
             time: slot.time,
@@ -626,24 +651,31 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       return [];
     }
     
-    const today = this.getCurrentDateUK();
-    today.setHours(0, 0, 0, 0);
+    // Get current UK date (start of day)
+    const now = new Date();
+    const ukNow = this.convertToUKTime(now);
+    const todayStart = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
     
-    const selectedDate = new Date(this.selectedDate);
-    selectedDate.setHours(0, 0, 0, 0);
+    // Get selected date (start of day) in UK timezone
+    const ukSelectedDate = this.convertToUKTime(this.selectedDate);
+    const selectedDateStart = new Date(ukSelectedDate.getFullYear(), ukSelectedDate.getMonth(), ukSelectedDate.getDate());
     
-    const isToday = this.isTodayUK(selectedDate);
+    // Compare dates using time values (more reliable than toDateString)
+    const isToday = selectedDateStart.getTime() === todayStart.getTime();
+    
+    console.log(`Slot filtering: Selected date: ${this.selectedDate.toISOString()}, UK: ${ukSelectedDate.toISOString()}, Is today: ${isToday}`);
     
     if (!isToday) {
-      // For all future dates, show all slots
+      // For all future dates, show all slots (no filtering)
+      console.log('Future date detected - showing all slots without time filtering');
       return slots;
     }
     
     // Only for today, filter out slots that have already passed
-    const now = this.getCurrentDateUK();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
+    console.log('Today detected - filtering slots after current time');
+    const currentTime = ukNow.getHours() * 60 + ukNow.getMinutes();
     
-    return slots.filter((slot: any) => {
+    const filteredSlots = slots.filter((slot: any) => {
       if (!slot || !slot.time) {
         return false;
       }
@@ -655,8 +687,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       const slotDuration = 8;
       const roundedCurrentTime = Math.ceil(currentTime / slotDuration) * slotDuration;
       
-      return slotTimeInMinutes >= roundedCurrentTime;
+      const isAvailable = slotTimeInMinutes >= roundedCurrentTime;
+      
+      if (!isAvailable) {
+        console.log(`Filtering out slot ${slot.time} (${slotTimeInMinutes} < ${roundedCurrentTime})`);
+      }
+      
+      return isAvailable;
     });
+    
+    console.log(`Filtered ${slots.length} slots to ${filteredSlots.length} available slots for today`);
+    
+    return filteredSlots;
   }
 
   // Slot selection methods
@@ -1109,7 +1151,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             participants: slot.participants,
             status: 'confirmed',
             created_at: new Date().toISOString(),
-            formatted_created_date: new Date().toLocaleDateString(),
+            formatted_created_date: this.formatDateForDisplayUK(new Date()),
             tee: {
               holeNumber: slot.tee.holeNumber
             },
@@ -1970,16 +2012,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
 
     try {
-      // Simple approach: create a new date using UK timezone string
-      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      const ukDate = new Date(ukDateString);
+      // Get current UK timezone offset (handles GMT/BST automatically)
+      const now = new Date();
+      const ukOffset = this.getUKTimezoneOffset(now);
       
-      if (isNaN(ukDate.getTime())) {
-        console.error('Failed to create UK date from string:', ukDateString);
-        return date; // Fallback to original date
-      }
+      // Create UK date by applying the offset
+      const ukDate = new Date(date.getTime() + (ukOffset * 60000));
       
-      console.log(`Timezone conversion: Local: ${date.toISOString()}, UK: ${ukDate.toISOString()}`);
+      console.log(`Timezone conversion: Local: ${date.toISOString()}, UK: ${ukDate.toISOString()}, Offset: ${ukOffset} minutes`);
       
       return ukDate;
     } catch (error) {
@@ -1994,26 +2034,42 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
    */
   private getUKTimezoneOffset(date: Date): number {
     try {
-      // Get the date in UK timezone
-      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      const ukDate = new Date(ukDateString);
+      // Use Intl.DateTimeFormat to get timezone offset reliably
+      const utcDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+      const ukFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/London',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
       
-      if (isNaN(ukDate.getTime())) {
-        console.error('Invalid UK date created:', ukDateString);
-        return 0;
-      }
+      const ukParts = ukFormatter.formatToParts(utcDate);
+      const ukDate = new Date(
+        parseInt(ukParts.find(p => p.type === 'year')?.value || '0'),
+        parseInt(ukParts.find(p => p.type === 'month')?.value || '1') - 1,
+        parseInt(ukParts.find(p => p.type === 'day')?.value || '1'),
+        parseInt(ukParts.find(p => p.type === 'hour')?.value || '0'),
+        parseInt(ukParts.find(p => p.type === 'minute')?.value || '0'),
+        parseInt(ukParts.find(p => p.type === 'second')?.value || '0')
+      );
       
       // Calculate offset in minutes
-      const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
-      const ukTime = ukDate.getTime();
-      const offset = (ukTime - utcTime) / 60000;
+      const offset = (ukDate.getTime() - utcDate.getTime()) / 60000;
       
       console.log(`UK timezone offset for ${date.toISOString()}: ${offset} minutes`);
       
       return offset;
     } catch (error) {
       console.error('Error in getUKTimezoneOffset:', error);
-      return 0;
+      // Fallback: UK is typically UTC+0 (GMT) or UTC+1 (BST)
+      // Check if it's summer time (BST) - roughly March to October
+      const month = date.getMonth() + 1; // getMonth() returns 0-11
+      const isBST = month >= 3 && month <= 10;
+      return isBST ? 60 : 0; // 60 minutes for BST, 0 for GMT
     }
   }
 
@@ -2023,15 +2079,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
    */
   private formatDateForBackendUK(date: Date): string {
     try {
-      // Format date directly in UK timezone
-      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      const ukDate = new Date(ukDateString);
-      
-      if (isNaN(ukDate.getTime())) {
-        console.error('Failed to create UK date for formatting, using original date');
-        return date.toISOString().split('T')[0];
-      }
-      
+      // Convert to UK timezone using proper date arithmetic
+      const ukDate = this.convertToUKTime(date);
       const formattedDate = ukDate.toISOString().split('T')[0];
       
       console.log(`Date formatting: Original: ${date.toISOString()}, UK: ${ukDate.toISOString()}, Formatted: ${formattedDate}`);
@@ -2041,6 +2090,36 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       console.error('Error in formatDateForBackendUK:', error);
       // Fallback to original date formatting
       return date.toISOString().split('T')[0];
+    }
+  }
+
+  /**
+   * Format date for display in UK timezone with proper formatting
+   * This ensures consistent display formatting
+   */
+  private formatDateForDisplayUK(date: Date): string {
+    try {
+      // Convert to UK timezone using proper date arithmetic
+      const ukDate = this.convertToUKTime(date);
+      
+      // Format for display using UK locale
+      const formattedDate = ukDate.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      
+      console.log(`Display date formatting: Original: ${date.toISOString()}, UK: ${ukDate.toISOString()}, Formatted: ${formattedDate}`);
+      
+      return formattedDate;
+    } catch (error) {
+      console.error('Error in formatDateForDisplayUK:', error);
+      // Fallback to original date formatting
+      return date.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
     }
   }
 
@@ -2075,14 +2154,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     
     // Convert to UK time before getting the key
     try {
-      const ukDateString = dateObj.toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      const ukDate = new Date(ukDateString);
-      
-      if (isNaN(ukDate.getTime())) {
-        console.error('Failed to create UK date for key generation, using original date');
-        return dateObj.toISOString().split('T')[0];
-      }
-      
+      const ukDate = this.convertToUKTime(dateObj);
       const dateKey = ukDate.toISOString().split('T')[0];
       
       console.log(`Date key generation: Original: ${dateObj.toISOString()}, UK: ${ukDate.toISOString()}, Key: ${dateKey}`);
@@ -2099,17 +2171,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
    */
   private isTodayUK(date: Date): boolean {
     try {
-      // Get both dates in UK timezone
-      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      const ukTodayString = new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      
-      const ukDate = new Date(ukDateString);
-      const ukToday = new Date(ukTodayString);
-      
-      if (isNaN(ukDate.getTime()) || isNaN(ukToday.getTime())) {
-        console.error('Failed to create UK dates for today check');
-        return false;
-      }
+      // Get both dates in UK timezone using our reliable conversion method
+      const ukDate = this.convertToUKTime(date);
+      const ukToday = this.convertToUKTime(new Date());
       
       const isToday = ukDate.toDateString() === ukToday.toDateString();
       
@@ -2127,14 +2191,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
    */
   private getCurrentDateUK(): Date {
     try {
-      // Get current date in UK timezone directly
-      const ukDateString = new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      const ukDate = new Date(ukDateString);
-      
-      if (isNaN(ukDate.getTime())) {
-        console.error('Failed to create UK current date, falling back to local date');
-        return new Date();
-      }
+      // Get current date in UK timezone using our reliable conversion method
+      const ukDate = this.convertToUKTime(new Date());
       
       console.log(`Current date: Local: ${new Date().toISOString()}, UK: ${ukDate.toISOString()}`);
       
@@ -2155,15 +2213,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       console.log('Current local timezone offset:', now.getTimezoneOffset(), 'minutes');
       
       // Test UK timezone conversion safely
-      const ukDateString = now.toLocaleString('en-GB', { timeZone: 'Europe/London' });
-      const ukDate = new Date(ukDateString);
+      const ukDate = this.convertToUKTime(now);
       console.log('Current UK time:', ukDate.toISOString());
       
       if (this.selectedDate) {
         console.log('Selected date local:', this.selectedDate.toISOString());
         
-        const ukSelectedString = this.selectedDate.toLocaleString('en-GB', { timeZone: 'Europe/London' });
-        const ukSelected = new Date(ukSelectedString);
+        const ukSelected = this.convertToUKTime(this.selectedDate);
         console.log('Selected date UK:', ukSelected.toISOString());
         
         const dateKeyLocal = this.selectedDate.toISOString().split('T')[0];
@@ -2174,9 +2230,56 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         console.log('  Match:', dateKeyLocal === dateKeyUK);
       }
       
+      // Test specific date formatting
+      const testDate = new Date('2025-08-26T06:00:00.000Z');
+      const ukTestDate = this.convertToUKTime(testDate);
+      const formattedTestDate = this.formatDateForBackendUK(testDate);
+      console.log('Test date formatting:');
+      console.log('  Original:', testDate.toISOString());
+      console.log('  UK converted:', ukTestDate.toISOString());
+      console.log('  Formatted for backend:', formattedTestDate);
+      
       console.log('=== END TIMEZONE DEBUG INFO ===');
     } catch (error) {
       console.error('Error in debugTimezoneInfo:', error);
+    }
+  }
+
+  // Debug method to test date filtering logic
+  debugDateFiltering(): void {
+    try {
+      console.log('=== DATE FILTERING DEBUG ===');
+      
+      const now = new Date();
+      const ukNow = this.convertToUKTime(now);
+      const todayStart = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+      
+      console.log('Current time analysis:');
+      console.log('  Local now:', now.toISOString());
+      console.log('  UK now:', ukNow.toISOString());
+      console.log('  UK today start:', todayStart.toISOString());
+      
+      if (this.selectedDate) {
+        const ukSelectedDate = this.convertToUKTime(this.selectedDate);
+        const selectedDateStart = new Date(ukSelectedDate.getFullYear(), ukSelectedDate.getMonth(), ukSelectedDate.getDate());
+        
+        const isToday = selectedDateStart.getTime() === todayStart.getTime();
+        
+        console.log('Selected date analysis:');
+        console.log('  Selected date:', this.selectedDate.toISOString());
+        console.log('  UK selected date:', ukSelectedDate.toISOString());
+        console.log('  UK selected start:', selectedDateStart.toISOString());
+        console.log('  Is today:', isToday);
+        console.log('  Date comparison:', {
+          selectedTime: selectedDateStart.getTime(),
+          todayTime: todayStart.getTime(),
+          difference: selectedDateStart.getTime() - todayStart.getTime()
+        });
+      }
+      
+      console.log('=== END DATE FILTERING DEBUG ===');
+    } catch (error) {
+      console.error('Error in debugDateFiltering:', error);
     }
   }
 }
