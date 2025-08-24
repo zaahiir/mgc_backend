@@ -209,9 +209,9 @@
                        style="cursor: pointer;">
                     <div class="slot-detail-header">
                       <span class="slot-number">Slot {{i + 1}}</span>
-                                             <button class="clear-slot-btn" (click)="deselectSlotFromSummary(slot); $event.stopPropagation()" title="Remove this slot">
-                         ×
-                       </button>
+                      <button class="clear-slot-btn" (click)="deselectSlotFromSummary(slot); $event.stopPropagation()" title="Remove this slot">
+                        ×
+                      </button>
                     </div>
                     <div class="slot-detail-content">
                       <div class="slot-detail-row">
@@ -225,6 +225,22 @@
                       <div class="slot-detail-row">
                         <span class="label">Participants:</span>
                         <span class="value">{{slot.participants}} player{{slot.participants > 1 ? 's' : ''}}</span>
+                      </div>
+                      <!-- Show status for partially available slots -->
+                      <div class="slot-detail-row" *ngIf="slot.isJoinRequest">
+                        <span class="label">Status:</span>
+                        <span class="value status-pending">PENDING REQUEST</span>
+                      </div>
+                      <!-- Show additional info for join requests -->
+                      <div class="slot-detail-row" *ngIf="slot.isJoinRequest && slot.currentParticipants">
+                        <span class="label">Slot Info:</span>
+                        <span class="value">{{slot.currentParticipants}}/4 participants ({{slot.availableSpots}} spots left)</span>
+                      </div>
+                      <!-- Show note for join requests -->
+                      <div class="slot-join-note" *ngIf="slot.isJoinRequest">
+                        <small class="join-request-info">
+                          ⚠️ This slot already has participants. Your request will be pending approval.
+                        </small>
                       </div>
                     </div>
                   </div>
@@ -464,6 +480,20 @@
               <span class="slot-info-label">Current Participants:</span>
               <span class="slot-info-value current-participants">{{currentSlotForModal.total_participants}}/4</span>
             </div>
+            <!-- Show additional info for partially available slots -->
+            <div class="slot-info-item" *ngIf="currentSlotForModal?.slot_status === 'partially_available'">
+              <span class="slot-info-label">Slot Type:</span>
+              <span class="slot-info-value slot-type-warning">
+                ⚠️ Join Request (Pending Approval)
+              </span>
+            </div>
+            <!-- Show note for partially available slots -->
+            <div class="slot-info-note" *ngIf="currentSlotForModal?.slot_status === 'partially_available'">
+              <div class="note-content">
+                <strong>Note:</strong> This slot already has {{currentSlotForModal.total_participants}} participant(s). 
+                If you select this slot, it will create a join request that needs approval from the original booker.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -542,7 +572,47 @@
 
         <div class="detail-item">
           <span class="label">Status:</span>
-          <span class="value status-pending">{{bookingConfirmationData.status || 'Pending'}}</span>
+          <span class="value" 
+                [class.status-confirmed]="bookingConfirmationData.status === 'Completed'"
+                [class.status-pending]="bookingConfirmationData.status === 'Mixed' || bookingConfirmationData.pendingCount > 0">
+            {{bookingConfirmationData.status || 'Pending'}}
+            <span *ngIf="bookingConfirmationData.pendingCount > 0" class="pending-count">
+              ({{bookingConfirmationData.pendingCount}} pending)
+            </span>
+          </span>
+        </div>
+        
+        <!-- Show separate status for each slot -->
+        <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
+          <span class="label">Slot Status:</span>
+          <div class="value slots-status-list">
+            <div class="slot-status-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
+              <div class="slot-status-row">
+                <div class="slot-status-main-info">
+                  <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
+                  <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
+                  <span class="slot-participants">{{slot.participants}}p</span>
+                </div>
+                <!-- Show status for each slot -->
+                <div class="slot-status-badge" 
+                     [class.status-confirmed]="slot.status === 'confirmed'"
+                     [class.status-pending]="slot.status === 'pending'">
+                  {{slot.status === 'confirmed' ? 'CONFIRMED' : 'PENDING REQUEST'}}
+                </div>
+                <!-- Show individual booking ID for each slot -->
+                <div class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
+                  <strong>ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
+                </div>
+              </div>
+              <!-- Show additional info for join requests -->
+              <div class="slot-join-info" *ngIf="slot.isJoinRequest">
+                <small class="join-request-note">
+                  ⚠️ This slot already has {{slot.originalSlotParticipants}} participant(s). 
+                  Your request is pending approval from the original booker.
+                </small>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       

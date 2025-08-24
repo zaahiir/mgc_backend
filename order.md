@@ -64,9 +64,14 @@ Available filter options:
 | MGCBK25AUG00089 | 24 Aug 25 | Pine Valley Golf Course | Tee 1 | 27 Aug 25 | 14:32 | 4 players | CONFIRMED | View Details |
 ```
 
-#### Pending Join Request
+#### Pending Join Request (Outgoing)
 ```
-| MGCBK25AUG00090 | 24 Aug 25 | Royal Golf Club | Tee 2 | 28 Aug 25 | 09:16 | 1 player | PENDING REQUEST | View Details |
+| MGCBK25AUG00002 | 24 Aug 25 | Pine Valley Golf Course | Tee 2 | 23 Aug 25 | 08:56 | 1 player | PENDING REQUEST | View Details |
+```
+
+#### Join Request Approved (Now Confirmed)
+```
+| MGCBK25AUG00002 | 24 Aug 25 | Pine Valley Golf Course | Tee 2 | 23 Aug 25 | 08:56 | 1 player | CONFIRMED | View Details |
 ```
 
 #### Incoming Join Request (Needs Action)
@@ -88,17 +93,20 @@ Available filter options:
 - **Action Button:** "View Details" (Blue/Gray button)
 - **Modal Trigger:** Opens "Booking Details" modal (read-only)
 
-### 4.3 CONFIRMED - Approved Join Request
+### 4.3 PENDING REQUEST - Join Request Awaiting Approval (Outgoing)
+- **Display:** Orange/Yellow "PENDING REQUEST" badge
+- **Participants:** Shows user's requested participant count for the slot
+- **Action Button:** "View Details" 
+- **Modal Content:** Shows request status, original booker info, and current slot occupancy
+- **Created When:** User selects partially available slot in tee booking
+- **Status Change:** Becomes "CONFIRMED" when approved, or gets removed when rejected
+
+### 4.4 CONFIRMED - Approved Join Request
 - **Display:** Green "CONFIRMED" badge
-- **Participants:** Shows user's participant count in the slot
+- **Participants:** Shows user's participant count in the slot (not total slot participants)
 - **Action Button:** "View Details"
 - **Note:** Cannot add more participants (not original booker)
-
-### 4.4 PENDING REQUEST - Join Request Awaiting Approval
-- **Display:** Orange/Yellow "PENDING REQUEST" badge
-- **Participants:** Shows requested participant count
-- **Action Button:** "View Details"
-- **Modal Content:** Shows request status and original booker info
+- **Previous Status:** Was "PENDING REQUEST" until approved by original booker
 
 ### 4.5 REVIEW REQUEST - Incoming Join Request
 - **Display:** Purple "REVIEW REQUEST" badge
@@ -178,7 +186,41 @@ Available filter options:
   - Slot returns to "partially available" status
   - Updates counters accordingly
 
-### 5.3 Booking Details Modal (Read-Only)
+### 5.4 Join Request Status Modal (Outgoing Pending Request)
+
+#### Modal Structure  
+```
+┌─────────────────────────────────────┐
+│         Join Request Status         │
+├─────────────────────────────────────┤
+│ Request ID: MGCBK25AUG00002        │
+│ Status: PENDING APPROVAL           │
+│ Requested: 24 Aug 25               │
+│                                    │
+│ Slot Details:                      │
+│ Course: Pine Valley Golf Course    │
+│ Tee: Tee 2                        │
+│ Date: 23 Aug 25                    │
+│ Time: 08:56                        │
+│                                    │
+│ Your Request: 1 participant        │
+│ Current Slot: 2/4 participants     │
+│ If Approved: 3/4 participants      │
+│                                    │
+│ Waiting for approval from:         │
+│ Original Booker (Anonymous)        │
+│                                    │
+│               [Close]              │
+└─────────────────────────────────────┘
+```
+
+#### Modal Logic for Pending Requests
+- **Read-only information** about the join request
+- **Shows current slot occupancy** and what it would be if approved
+- **Cannot modify** participant count once request is submitted
+- **Status updates** automatically when original booker approves/rejects
+
+### 5.5 Booking Details Modal (Read-Only)
 
 #### Modal Structure
 ```
@@ -193,11 +235,14 @@ Available filter options:
 │ Tee: Tee 1                         │
 │ Slot Date: 27 Aug 25               │
 │ Slot Time: 14:32                   │
-│ Participants: 4 players            │
+│ Your Participants: 2 players       │
+│ Total Slot: 4/4 players           │
 │                                    │
 │               [Close]              │
 └─────────────────────────────────────┘
 ```
+
+**Note:** For approved join requests, shows "Your Participants" vs "Total Slot" to clarify user's portion of the booking.
 
 ## 6. Dynamic Counter Update Logic
 
@@ -218,6 +263,7 @@ confirmed = ownBookings.filter(b => b.status === 'confirmed').length +
 ```javascript  
 pendingRequests = outgoingJoinRequests.filter(r => r.status === 'pending').length
 ```
+**Note:** These are join requests created when user selects partially available slots in tee booking
 
 #### REQUESTS ACCEPTED
 ```javascript
@@ -239,6 +285,8 @@ cancelled = allBookings.filter(b => b.status === 'cancelled').length
 - **Join Request Approval/Rejection:** Updates multiple counters
 - **Add Participants:** Updates participant display
 - **New Booking Creation:** Updates TOTAL and CONFIRMED
+- **Join Request Creation:** Updates PENDING REQUESTS counter (from partially available slot selection)
+- **Join Request Status Change:** Updates PENDING → CONFIRMED or removes from PENDING
 - **Booking Cancellation:** Updates CANCELLED and TOTAL
 - **Refresh Button:** Recalculates all counters
 
@@ -264,7 +312,21 @@ cancelled = allBookings.filter(b => b.status === 'cancelled').length
       "canAddParticipants": true
     }
   ],
-  "outgoingRequests": [...],
+  "outgoingRequests": [
+    {
+      "requestId": "MGCBK25AUG00002",
+      "originalBookingId": "MGCBK25AUG00001", 
+      "requestDate": "2025-08-24",
+      "courseName": "Pine Valley Golf Course",
+      "tee": "Tee 2", 
+      "slotDate": "2025-08-23",
+      "slotTime": "08:56",
+      "requestedParticipants": 1,
+      "currentSlotParticipants": 2,
+      "status": "pending", // pending, approved, rejected
+      "originalBookerInfo": "Anonymous" // Privacy protection
+    }
+  ],
   "incomingRequests": [...],
   "statistics": {
     "total": 8,

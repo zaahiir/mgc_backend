@@ -260,8 +260,15 @@ export class CollectionService {
   }
 
   // Join request methods
-  createJoinRequest(bookingData: BookingData) {
-    const url = `${this.apiUrl}booking/`;
+  createJoinRequest(joinRequestData: {
+    course: number;
+    tee: number;
+    slotDate: string;
+    bookingTime: string;
+    participants: number;
+    originalSlotParticipants: number;
+  }) {
+    const url = `${this.apiUrl}booking/create-join-request/`;
     const config: any = {};
     
     // Add authorization headers if available
@@ -272,7 +279,7 @@ export class CollectionService {
       };
     }
     
-    return axios.post(url, bookingData, config);
+    return axios.post(url, joinRequestData, config);
   }
 
   // Multi-slot booking method
@@ -516,6 +523,22 @@ export class CollectionService {
   // Get notifications for header
   getHeaderNotifications() {
     const url = `${this.apiUrl}notification/header/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  // Get join request status
+  getJoinRequestStatus(requestId: string) {
+    const url = `${this.apiUrl}booking/join-request/${requestId}/status/`;
     const config: any = {};
     
     // Add authorization headers if available

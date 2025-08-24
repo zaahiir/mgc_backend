@@ -82,6 +82,10 @@ interface SlotSelection {
   tee_id: number;
   tee_name: string;
   bookings?: BookingDetail[];
+  isJoinRequest?: boolean;
+  originalStatus?: string;
+  currentParticipants?: number;
+  availableSpots?: number;
 }
 
 interface BookingConfirmationData {
@@ -94,6 +98,9 @@ interface BookingConfirmationData {
     tee_name?: string;
     teeHoles?: number;
     teeId?: number;
+    status?: string;
+    isJoinRequest?: boolean;
+    originalSlotParticipants?: number;
   }>;
   courseName?: string;
   teeLabel?: string;
@@ -103,7 +110,7 @@ interface BookingConfirmationData {
   status?: string;
   // Individual slot booking details
   slotBookings?: Array<{
-    id: number;
+    id: number | string;
     booking_id: string;
     slot_date: string;
     booking_time: string;
@@ -117,8 +124,12 @@ interface BookingConfirmationData {
     course: {
       courseName: string;
     };
+    isJoinRequest?: boolean;
+    originalSlotParticipants?: number;
   }>;
   individualBookingIds?: string[];
+  confirmedCount?: number;
+  pendingCount?: number;
 }
 
 interface CalendarDay {
@@ -815,8 +826,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       if (existingSlotIndex !== -1) {
         // Update existing slot
         this.selectedSlots[existingSlotIndex].participants = this.currentSlotParticipants;
+        // Update the slot type based on original status
+        this.selectedSlots[existingSlotIndex].isJoinRequest = slot.slot_status === 'partially_available';
+        this.selectedSlots[existingSlotIndex].originalStatus = slot.slot_status;
+        this.selectedSlots[existingSlotIndex].currentParticipants = slot.total_participants || 0;
       } else {
-        // Add new slot
+        // Add new slot with enhanced information for partially available slots
         const newSlot: SlotSelection = {
           time: slot.time,
           participants: this.currentSlotParticipants,
@@ -824,7 +839,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           tee: this.selectedTee!,
           slot_date: slot.slot_date || this.getDateKey(this.selectedDate),
           tee_id: slot.tee_id || this.selectedTee!.id,
-          tee_name: slot.tee_name || this.selectedTee!.label
+          tee_name: slot.tee_name || this.selectedTee!.label,
+          // Enhanced properties for partially available slots
+          isJoinRequest: slot.slot_status === 'partially_available',
+          originalStatus: slot.slot_status,
+          currentParticipants: slot.total_participants || 0,
+          availableSpots: slot.available_spots || 4
         };
         
         this.selectedSlots.push(newSlot);
@@ -1049,11 +1069,23 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
     
     if (slot.isSelected) {
+      const selectedSlot = this.selectedSlots.find(s => 
+        s.time === slot.time &&
+        this.getDateKey(s.date) === this.getDateKey(new Date(slot.slot_date || '')) &&
+        s.tee_id === slot.tee_id
+      );
+      
+      if (selectedSlot && selectedSlot.isJoinRequest) {
+        return `Selected for Join Request: ${slot.participantCount || 0} participant${(slot.participantCount || 0) > 1 ? 's' : ''}\nThis will create a pending join request\nRight-click to deselect`;
+      }
+      
       return `Selected: ${slot.participantCount || 0} participant${(slot.participantCount || 0) > 1 ? 's' : ''}\nRight-click to deselect`;
     }
     
     if (slot.slot_status === 'partially_available') {
-      return `Partially Available: ${slot.available_spots || 0} spots left`;
+      const availableSpots = slot.available_spots || 0;
+      const currentParticipants = slot.total_participants || 0;
+      return `Partially Available: ${availableSpots} spots left (${currentParticipants}/4 participants)\nClick to join this slot`;
     }
     
     return `Available: ${slot.available_spots || 4} spots`;
@@ -1074,13 +1106,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
 
     try {
-      // Create individual bookings sequentially to avoid race conditions
+      // Separate slots by type: available vs partially available
+      const availableSlots = this.selectedSlots.filter(slot => slot.originalStatus === 'available');
+      const partiallyAvailableSlots = this.selectedSlots.filter(slot => slot.originalStatus === 'partially_available');
+      
       const successfulBookings = [];
       const failedBookings = [];
+      const joinRequests = [];
       
-      for (const slot of this.selectedSlots) {
+      // Process available slots (confirmed bookings)
+      for (const slot of availableSlots) {
         try {
-                            const bookingData = {
+          const bookingData = {
             course: this.course.id,
             tee: slot.tee_id,
             slotDate: typeof slot.date === 'string' ? slot.date : this.getDateKey(slot.date),
@@ -1091,34 +1128,112 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           const response = await this.collectionService.createBooking(bookingData);
           
           if (response && response.data && response.data.code === 1) {
-            successfulBookings.push(response);
+            successfulBookings.push({
+              ...response,
+              slotType: 'confirmed',
+              slot: slot
+            });
           } else {
             failedBookings.push({
               slot,
-              error: response?.data?.message || 'Unknown error'
+              error: response?.data?.message || 'Unknown error',
+              slotType: 'confirmed'
             });
           }
         } catch (error) {
-          console.error(`Error creating booking for slot ${slot.time}:`, error);
+          console.error(`Error creating confirmed booking for slot ${slot.time}:`, error);
           failedBookings.push({
             slot,
-            error: error instanceof Error ? error.message : 'Network error'
+            error: error instanceof Error ? error.message : 'Network error',
+            slotType: 'confirmed'
           });
         }
       }
       
-      if (successfulBookings.length === this.selectedSlots.length) {
-        this.successMessage = `Successfully created ${successfulBookings.length} individual booking(s)!`;
+      // Process partially available slots (join requests)
+      for (const slot of partiallyAvailableSlots) {
+        try {
+          // For partially available slots, create a join request
+          const joinRequestData = {
+            course: this.course.id,
+            tee: slot.tee_id,
+            slotDate: typeof slot.date === 'string' ? slot.date : this.getDateKey(slot.date),
+            bookingTime: slot.time,
+            participants: slot.participants,
+            originalSlotParticipants: slot.currentParticipants || 0
+          };
+          
+          const response = await this.collectionService.createJoinRequest(joinRequestData);
+          
+          if (response && response.data && response.data.code === 1) {
+            joinRequests.push({
+              ...response,
+              slotType: 'join_request',
+              slot: slot
+            });
+          } else {
+            failedBookings.push({
+              slot,
+              error: response?.data?.message || 'Failed to create join request',
+              slotType: 'join_request'
+            });
+          }
+        } catch (error) {
+          console.error(`Error creating join request for slot ${slot.time}:`, error);
+          failedBookings.push({
+            slot,
+            error: error instanceof Error ? error.message : 'Network error',
+            slotType: 'join_request'
+          });
+        }
+      }
+      
+      // Check if we have any successful operations
+      const totalSuccessful = successfulBookings.length + joinRequests.length;
+      
+      if (totalSuccessful > 0) {
+        // Prepare success message based on what was created
+        let successMessage = '';
+        if (successfulBookings.length > 0 && joinRequests.length > 0) {
+          successMessage = `Successfully created ${successfulBookings.length} confirmed booking(s) and ${joinRequests.length} join request(s)!`;
+        } else if (successfulBookings.length > 0) {
+          successMessage = `Successfully created ${successfulBookings.length} confirmed booking(s)!`;
+        } else {
+          successMessage = `Successfully created ${joinRequests.length} join request(s)!`;
+        }
+        
+        this.successMessage = successMessage;
         
         // Extract individual booking IDs and details
         const individualBookingIds = successfulBookings.map(response => 
           response.data.data.bookingId || response.data.data.booking_id || response.data.data.id
         );
         
-        const slotBookings = successfulBookings.map((response, index) => {
-          const slot = this.selectedSlots[index];
+        // Create slot bookings array with proper status
+        const slotBookings: Array<{
+          id: number | string;
+          booking_id: string;
+          slot_date: string;
+          booking_time: string;
+          participants: number;
+          status: string;
+          created_at: string;
+          formatted_created_date: string;
+          tee: {
+            holeNumber: number;
+          };
+          course: {
+            courseName: string;
+          };
+          isJoinRequest?: boolean;
+          originalSlotParticipants?: number;
+        }> = [];
+        
+        // Add confirmed bookings
+        successfulBookings.forEach((response, index) => {
+          const slot = availableSlots[index];
           const bookingData = response.data.data;
-          return {
+          slotBookings.push({
             id: bookingData.id,
             booking_id: bookingData.bookingId || bookingData.booking_id || bookingData.id,
             slot_date: slot.slot_date,
@@ -1133,14 +1248,38 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             course: {
               courseName: this.course.name
             }
-          };
+          });
+        });
+        
+        // Add join requests
+        joinRequests.forEach((response, index) => {
+          const slot = partiallyAvailableSlots[index];
+          const requestData = response.data.data;
+          slotBookings.push({
+            id: requestData.requestId,
+            booking_id: requestData.requestId,
+            slot_date: slot.slot_date,
+            booking_time: slot.time,
+            participants: slot.participants,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            formatted_created_date: this.formatDateForDisplayUK(new Date()),
+            tee: {
+              holeNumber: slot.tee.holeNumber
+            },
+            course: {
+              courseName: this.course.name
+            },
+            isJoinRequest: true,
+            originalSlotParticipants: slot.currentParticipants || 0
+          });
         });
         
         this.bookingConfirmationData = {
           courseName: this.course.name,
           teeLabel: this.selectedTee?.label,
           date: this.selectedDate,
-          totalSlots: successfulBookings.length,
+          totalSlots: totalSuccessful,
           selectedSlots: this.selectedSlots.map(slot => ({
             time: slot.time,
             participants: slot.participants,
@@ -1148,34 +1287,29 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             tee: slot.tee_name,
             tee_name: slot.tee_name,
             teeHoles: slot.tee.holeNumber,
-            teeId: slot.tee_id
+            teeId: slot.tee_id,
+            status: slot.isJoinRequest ? 'pending' : 'confirmed',
+            isJoinRequest: slot.isJoinRequest,
+            originalSlotParticipants: slot.currentParticipants || 0
           })),
-          status: 'Completed',
+          status: joinRequests.length > 0 ? 'Mixed' : 'Completed',
           // Individual slot booking details
           slotBookings: slotBookings,
-          individualBookingIds: individualBookingIds
+          individualBookingIds: individualBookingIds,
+          // Separate counts for display
+          confirmedCount: successfulBookings.length,
+          pendingCount: joinRequests.length
         };
         
         this.showBookingModal = true;
       } else {
-        // Some bookings failed
-        const failedCount = failedBookings.length;
-        const successCount = successfulBookings.length;
-        
-        if (successCount > 0) {
-          // Partial success - show what succeeded and what failed
-          this.errorMessage = `${successCount} out of ${this.selectedSlots.length} bookings succeeded. ${failedCount} failed.`;
-          
-          // Show details of failed bookings
-          console.error('Failed bookings:', failedBookings);
-        } else {
-          // All bookings failed
-          this.errorMessage = 'All bookings failed. Please try again.';
-        }
+        // All operations failed
+        this.errorMessage = 'All booking operations failed. Please try again.';
+        console.error('Failed bookings:', failedBookings);
       }
     } catch (error) {
-      console.error('Error creating individual slot bookings:', error);
-      this.errorMessage = 'Failed to create slot bookings. Please try again.';
+      console.error('Error creating bookings:', error);
+      this.errorMessage = 'Failed to create bookings. Please try again.';
     } finally {
       this.isLoading = false;
     }
