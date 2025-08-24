@@ -64,7 +64,13 @@
                 <button class="btn btn-sm btn-secondary" (click)="debugSessionStorage()" style="margin-right: 5px;">Debug Storage</button>
                 <button class="btn btn-sm btn-warning" (click)="clearAllSelectionsManually()" style="margin-right: 5px;">Clear All</button>
                 <button class="btn btn-sm btn-info" (click)="debugComponentState()" style="margin-right: 5px;">Debug State</button>
-                <button class="btn btn-sm btn-success" (click)="validateSessionStorage()">Validate</button>
+                <button class="btn btn-sm btn-success" (click)="validateSessionStorage()" style="margin-right: 5px;">Validate</button>
+                <button class="btn btn-sm btn-outline-warning" (click)="debugSlotVisualState()" style="margin-right: 5px;">Visual State</button>
+                <button class="btn btn-sm btn-outline-info" (click)="debugForceSlotUpdate()" style="margin-right: 5px;">Force Update</button>
+                <button class="btn btn-sm btn-outline-success" (click)="debugSelectSpecificSlot('06:00')" style="margin-right: 5px;">Select 06:00</button>
+                <button class="btn btn-sm btn-outline-danger" (click)="debugCSSClasses()" style="margin-right: 5px;">CSS Debug</button>
+                <button class="btn btn-sm btn-outline-primary" (click)="debugCreateTestSelection()" style="margin-right: 5px;">Create Test</button>
+                <button class="btn btn-sm btn-outline-dark" (click)="debugTimezoneInfo()">Timezone Debug</button>
               </div>
             </div>
 
@@ -82,6 +88,9 @@
                 <div class="date-info">
                   <span class="date-value">{{selectedDate | date:'MMM d, yyyy'}}</span>
                   <span class="date-day">{{selectedDate | date:'EEEE'}}</span>
+                  <small class="timezone-info" style="font-size: 0.8em; color: #666; display: block; margin-top: 2px;">
+                    Using UK timezone (Europe/London)
+                  </small>
                 </div>
                 <div class="calendar-toggle-icon">
                   <fa-icon [icon]="showCalendar ? chevronUpIcon : chevronDownIcon"></fa-icon>
@@ -146,12 +155,14 @@
               
               <div class="time-slots-container">
                 <div class="time-slots-grid">
-                  <button *ngFor="let slot of currentTimeSlots"
-                          class="time-slot"
-                          [class]="getSlotClass(slot)"
-                          [disabled]="slot.slot_status === 'booked' || !slot.available"
-                          (click)="selectSlot(slot)"
-                          [title]="getSlotTooltip(slot)">
+                                                        <button *ngFor="let slot of currentTimeSlots"
+                            class="time-slot"
+                            [class]="getSlotClass(slot)"
+                            [disabled]="slot.slot_status === 'booked' || !slot.available"
+                            (click)="toggleSlotSelection(slot)"
+                            (contextmenu)="deselectSlotDirect(slot); $event.preventDefault()"
+                            [title]="getSlotTooltip(slot) + (slot.isSelected ? ' (Right-click to deselect)' : '')"
+                            [attr.data-debug]="'isSelected:' + slot.isSelected + ', class:' + getSlotClass(slot)">
                     <div class="time-slot-content">
                       <span class="time">{{slot.time}}</span>
                       <div class="golf-ball" [class.available]="slot.slot_status === 'available'">
@@ -176,9 +187,6 @@
             <div class="booking-summary" *ngIf="canBook()">
               <div class="summary-header">
                 <h4>Booking Summary</h4>
-                <span class="summary-status">
-                  {{totalParticipants}} {{participantsText}}
-                </span>
               </div>
               
               <!-- Multi-Slot Booking Summary -->
@@ -213,9 +221,9 @@
                        style="cursor: pointer;">
                     <div class="slot-detail-header">
                       <span class="slot-number">Slot {{i + 1}}</span>
-                      <button class="clear-slot-btn" (click)="deselectSlot(slot); $event.stopPropagation()" title="Remove this slot">
-                        ×
-                      </button>
+                                             <button class="clear-slot-btn" (click)="deselectSlotFromSummary(slot); $event.stopPropagation()" title="Remove this slot">
+                         ×
+                       </button>
                     </div>
                     <div class="slot-detail-content">
                       <div class="slot-detail-row">
@@ -385,7 +393,7 @@
 </section>
 
 <!-- Slot Selection Modal (Integrated into booking flow) -->
-<div class="slot-modal-overlay" *ngIf="showSlotModal" (click)="closeSlotModal()">
+<div class="slot-modal-overlay" *ngIf="showSlotModal && currentSlotForModal" (click)="closeSlotModal()">
   <div class="slot-modal-content" (click)="$event.stopPropagation()">
     <div class="slot-modal-header">
       <h3 class="slot-modal-title">Slot Details</h3>
@@ -395,63 +403,95 @@
     </div>
     
     <div class="slot-modal-body" *ngIf="currentSlotForModal">
-      <!-- Participant Selector in Modal -->
-      <div class="slot-modal-section">
-        <div class="slot-modal-section-title">
-          <div class="slot-modal-section-icon">
-            <fa-icon [icon]="usersIcon"></fa-icon>
+      <!-- Loading state -->
+      <div *ngIf="!currentSlotForModal.formatted_time && !currentSlotForModal.time" class="loading-message">
+        <p>Loading slot details...</p>
+      </div>
+      
+      <!-- Slot content when data is available -->
+      <div *ngIf="currentSlotForModal.formatted_time || currentSlotForModal.time">
+        <!-- Participant Selector in Modal -->
+        <div class="slot-modal-section">
+          <div class="slot-modal-section-title">
+            <div class="slot-modal-section-icon">
+              <fa-icon [icon]="usersIcon"></fa-icon>
+            </div>
+            Add Participants
           </div>
-          Add Participants
-        </div>
-        <div class="player-selector modal-player-selector">
-          <button class="circle-btn" (click)="decrementModalParticipants()" [disabled]="currentSlotParticipants === 1">-</button>
-          <span class="player-count">{{currentSlotParticipants}}</span>
-          <button class="circle-btn" (click)="incrementModalParticipants()" [disabled]="currentSlotParticipants >= (currentSlotForModal.available_spots || 4)">+</button>
-        </div>
-                  <div class="slot-info-text small-text">
+          <div class="player-selector modal-player-selector">
+            <button class="circle-btn" (click)="decrementModalParticipants()" [disabled]="currentSlotParticipants === 1">-</button>
+            <span class="player-count">{{currentSlotParticipants}}</span>
+            <button class="circle-btn" (click)="incrementModalParticipants()" [disabled]="currentSlotParticipants >= (currentSlotForModal.available_spots || 4)">+</button>
+          </div>
+                    <div class="slot-info-text small-text">
             (Max: {{getMaxModalParticipants()}} participants)
           </div>
+        </div>
+
+        <!-- Slot Information Row -->
+        <div class="slot-modal-section">
+          <div class="slot-modal-section-title">
+            <div class="slot-modal-section-icon">
+              <fa-icon [icon]="golfIcon"></fa-icon>
+            </div>
+            Slot Information
+          </div>
+          <div class="slot-info-row">
+            <div class="slot-info-item">
+              <span class="slot-info-label">Course:</span>
+              <span class="slot-info-value course-name">{{course.name}}</span>
+            </div>
+            <div class="slot-info-item">
+              <span class="slot-info-label">Tee:</span>
+              <span class="slot-info-value tee-name">{{currentSlotForModal.tee_name || selectedTee?.label || (selectedTee?.holeNumber + ' Holes')}}</span>
+            </div>
+            <div class="slot-info-item">
+              <span class="slot-info-label">Date:</span>
+              <span class="slot-info-value slot-date">
+                {{currentSlotForModal.slot_date ? (currentSlotForModal.slot_date | date:'EEEE, MMMM d, yyyy') : (selectedDate | date:'EEEE, MMMM d, yyyy')}}
+              </span>
+            </div>
+            <div class="slot-info-item">
+              <span class="slot-info-label">Time:</span>
+              <span class="slot-info-value slot-time">{{currentSlotForModal?.formatted_time || currentSlotForModal?.time || 'N/A'}}</span>
+            </div>
+            <div class="slot-info-item">
+              <span class="slot-info-label">Status:</span>
+              <span class="slot-info-value slot-status" 
+                    [class.status-selected]="currentSlotForModal?.slot_status === 'selected'"
+                    [class.status-available]="currentSlotForModal?.slot_status === 'available'"
+                    [class.status-partial]="currentSlotForModal?.slot_status === 'partially_available'"
+                    [class.status-booked]="currentSlotForModal?.slot_status === 'booked'">
+                {{ 
+                  currentSlotForModal?.slot_status === 'selected' ? 'Selected' :
+                  (currentSlotForModal?.slot_status === 'available' ? 'Available' : 
+                  (currentSlotForModal?.slot_status === 'partially_available' ? 'Partially Available' : 
+                  (currentSlotForModal?.slot_status || (currentSlotForModal?.available ? 'Available' : 'Booked')))) 
+                }}
+              </span>
+            </div>
+            <div class="slot-info-item">
+              <span class="slot-info-label">Available Spots:</span>
+              <span class="slot-info-value available-spots">{{currentSlotForModal?.available_spots || 4}}</span>
+            </div>
+            <div class="slot-info-item">
+              <span class="slot-info-label">Current Participants:</span>
+              <span class="slot-info-value current-participants">{{currentSlotForModal.total_participants}}/4</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Slot Information Row -->
-      <div class="slot-modal-section">
-        <div class="slot-modal-section-title">
-          <div class="slot-modal-section-icon">
-            <fa-icon [icon]="golfIcon"></fa-icon>
-          </div>
-          Slot Information
+      <!-- Debug Information (remove in production) -->
+      <div class="slot-modal-section" style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 15px;">
+        <div class="slot-modal-section-title" style="font-size: 12px; color: #666;">
+          Debug Info (Raw Data)
         </div>
-        <div class="slot-info-row">
-          <div class="slot-info-item">
-            <span class="slot-info-label">Course:</span>
-            <span class="slot-info-value course-name">{{course.name}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Tee:</span>
-            <span class="slot-info-value tee-name">{{currentSlotForModal.tee_name || selectedTee?.label || (selectedTee?.holeNumber + ' Holes')}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Date:</span>
-            <span class="slot-info-value slot-date">
-              {{currentSlotForModal.slot_date ? (currentSlotForModal.slot_date | date:'EEEE, MMMM d, yyyy') : (selectedDate | date:'EEEE, MMMM d, yyyy')}}
-            </span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Time:</span>
-            <span class="slot-info-value slot-time">{{currentSlotForModal.formatted_time}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Status:</span>
-            <span class="slot-info-value slot-status">{{ currentSlotForModal.slot_status === 'available' ? 'Available' : (currentSlotForModal.slot_status === 'partially_available' ? 'Partially Available' : currentSlotForModal.slot_status) }}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Available Spots:</span>
-            <span class="slot-info-value available-spots">{{currentSlotForModal.available_spots}}</span>
-          </div>
-          <div class="slot-info-item">
-            <span class="slot-info-label">Current Participants:</span>
-            <span class="slot-info-value current-participants">{{currentSlotForModal.total_participants}}/4</span>
-          </div>
+        <div style="font-size: 11px; color: #888; font-family: monospace;">
+          <div>Time: {{currentSlotForModal?.time}} | Formatted: {{currentSlotForModal?.formatted_time}}</div>
+          <div>Status: {{currentSlotForModal?.slot_status}} | Available: {{currentSlotForModal?.available}} | IsSelected: {{isSlotAlreadySelected(currentSlotForModal)}}</div>
+          <div>Spots: {{currentSlotForModal?.available_spots}} | Participants: {{currentSlotForModal?.total_participants}}</div>
+          <div>Date: {{currentSlotForModal?.slot_date}} | Tee: {{currentSlotForModal?.tee_id}} - {{currentSlotForModal?.tee_name}}</div>
         </div>
       </div>
 
@@ -466,8 +506,8 @@
           Select Slot
         </button>
       </div>
+      </div>
     </div>
-  </div>
 </div>
 
 <!-- Booking Confirmation Modal -->

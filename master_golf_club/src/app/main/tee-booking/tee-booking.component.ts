@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -50,7 +50,7 @@ interface TimeSlot {
   formatted_time: string;
   bookings?: BookingDetail[];
   booking_count?: number;
-  slot_status?: 'available' | 'partially_available' | 'booked';
+  slot_status?: 'available' | 'partially_available' | 'booked' | 'selected';
   available_spots?: number;
   total_participants?: number;
   isSelected?: boolean;
@@ -239,7 +239,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     private collectionService: CollectionService,
     private route: ActivatedRoute,
     private router: Router,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -324,7 +325,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     // Store current selections before destroying component
     if (this.selectedDate && this.selectedTee) {
-      this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+      this.storeSelections();
     }
     
     // Remove the page unload event listener
@@ -366,9 +367,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   selectTee(tee: Tee): void {
     console.log('Tee selected:', tee);
     
-    // Store current tee's selected slots before switching
+    // Store current selections before switching
     if (this.selectedTee && this.selectedDate) {
-      this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+      this.storeSelections();
     }
     
     this.selectedTee = tee;
@@ -376,12 +377,18 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     // Load time slots if date is already selected
     if (this.selectedDate) {
       this.loadAvailableTimeSlots();
+      
+      // After loading time slots, restore any stored selections for the new tee
+      setTimeout(() => {
+        this.restoreSlotSelectionState();
+        this.forceSlotDisplayUpdate();
+      }, 100);
     }
   }
 
   // Date management
   setMinimumDate(): void {
-    const today = new Date();
+    const today = this.getCurrentDateUK();
     if (this.selectedDate < today) {
       this.selectedDate = today;
     }
@@ -444,20 +451,39 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   selectDate(date: Date): void {
     if (this.isDayAvailable(date)) {
-      console.log('Date selected:', date);
+      console.log('=== DATE SELECTION DEBUG ===');
+      console.log('Original selected date:', date);
+      console.log('Original date ISO string:', date.toISOString());
+      console.log('Original date local string:', date.toLocaleDateString());
       
-      // Store current date's selected slots before switching
+      // Store current selections before switching
       if (this.selectedDate && this.selectedTee) {
-        this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+        this.storeSelections();
       }
       
       this.selectedDate = new Date(date);
+      
+      // Log timezone conversion details
+      const ukDate = this.convertToUKTime(this.selectedDate);
+      console.log('Selected date in UK timezone:', ukDate);
+      console.log('UK date ISO string:', ukDate.toISOString());
+      console.log('UK date local string:', ukDate.toLocaleDateString());
+      console.log('=== END DATE SELECTION DEBUG ===');
+      
       this.showCalendar = false;
       
       // Load time slots if tee is already selected
       if (this.selectedTee) {
         this.loadAvailableTimeSlots();
       }
+      
+      // After loading time slots, restore any stored selections for the new date
+      setTimeout(() => {
+        if (this.selectedTee) {
+          this.restoreSlotSelectionState();
+          this.forceSlotDisplayUpdate();
+        }
+      }, 100);
     }
   }
 
@@ -467,16 +493,16 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   isToday(date: Date): boolean {
-    const today = new Date();
+    const today = this.getCurrentDateUK();
     return date.toDateString() === today.toDateString();
   }
 
   isSelectedDateToday(): boolean {
-    return this.selectedDate && this.isToday(this.selectedDate);
+    return this.selectedDate && this.isTodayUK(this.selectedDate);
   }
 
   isDayAvailable(date: Date): boolean {
-    const today = new Date();
+    const today = this.getCurrentDateUK();
     today.setHours(0, 0, 0, 0);
     date.setHours(0, 0, 0, 0);
     
@@ -498,14 +524,25 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
 
     try {
+      console.log('=== LOADING TIME SLOTS DEBUG ===');
+      console.log('Selected date object:', this.selectedDate);
+      console.log('Selected date ISO string:', this.selectedDate.toISOString());
+      console.log('Selected date local string:', this.selectedDate.toLocaleDateString());
+      
       const year = this.selectedDate.getFullYear();
       const month = String(this.selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(this.selectedDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
+      console.log('Date string being sent to backend:', dateStr);
+      
+      // Convert to UK timezone for backend
+      const ukDateStr = this.formatDateForBackendUK(this.selectedDate);
+      console.log('UK timezone date string for backend:', ukDateStr);
+      
       const response = await this.collectionService.getAvailableSlotsWithParticipants(
         this.course.id,
-        dateStr,
+        ukDateStr, // Use UK timezone date
         this.selectedTee.id,
         1 // Default participant count for slot display
       );
@@ -529,14 +566,15 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         const filteredSlots = this.filterTimeSlotsForDate(slots);
         
         this.currentTimeSlots = filteredSlots.map((slot: any) => {
-          const slotDate = slot.slot_date || this.formatDateForBackend(this.selectedDate);
-          const formattedSlotDate = slot.formatted_slot_date || this.selectedDate.toLocaleDateString('en-US', { 
+          // Always use the current selected date for slot_date to ensure proper date matching
+          const slotDate = this.formatDateForBackendUK(this.selectedDate);
+          const formattedSlotDate = this.selectedDate.toLocaleDateString('en-US', { 
             day: '2-digit', 
             month: 'long', 
             year: 'numeric' 
           });
           
-          return {
+          const mappedSlot = {
             time: slot.time,
             available: slot.available,
             formatted_time: slot.formatted_time,
@@ -550,10 +588,25 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             slot_date: slotDate,
             formatted_slot_date: formattedSlotDate
           };
+          
+          console.log(`Slot ${slot.time} mapped:`, {
+            original_slot_date: slot.slot_date,
+            mapped_slot_date: slotDate,
+            formatted_slot_date: formattedSlotDate
+          });
+          
+          return mappedSlot;
         });
 
         // Restore selection state for slots that were previously selected
         this.restoreSlotSelectionState();
+        
+        // Force update the display to ensure selections are visible
+        setTimeout(() => {
+          this.forceSlotDisplayUpdate();
+        }, 50);
+        
+        console.log('=== END LOADING TIME SLOTS DEBUG ===');
       } else {
         this.currentTimeSlots = [];
         this.errorMessage = response?.data?.message || 'Failed to load time slots';
@@ -573,13 +626,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       return [];
     }
     
-    const today = new Date();
+    const today = this.getCurrentDateUK();
     today.setHours(0, 0, 0, 0);
     
     const selectedDate = new Date(this.selectedDate);
     selectedDate.setHours(0, 0, 0, 0);
     
-    const isToday = selectedDate.getTime() === today.getTime();
+    const isToday = this.isTodayUK(selectedDate);
     
     if (!isToday) {
       // For all future dates, show all slots
@@ -587,7 +640,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
     
     // Only for today, filter out slots that have already passed
-    const now = new Date();
+    const now = this.getCurrentDateUK();
     const currentTime = now.getHours() * 60 + now.getMinutes();
     
     return slots.filter((slot: any) => {
@@ -616,8 +669,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     const isAlreadySelected = this.isSlotAlreadySelected(slot);
 
     if (isAlreadySelected) {
-      // If slot is already selected, open modal to allow modification
-      this.openSlotModal(slot);
+      // If slot is already selected, deselect it
+      this.deselectSlot(slot);
       return;
     }
 
@@ -628,22 +681,55 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     }
   }
 
-  private isSlotAlreadySelected(slot: TimeSlot): boolean {
+  // Toggle slot selection (for direct clicking on time slots)
+  toggleSlotSelection(slot: TimeSlot): void {
+    if (slot.slot_status === 'booked' || !slot.available) {
+      return;
+    }
+
+    const isAlreadySelected = this.isSlotAlreadySelected(slot);
+
+    if (isAlreadySelected) {
+      // If slot is already selected, open modal to allow modification
+      this.openSlotModal(slot);
+    } else {
+      // Select the slot
+      this.openSlotModal(slot);
+    }
+  }
+
+  // Deselect slot directly (for right-click or long-press)
+  deselectSlotDirect(slot: TimeSlot): void {
+    if (slot.slot_status === 'booked' || !slot.available) {
+      return;
+    }
+
+    const isAlreadySelected = this.isSlotAlreadySelected(slot);
+
+    if (isAlreadySelected) {
+      // Deselect the slot
+      this.deselectSlot(slot);
+    }
+  }
+
+  public isSlotAlreadySelected(slot: TimeSlot): boolean {
     if (!slot.slot_date || !slot.tee_id) {
       return false;
     }
 
-    const slotDateKey = this.getDateKey(new Date(slot.slot_date));
+    const slotDateKey = this.getDateKeyUK(new Date(slot.slot_date));
     const slotTeeId = slot.tee_id;
 
     return this.selectedSlots.some(selectedSlot => 
       selectedSlot.time === slot.time &&
-      this.getDateKey(selectedSlot.date) === slotDateKey &&
+      this.getDateKeyUK(selectedSlot.date) === slotDateKey &&
       selectedSlot.tee_id === slotTeeId
     );
   }
 
   openSlotModal(slot: TimeSlot): void {
+    console.log('Opening slot modal with slot:', slot);
+    
     const isAlreadySelected = this.isSlotAlreadySelected(slot);
     
     let requestedParticipants = 1;
@@ -651,7 +737,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     if (isAlreadySelected) {
       const selectedSlot = this.selectedSlots.find(s => 
         s.time === slot.time &&
-        this.getDateKey(s.date) === this.getDateKey(new Date(slot.slot_date || '')) &&
+        this.getDateKeyUK(s.date) === this.getDateKeyUK(new Date(slot.slot_date || '')) &&
         s.tee_id === slot.tee_id
       );
       if (selectedSlot) {
@@ -662,7 +748,20 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       requestedParticipants = Math.min(1, maxAllowed);
     }
     
-    this.currentSlotForModal = slot;
+    // Ensure all required properties are set for the modal
+    this.currentSlotForModal = {
+      ...slot,
+      formatted_time: slot.formatted_time || slot.time,
+      slot_status: isAlreadySelected ? 'selected' : (slot.slot_status || (slot.available ? 'available' : 'booked')),
+      available_spots: slot.available_spots || 4,
+      total_participants: slot.total_participants || 0,
+      slot_date: slot.slot_date || this.formatDateForBackendUK(this.selectedDate),
+      tee_id: slot.tee_id || this.selectedTee?.id,
+      tee_name: slot.tee_name || this.selectedTee?.label
+    };
+    
+    console.log('Modal slot data prepared:', this.currentSlotForModal);
+    
     this.currentSlotParticipants = requestedParticipants;
     this.showSlotModal = true;
   }
@@ -695,7 +794,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       // Check if this is an existing slot that needs to be updated
       const existingSlotIndex = this.selectedSlots.findIndex(s => 
         s.time === slot.time &&
-        this.getDateKey(s.date) === this.getDateKey(new Date(slot.slot_date || '')) &&
+        this.getDateKeyUK(s.date) === this.getDateKeyUK(new Date(slot.slot_date || '')) &&
         s.tee_id === slot.tee_id
       );
       
@@ -709,7 +808,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           participants: this.currentSlotParticipants,
           date: slot.slot_date ? new Date(slot.slot_date) : this.selectedDate,
           tee: this.selectedTee!,
-          slot_date: slot.slot_date || this.formatDateForBackend(this.selectedDate),
+          slot_date: slot.slot_date || this.formatDateForBackendUK(this.selectedDate),
           tee_id: slot.tee_id || this.selectedTee!.id,
           tee_name: slot.tee_name || this.selectedTee!.label
         };
@@ -717,34 +816,61 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         this.selectedSlots.push(newSlot);
       }
       
-      // Store the updated selections for current date and tee
-      if (this.selectedDate && this.selectedTee) {
-        this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
-      }
+             // Store the updated selections
+       if (this.selectedDate && this.selectedTee) {
+         this.storeSelections();
+       }
       
       this.closeSlotModal();
-      this.updateSlotDisplay();
+      
+      // Force immediate visual update of the slot display
+      this.forceSlotDisplayUpdate();
     }
   }
 
+  // Deselect slot from TimeSlot (used in time slot grid)
   deselectSlot(slot: TimeSlot): void {
     if (!slot.slot_date || !slot.tee_id) return;
     
-    const slotDateKey = this.getDateKey(new Date(slot.slot_date));
+    const slotDateKey = this.getDateKeyUK(new Date(slot.slot_date));
+    const slotTeeId = slot.tee_id;
+    
+    // Remove from selectedSlots
+    this.selectedSlots = this.selectedSlots.filter(s => 
+      !(s.time === slot.time &&
+        this.getDateKeyUK(s.date) === slotDateKey &&
+        s.tee_id === slotTeeId)
+    );
+    
+    // Update stored selections
+    if (this.selectedDate && this.selectedTee) {
+      this.storeSelections();
+    }
+    
+    // Force immediate visual update
+    this.forceSlotDisplayUpdate();
+  }
+
+  // Deselect slot from SlotSelection (used in booking summary)
+  deselectSlotFromSummary(slot: SlotSelection): void {
+    if (!slot.slot_date || !slot.tee_id) return;
+    
+    const slotDateKey = this.getDateKeyUK(new Date(slot.slot_date));
     const slotTeeId = slot.tee_id;
     
     this.selectedSlots = this.selectedSlots.filter(s => 
       !(s.time === slot.time &&
-        this.getDateKey(s.date) === slotDateKey &&
+        this.getDateKeyUK(s.date) === slotDateKey &&
         s.tee_id === slotTeeId)
     );
     
-    // Update stored selections for this date and tee
+    // Update stored selections
     if (this.selectedDate && this.selectedTee) {
-      this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+      this.storeSelections();
     }
     
-    this.updateSlotDisplay();
+    // Force immediate visual update
+    this.forceSlotDisplayUpdate();
   }
 
   // Helper methods
@@ -788,69 +914,34 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     return date.toISOString().split('T')[0];
   }
 
-  // Updated session storage methods for date-specific storage
-  private getSessionStorageKey(date: Date, teeId: number): string {
-    const dateKey = this.getDateKey(date);
-    return `tee_booking_selections_${dateKey}_${teeId}`;
-  }
-
-  private storeSelectionsForDateAndTee(date: Date, teeId: number): void {
-    const key = this.getSessionStorageKey(date, teeId);
-    const selectionsForDateAndTee = this.selectedSlots.filter(slot => 
-      this.getDateKey(slot.date) === this.getDateKey(date) && slot.tee_id === teeId
-    );
-    
-    if (selectionsForDateAndTee.length > 0) {
-      sessionStorage.setItem(key, JSON.stringify(selectionsForDateAndTee));
-      console.log(`Stored selections for date ${this.getDateKey(date)} and tee ${teeId}:`, selectionsForDateAndTee);
+  // Simple session storage for selections
+  private storeSelections(): void {
+    if (this.selectedSlots.length > 0) {
+      sessionStorage.setItem('tee_booking_selections', JSON.stringify(this.selectedSlots));
     } else {
-      sessionStorage.removeItem(key);
-      console.log(`Removed selections for date ${this.getDateKey(date)} and tee ${teeId}`);
+      sessionStorage.removeItem('tee_booking_selections');
     }
   }
 
   private loadStoredSelections(): void {
-    // Load all stored selections from session storage
-    this.selectedSlots = [];
-    
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && key.startsWith('tee_booking_selections_')) {
-        try {
-          const stored = sessionStorage.getItem(key);
-          if (stored) {
-            const selections = JSON.parse(stored);
-            // Convert date strings back to Date objects
-            const restoredSelections = selections.map((selection: any) => ({
-              ...selection,
-              date: new Date(selection.date)
-            }));
-            this.selectedSlots.push(...restoredSelections);
-            console.log(`Loaded stored selections from key ${key}:`, restoredSelections);
-          }
-        } catch (error) {
-          console.error('Error loading stored selections:', error);
-          // Remove corrupted data
-          sessionStorage.removeItem(key);
-        }
+    const stored = sessionStorage.getItem('tee_booking_selections');
+    if (stored) {
+      try {
+        const selections = JSON.parse(stored);
+        this.selectedSlots = selections.map((selection: any) => ({
+          ...selection,
+          date: new Date(selection.date)
+        }));
+        console.log('Loaded stored selections:', this.selectedSlots);
+      } catch (error) {
+        console.error('Error loading stored selections:', error);
+        sessionStorage.removeItem('tee_booking_selections');
       }
     }
-    
-    console.log('Total loaded selections:', this.selectedSlots);
   }
 
   private clearAllStoredSelections(): void {
-    // Clear all tee booking selections from session storage
-    const keysToRemove: string[] = [];
-    
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && key.startsWith('tee_booking_selections_')) {
-        keysToRemove.push(key);
-      }
-    }
-    
-    keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    sessionStorage.removeItem('tee_booking_selections');
   }
 
   private restoreSlotSelectionState(): void {
@@ -859,36 +950,61 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     // Reset all slots to unselected state
     this.currentTimeSlots.forEach(slot => {
       slot.isSelected = false;
-      slot.isMultiSelected = false;
       slot.participantCount = undefined;
     });
 
-    // Get selections for current date and tee
-    const dateSelectedSlots = this.selectedSlots.filter(slot => 
-      this.getDateKey(slot.date) === this.getDateKey(this.selectedDate) &&
-      slot.tee_id === this.selectedTee!.id
-    );
+    // Mark slots as selected based on selectedSlots array - ONLY for current date and tee
+    this.selectedSlots.forEach(selectedSlot => {
+      // Check if this selection matches the current date and tee
+      const selectedSlotDate = this.getDateKeyUK(selectedSlot.date);
+      const currentDate = this.getDateKeyUK(this.selectedDate);
+      const selectedSlotTeeId = selectedSlot.tee_id;
+      const currentTeeId = this.selectedTee?.id;
 
-    console.log(`Restoring slot selection state for date ${this.getDateKey(this.selectedDate)} and tee ${this.selectedTee.id}`);
-    console.log('Available slots:', this.currentTimeSlots.length);
-    console.log('Date-specific selections:', dateSelectedSlots);
-
-    // Mark slots as selected based on stored selections
-    dateSelectedSlots.forEach(selectedSlot => {
-      const currentSlot = this.currentTimeSlots.find(slot => slot.time === selectedSlot.time);
-      if (currentSlot) {
-        currentSlot.isSelected = true;
-        currentSlot.participantCount = selectedSlot.participants;
-        console.log(`Marked slot ${selectedSlot.time} as selected with ${selectedSlot.participants} participants`);
-      } else {
-        console.log(`Slot ${selectedSlot.time} not found in current time slots`);
+      if (selectedSlotDate === currentDate && selectedSlotTeeId === currentTeeId) {
+        const currentSlot = this.currentTimeSlots.find(slot => 
+          slot.time === selectedSlot.time
+        );
+        if (currentSlot) {
+          currentSlot.isSelected = true;
+          currentSlot.participantCount = selectedSlot.participants;
+        }
       }
     });
   }
 
-  private updateSlotDisplay(): void {
-    // Update the display to reflect current selections
-    this.restoreSlotSelectionState();
+  // Force immediate visual update of slot display
+  private forceSlotDisplayUpdate(): void {
+    if (!this.selectedDate || !this.selectedTee) return;
+    
+    // Reset all slots to unselected state first
+    this.currentTimeSlots.forEach(slot => {
+      slot.isSelected = false;
+      slot.participantCount = undefined;
+    });
+    
+    // Mark slots as selected based on selectedSlots array - ONLY for current date and tee
+    this.selectedSlots.forEach(selectedSlot => {
+      // Check if this selection matches the current date and tee
+      const selectedSlotDate = this.getDateKeyUK(selectedSlot.date);
+      const currentDate = this.getDateKeyUK(this.selectedDate);
+      const selectedSlotTeeId = selectedSlot.tee_id;
+      const currentTeeId = this.selectedTee?.id;
+
+      if (selectedSlotDate === currentDate && selectedSlotTeeId === currentTeeId) {
+        const currentSlot = this.currentTimeSlots.find(slot => 
+          slot.time === selectedSlot.time
+        );
+        
+        if (currentSlot) {
+          currentSlot.isSelected = true;
+          currentSlot.participantCount = selectedSlot.participants;
+        }
+      }
+    });
+    
+    // Force change detection to update the UI
+    this.cdr.detectChanges();
   }
 
   // Slot display methods
@@ -905,13 +1021,25 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   getSlotTooltip(slot: TimeSlot): string {
-    if (slot.bookings && slot.bookings.length > 0) {
-      const bookingDetails = slot.bookings.map(booking => 
-        `${booking.member_name} (${booking.participants} player${booking.participants > 1 ? 's' : ''}, ${booking.hole_number} holes)`
-      ).join('\n');
-      return `Booked:\n${bookingDetails}`;
+    if (slot.slot_status === 'booked' || !slot.available) {
+      if (slot.bookings && slot.bookings.length > 0) {
+        const bookingDetails = slot.bookings.map(booking => 
+          `${booking.member_name} (${booking.participants} player${booking.participants > 1 ? 's' : ''}, ${booking.hole_number} holes)`
+        ).join('\n');
+        return `Booked:\n${bookingDetails}`;
+      }
+      return 'Booked';
     }
-    return 'Available';
+    
+    if (slot.isSelected) {
+      return `Selected: ${slot.participantCount || 0} participant${(slot.participantCount || 0) > 1 ? 's' : ''}\nRight-click to deselect`;
+    }
+    
+    if (slot.slot_status === 'partially_available') {
+      return `Partially Available: ${slot.available_spots || 0} spots left`;
+    }
+    
+    return `Available: ${slot.available_spots || 4} spots`;
   }
 
   // Booking methods
@@ -935,13 +1063,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       
       for (const slot of this.selectedSlots) {
         try {
-          const bookingData = {
-            course: this.course.id,
-            tee: slot.tee_id,
-            slotDate: typeof slot.date === 'string' ? slot.date : slot.date.toISOString().split('T')[0],
-            bookingTime: slot.time,
-            participants: slot.participants
-          };
+                  const bookingData = {
+          course: this.course.id,
+          tee: slot.tee_id,
+          slotDate: typeof slot.date === 'string' ? slot.date : this.formatDateForBackendUK(slot.date),
+          bookingTime: slot.time,
+          participants: slot.participants
+        };
           
           const response = await this.collectionService.createBooking(bookingData);
           
@@ -1114,13 +1242,31 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.selectedSlots = [];
     this.currentTimeSlots.forEach(slot => {
       slot.isSelected = false;
-      slot.isMultiSelected = false;
+      slot.participantCount = undefined;
     });
     
-    // Clear session storage for current date and tee
-    if (this.selectedDate && this.selectedTee) {
-      const key = this.getSessionStorageKey(this.selectedDate, this.selectedTee.id);
-      sessionStorage.removeItem(key);
+    // Clear session storage
+    this.clearAllStoredSelections();
+    
+    // Force immediate visual update
+    this.forceSlotDisplayUpdate();
+  }
+
+  // Clear selections for specific date and tee
+  clearSelectionsForDateAndTee(date: Date, teeId: number): void {
+    // Remove slots for specific date and tee
+    this.selectedSlots = this.selectedSlots.filter(slot => 
+      !(this.getDateKeyUK(slot.date) === this.getDateKeyUK(date) && slot.tee_id === teeId)
+    );
+    
+    // Store updated selections
+    this.storeSelections();
+    
+    // Update visual state if this is the current date and tee
+    if (this.selectedDate && this.selectedTee && 
+        this.getDateKeyUK(this.selectedDate) === this.getDateKeyUK(date) && 
+        this.selectedTee.id === teeId) {
+      this.forceSlotDisplayUpdate();
     }
   }
 
@@ -1278,7 +1424,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       if (document.visibilityState === 'hidden') {
         // Store current selections when page becomes hidden
         if (this.selectedDate && this.selectedTee) {
-          this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+          this.storeSelections();
         }
       }
     });
@@ -1315,7 +1461,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       if (event instanceof NavigationStart) {
         // Store current selections before navigating away
         if (this.selectedDate && this.selectedTee) {
-          this.storeSelectionsForDateAndTee(this.selectedDate, this.selectedTee.id);
+          this.storeSelections();
         }
       }
     });
@@ -1324,13 +1470,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // Add a method to debug current session storage state
   debugSessionStorage(): void {
     console.log('=== Session Storage Debug ===');
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && key.startsWith('tee_booking_selections_')) {
-        const value = sessionStorage.getItem(key);
-        console.log(`${key}:`, value ? JSON.parse(value) : 'null');
-      }
-    }
+    const key = 'tee_booking_selections';
+    const value = sessionStorage.getItem(key);
+    console.log(`${key}:`, value ? JSON.parse(value) : 'null');
     console.log('=== End Debug ===');
   }
 
@@ -1345,6 +1487,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       slot.participantCount = undefined;
     });
     console.log('All selections cleared');
+    
+    // Force immediate visual update
+    this.forceSlotDisplayUpdate();
   }
 
   // Add a method to debug current component state
@@ -1362,32 +1507,21 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     console.log('=== Session Storage Validation ===');
     
     // Check if all stored selections are consistent with component state
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && key.startsWith('tee_booking_selections_')) {
-        const value = sessionStorage.getItem(key);
-        if (value) {
-          try {
-            const storedSelections = JSON.parse(value);
-            const keyParts = key.split('_');
-            const dateKey = keyParts[3];
-            const teeId = parseInt(keyParts[4]);
-            
-            // Check if these selections exist in component state
-            const componentSelections = this.selectedSlots.filter(slot => 
-              this.getDateKey(slot.date) === dateKey && slot.tee_id === teeId
-            );
-            
-            if (storedSelections.length !== componentSelections.length) {
-              console.warn(`Inconsistency found for key ${key}:`, {
-                stored: storedSelections.length,
-                component: componentSelections.length
-              });
-            }
-          } catch (error) {
-            console.error(`Error parsing stored data for key ${key}:`, error);
-          }
+    const key = 'tee_booking_selections';
+    const value = sessionStorage.getItem(key);
+    if (value) {
+      try {
+        const storedSelections = JSON.parse(value);
+        
+        // Check if these selections exist in component state
+        if (storedSelections.length !== this.selectedSlots.length) {
+          console.warn(`Inconsistency found for key ${key}:`, {
+            stored: storedSelections.length,
+            component: this.selectedSlots.length
+          });
         }
+      } catch (error) {
+        console.error(`Error parsing stored data for key ${key}:`, error);
       }
     }
     console.log('=== End Validation ===');
@@ -1396,7 +1530,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // Add a method to get selections for a specific date and tee
   getSelectionsForDateAndTee(date: Date, teeId: number): SlotSelection[] {
     return this.selectedSlots.filter(slot => 
-      this.getDateKey(slot.date) === this.getDateKey(date) && slot.tee_id === teeId
+      this.getDateKeyUK(slot.date) === this.getDateKeyUK(date) && slot.tee_id === teeId
     );
   }
 
@@ -1404,7 +1538,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   isSlotSelectedForDateAndTee(slotTime: string, date: Date, teeId: number): boolean {
     return this.selectedSlots.some(slot => 
       slot.time === slotTime &&
-      this.getDateKey(slot.date) === this.getDateKey(date) &&
+      this.getDateKeyUK(slot.date) === this.getDateKeyUK(date) &&
       slot.tee_id === teeId
     );
   }
@@ -1413,9 +1547,636 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   getParticipantCountForSlot(slotTime: string, date: Date, teeId: number): number {
     const selectedSlot = this.selectedSlots.find(slot => 
       slot.time === slotTime &&
-      this.getDateKey(slot.date) === this.getDateKey(date) &&
+      this.getDateKeyUK(slot.date) === this.getDateKeyUK(date) &&
       slot.tee_id === teeId
     );
     return selectedSlot ? selectedSlot.participants : 0;
+  }
+
+  // ===== DEBUG METHODS FOR SLOT SELECTION =====
+  
+  // Debug method to show the difference between date-specific selections and slot details
+  debugSlotDataFlow(): void {
+    console.log('=== SLOT DATA FLOW DEBUG ===');
+    
+    // 1. Show current component state
+    console.log('1. Current Component State:');
+    console.log('   - Selected Date:', this.selectedDate);
+    console.log('   - Selected Tee:', this.selectedTee);
+    console.log('   - Current Time Slots Count:', this.currentTimeSlots.length);
+    console.log('   - Selected Slots Count:', this.selectedSlots.length);
+    
+    // 2. Show current time slots (slot details from API)
+    console.log('2. Current Time Slots (Slot Details from API):');
+    this.currentTimeSlots.forEach((slot, index) => {
+      console.log(`   Slot ${index + 1}:`, {
+        time: slot.time,
+        available: slot.available,
+        slot_status: slot.slot_status,
+        available_spots: slot.available_spots,
+        total_participants: slot.total_participants,
+        slot_date: slot.slot_date,
+        tee_id: slot.tee_id,
+        tee_name: slot.tee_name,
+        isSelected: slot.isSelected,
+        participantCount: slot.participantCount
+      });
+    });
+    
+    // 3. Show selected slots (date-specific selections)
+    console.log('3. Selected Slots (Date-specific Selections):');
+    this.selectedSlots.forEach((slot, index) => {
+      console.log(`   Selection ${index + 1}:`, {
+        time: slot.time,
+        participants: slot.participants,
+        date: slot.date,
+        slot_date: slot.slot_date,
+        tee_id: slot.tee_id,
+        tee_name: slot.tee_name
+      });
+    });
+    
+    // 4. Show session storage state
+    console.log('4. Session Storage State:');
+    this.debugSessionStorage();
+    
+    // 5. Show data flow analysis
+    console.log('5. Data Flow Analysis:');
+    this.analyzeDataFlow();
+    
+    console.log('=== END SLOT DATA FLOW DEBUG ===');
+  }
+
+  // Analyze the data flow between different storage mechanisms
+  private analyzeDataFlow(): void {
+    console.log('   Data Flow Analysis:');
+    
+    // Check if current time slots match selected slots
+    const currentSlotTimes = this.currentTimeSlots.map(s => s.time);
+    const selectedSlotTimes = this.selectedSlots.map(s => s.time);
+    
+    console.log('   - Current slot times:', currentSlotTimes);
+    console.log('   - Selected slot times:', selectedSlotTimes);
+    
+    // Find mismatches
+    const missingInCurrent = selectedSlotTimes.filter(time => !currentSlotTimes.includes(time));
+    const missingInSelected = currentSlotTimes.filter(time => !selectedSlotTimes.includes(time));
+    
+    if (missingInCurrent.length > 0) {
+      console.log('   - WARNING: Selected slots not in current time slots:', missingInCurrent);
+    }
+    
+    if (missingInSelected.length > 0) {
+      console.log('   - INFO: Current slots not selected:', missingInSelected);
+    }
+    
+    // Check selection state consistency
+    this.currentTimeSlots.forEach(slot => {
+      const isSelected = this.isSlotSelectedForDateAndTee(slot.time, this.selectedDate!, this.selectedTee!.id);
+      const participantCount = this.getParticipantCountForSlot(slot.time, this.selectedDate!, this.selectedTee!.id);
+      
+      if (slot.isSelected !== isSelected) {
+        console.log(`   - INCONSISTENCY: Slot ${slot.time} - isSelected: ${slot.isSelected}, should be: ${isSelected}`);
+      }
+      
+      if (slot.participantCount !== participantCount) {
+        console.log(`   - INCONSISTENCY: Slot ${slot.time} - participantCount: ${slot.participantCount}, should be: ${participantCount}`);
+      }
+    });
+  }
+
+  // Debug method to show slot selection state for a specific date and tee
+  debugSlotSelectionForDateAndTee(date: Date, teeId: number): void {
+    console.log(`=== SLOT SELECTION DEBUG FOR DATE: ${this.getDateKeyUK(date)}, TEE: ${teeId} ===`);
+    
+    const selectionsForDateAndTee = this.getSelectionsForDateAndTee(date, teeId);
+    
+    console.log('1. Component State Selections:');
+    console.log('   - Total selected slots:', this.selectedSlots.length);
+    console.log('   - Selections for this date/tee:', selectionsForDateAndTee);
+    
+    console.log('2. Session Storage:');
+    console.log('   - Using simplified storage key: tee_booking_selections');
+    const sessionData = sessionStorage.getItem('tee_booking_selections');
+    console.log('   - Data:', sessionData ? JSON.parse(sessionData) : 'null');
+    
+    console.log('3. Current Time Slots State:');
+    this.currentTimeSlots.forEach(slot => {
+      const isSelected = this.isSlotSelectedForDateAndTee(slot.time, date, teeId);
+      const participantCount = this.getParticipantCountForSlot(slot.time, date, teeId);
+      
+      console.log(`   Slot ${slot.time}:`, {
+        available: slot.available,
+        slot_status: slot.slot_status,
+        isSelected: slot.isSelected,
+        participantCount: slot.participantCount,
+        shouldBeSelected: isSelected,
+        shouldHaveParticipants: participantCount
+      });
+    });
+    
+    console.log('=== END SLOT SELECTION DEBUG ===');
+  }
+
+  // Debug method to force refresh slot selection state
+  debugRefreshSlotSelectionState(): void {
+    console.log('=== FORCING SLOT SELECTION STATE REFRESH ===');
+    
+    if (!this.selectedDate || !this.selectedTee) {
+      console.log('No date or tee selected, cannot refresh');
+      return;
+    }
+    
+    console.log('Before refresh:');
+    this.debugSlotSelectionForDateAndTee(this.selectedDate, this.selectedTee.id);
+    
+    // Force refresh
+    this.restoreSlotSelectionState();
+    this.forceSlotDisplayUpdate();
+    
+    console.log('After refresh:');
+    this.debugSlotSelectionForDateAndTee(this.selectedDate, this.selectedTee.id);
+    
+    console.log('=== END FORCED REFRESH ===');
+  }
+
+  // Debug method to show all available data sources
+  debugAllDataSources(): void {
+    console.log('=== ALL DATA SOURCES DEBUG ===');
+    
+    console.log('1. Component Properties:');
+    console.log('   - selectedSlots:', this.selectedSlots);
+    console.log('   - currentTimeSlots:', this.currentTimeSlots);
+    console.log('   - selectedDate:', this.selectedDate);
+    console.log('   - selectedTee:', this.selectedTee);
+    
+    console.log('2. Session Storage Keys:');
+    console.log('   - Using simplified storage key: tee_booking_selections');
+    
+    console.log('3. API Data (if available):');
+    if (this.currentTimeSlots.length > 0) {
+      console.log('   - Sample slot from API:', this.currentTimeSlots[0]);
+    } else {
+      console.log('   - No API data loaded');
+    }
+    
+    console.log('4. Data Relationships:');
+    console.log('   - Selections stored in: selectedSlots array + sessionStorage');
+    console.log('   - Slot details stored in: currentTimeSlots array (from API)');
+    console.log('   - Selection state stored in: slot.isSelected and slot.participantCount');
+    
+    console.log('5. Session Storage Details:');
+    const key = 'tee_booking_selections';
+    const value = sessionStorage.getItem(key);
+    if (value) {
+      try {
+        const data = JSON.parse(value);
+        console.log(`   - ${key}:`, data);
+      } catch (error) {
+        console.log(`   - ${key}: Error parsing data`);
+      }
+    }
+    
+    console.log('=== END ALL DATA SOURCES DEBUG ===');
+  }
+
+  // Debug method to show slot visual state
+  debugSlotVisualState(): void {
+    console.log('=== SLOT VISUAL STATE DEBUG ===');
+    
+    if (!this.selectedDate || !this.selectedTee) {
+      console.log('No date or tee selected');
+      return;
+    }
+    
+    console.log('Current Date:', this.getDateKeyUK(this.selectedDate));
+    console.log('Current Tee ID:', this.selectedTee?.id);
+    
+    console.log('Current Time Slots Visual State:');
+    this.currentTimeSlots.forEach((slot, index) => {
+      const slotClass = this.getSlotClass(slot);
+      const isAlreadySelected = this.isSlotAlreadySelected(slot);
+      console.log(`Slot ${index + 1} (${slot.time}):`, {
+        time: slot.time,
+        isSelected: slot.isSelected,
+        participantCount: slot.participantCount,
+        slot_status: slot.slot_status,
+        available: slot.available,
+        slot_date: slot.slot_date,
+        tee_id: slot.tee_id,
+        appliedClass: slotClass,
+        shouldBeSelected: isAlreadySelected,
+        dateMatch: this.getDateKeyUK(slot.slot_date) === this.getDateKeyUK(this.selectedDate),
+        teeMatch: slot.tee_id === this.selectedTee?.id
+      });
+    });
+    
+    console.log('Selected Slots from Component State:');
+    const dateSelectedSlots = this.selectedSlots.filter(slot => 
+      this.getDateKeyUK(slot.date) === this.getDateKeyUK(this.selectedDate) &&
+      slot.tee_id === this.selectedTee?.id
+    );
+    
+    dateSelectedSlots.forEach((slot, index) => {
+      console.log(`Selected Slot ${index + 1}:`, {
+        time: slot.time,
+        participants: slot.participants,
+        date: slot.date,
+        slot_date: slot.slot_date,
+        tee_id: slot.tee_id
+      });
+    });
+    
+    console.log('=== END VISUAL STATE DEBUG ===');
+  }
+
+  // Debug method to manually force slot update
+  debugForceSlotUpdate(): void {
+    console.log('=== MANUALLY FORCING SLOT UPDATE ===');
+    
+    if (!this.selectedDate || !this.selectedTee) {
+      console.log('No date or tee selected, cannot force update');
+      return;
+    }
+    
+    console.log('Before force update:');
+    this.debugSlotVisualState();
+    
+    // Force the update
+    this.forceSlotDisplayUpdate();
+    
+    console.log('After force update:');
+    this.debugSlotVisualState();
+    
+    console.log('=== END FORCED UPDATE ===');
+  }
+
+  // Debug method to manually select a specific slot for testing
+  debugSelectSpecificSlot(slotTime: string): void {
+    console.log(`=== MANUALLY SELECTING SLOT: ${slotTime} ===`);
+    
+    if (!this.selectedDate || !this.selectedTee) {
+      console.log('No date or tee selected, cannot select slot');
+      return;
+    }
+    
+    // Find the slot in currentTimeSlots
+    const slot = this.currentTimeSlots.find(s => s.time === slotTime);
+    if (!slot) {
+      console.log(`Slot ${slotTime} not found in currentTimeSlots`);
+      return;
+    }
+    
+    console.log('Found slot:', slot);
+    
+    // Manually set it as selected
+    slot.isSelected = true;
+    slot.participantCount = 2; // Default to 2 participants
+    
+    // Add to selectedSlots array
+    const newSlot: SlotSelection = {
+      time: slot.time,
+      participants: 2,
+      date: this.selectedDate,
+      tee: this.selectedTee!,
+      slot_date: this.formatDateForBackendUK(this.selectedDate),
+      tee_id: this.selectedTee!.id,
+      tee_name: this.selectedTee!.label
+    };
+    
+    this.selectedSlots.push(newSlot);
+    
+    // Store in session storage
+    this.storeSelections();
+    
+    // Force update the display
+    this.forceSlotDisplayUpdate();
+    
+    console.log(`Slot ${slotTime} manually selected and added to selectedSlots`);
+    console.log('Current selectedSlots:', this.selectedSlots);
+    console.log('Slot isSelected state:', slot.isSelected);
+    
+    console.log('=== END MANUAL SELECTION ===');
+  }
+
+  // Debug method to check CSS classes and styling
+  debugCSSClasses(): void {
+    console.log('=== CSS CLASSES DEBUG ===');
+    
+    if (!this.selectedDate || !this.selectedTee) {
+      console.log('No date or tee selected');
+      return;
+    }
+    
+    console.log('Checking CSS classes for current slots:');
+    this.currentTimeSlots.forEach((slot, index) => {
+      const slotClass = this.getSlotClass(slot);
+      const isSelected = slot.isSelected;
+      const participantCount = slot.participantCount;
+      
+      console.log(`Slot ${index + 1} (${slot.time}):`, {
+        time: slot.time,
+        isSelected: isSelected,
+        participantCount: participantCount,
+        slot_status: slot.slot_status,
+        available: slot.available,
+        appliedClass: slotClass,
+        shouldShowSelectedColor: isSelected && slotClass === 'selected'
+      });
+    });
+    
+    // Check if selected slots exist in selectedSlots array
+    const dateSelectedSlots = this.selectedSlots.filter(slot => 
+      this.getDateKeyUK(slot.date) === this.getDateKeyUK(this.selectedDate) &&
+      slot.tee_id === this.selectedTee!.id
+    );
+    
+    console.log('Selected slots from selectedSlots array:', dateSelectedSlots);
+    
+    // Check for any mismatches
+    dateSelectedSlots.forEach(selectedSlot => {
+      const currentSlot = this.currentTimeSlots.find(slot => slot.time === selectedSlot.time);
+      if (currentSlot) {
+        if (!currentSlot.isSelected) {
+          console.log(`⚠️ MISMATCH: Slot ${selectedSlot.time} is in selectedSlots but not marked as selected in currentTimeSlots`);
+        }
+      } else {
+        console.log(`⚠️ MISSING: Slot ${selectedSlot.time} is in selectedSlots but not found in currentTimeSlots`);
+      }
+    });
+    
+    // Check session storage state
+    console.log('Session Storage State:');
+    console.log('Using simplified storage key: tee_booking_selections');
+    const sessionData = sessionStorage.getItem('tee_booking_selections');
+    console.log('Session Data:', sessionData ? JSON.parse(sessionData) : 'null');
+    
+    console.log('=== END CSS CLASSES DEBUG ===');
+  }
+
+  // Debug method to create a test selection and verify the system works
+  debugCreateTestSelection(): void {
+    console.log('=== CREATING TEST SELECTION ===');
+    
+    if (!this.selectedDate || !this.selectedTee) {
+      console.log('No date or tee selected, cannot create test selection');
+      return;
+    }
+    
+    if (this.currentTimeSlots.length === 0) {
+      console.log('No time slots available, cannot create test selection');
+      return;
+    }
+    
+    // Create a test selection for the first available slot
+    const testSlot = this.currentTimeSlots[0];
+    console.log('Creating test selection for slot:', testSlot.time);
+    
+    // Add to selectedSlots array
+    const newSlot: SlotSelection = {
+      time: testSlot.time,
+      participants: 2,
+      date: this.selectedDate,
+      tee: this.selectedTee!,
+      slot_date: this.formatDateForBackendUK(this.selectedDate),
+      tee_id: this.selectedTee!.id,
+      tee_name: this.selectedTee!.label
+    };
+    
+    this.selectedSlots.push(newSlot);
+    
+    // Store in session storage
+    this.storeSelections();
+    
+    // Force update the display
+    this.forceSlotDisplayUpdate();
+    
+    console.log('Test selection created successfully');
+    console.log('Current selectedSlots:', this.selectedSlots);
+    console.log('Session storage key: tee_booking_selections');
+    
+    console.log('=== END TEST SELECTION ===');
+  }
+
+  // Timezone utility methods
+  /**
+   * Convert a date to UK timezone (Europe/London)
+   * This ensures consistency with the backend which uses UK time
+   */
+  private convertToUKTime(date: Date): Date {
+    if (!date || isNaN(date.getTime())) {
+      console.error('Invalid date passed to convertToUKTime:', date);
+      return new Date();
+    }
+
+    try {
+      // Simple approach: create a new date using UK timezone string
+      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      const ukDate = new Date(ukDateString);
+      
+      if (isNaN(ukDate.getTime())) {
+        console.error('Failed to create UK date from string:', ukDateString);
+        return date; // Fallback to original date
+      }
+      
+      console.log(`Timezone conversion: Local: ${date.toISOString()}, UK: ${ukDate.toISOString()}`);
+      
+      return ukDate;
+    } catch (error) {
+      console.error('Error in convertToUKTime:', error);
+      return date; // Fallback to original date
+    }
+  }
+
+  /**
+   * Get UK timezone offset for a specific date
+   * UK switches between GMT (UTC+0) and BST (UTC+1)
+   */
+  private getUKTimezoneOffset(date: Date): number {
+    try {
+      // Get the date in UK timezone
+      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      const ukDate = new Date(ukDateString);
+      
+      if (isNaN(ukDate.getTime())) {
+        console.error('Invalid UK date created:', ukDateString);
+        return 0;
+      }
+      
+      // Calculate offset in minutes
+      const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+      const ukTime = ukDate.getTime();
+      const offset = (ukTime - utcTime) / 60000;
+      
+      console.log(`UK timezone offset for ${date.toISOString()}: ${offset} minutes`);
+      
+      return offset;
+    } catch (error) {
+      console.error('Error in getUKTimezoneOffset:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Format date for backend API calls in UK timezone
+   * This ensures the backend receives the correct date
+   */
+  private formatDateForBackendUK(date: Date): string {
+    try {
+      // Format date directly in UK timezone
+      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      const ukDate = new Date(ukDateString);
+      
+      if (isNaN(ukDate.getTime())) {
+        console.error('Failed to create UK date for formatting, using original date');
+        return date.toISOString().split('T')[0];
+      }
+      
+      const formattedDate = ukDate.toISOString().split('T')[0];
+      
+      console.log(`Date formatting: Original: ${date.toISOString()}, UK: ${ukDate.toISOString()}, Formatted: ${formattedDate}`);
+      
+      return formattedDate;
+    } catch (error) {
+      console.error('Error in formatDateForBackendUK:', error);
+      // Fallback to original date formatting
+      return date.toISOString().split('T')[0];
+    }
+  }
+
+  /**
+   * Get date key in UK timezone for consistent comparison
+   */
+  private getDateKeyUK(date: Date | string | any): string {
+    if (date == null) {
+      return '';
+    }
+    
+    let dateObj: Date;
+    
+    if (typeof date === 'string') {
+      dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        return date;
+      }
+    } else if (date instanceof Date) {
+      dateObj = date;
+    } else {
+      try {
+        dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) {
+          return '';
+        }
+      } catch (error) {
+        console.error('Error converting date in getDateKeyUK:', error, 'Input:', date);
+        return '';
+      }
+    }
+    
+    // Convert to UK time before getting the key
+    try {
+      const ukDateString = dateObj.toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      const ukDate = new Date(ukDateString);
+      
+      if (isNaN(ukDate.getTime())) {
+        console.error('Failed to create UK date for key generation, using original date');
+        return dateObj.toISOString().split('T')[0];
+      }
+      
+      const dateKey = ukDate.toISOString().split('T')[0];
+      
+      console.log(`Date key generation: Original: ${dateObj.toISOString()}, UK: ${ukDate.toISOString()}, Key: ${dateKey}`);
+      
+      return dateKey;
+    } catch (error) {
+      console.error('Error in date key generation:', error);
+      return dateObj.toISOString().split('T')[0];
+    }
+  }
+
+  /**
+   * Check if a date is today in UK timezone
+   */
+  private isTodayUK(date: Date): boolean {
+    try {
+      // Get both dates in UK timezone
+      const ukDateString = date.toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      const ukTodayString = new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      
+      const ukDate = new Date(ukDateString);
+      const ukToday = new Date(ukTodayString);
+      
+      if (isNaN(ukDate.getTime()) || isNaN(ukToday.getTime())) {
+        console.error('Failed to create UK dates for today check');
+        return false;
+      }
+      
+      const isToday = ukDate.toDateString() === ukToday.toDateString();
+      
+      console.log(`Today check: Date: ${date.toISOString()}, UK Date: ${ukDate.toISOString()}, UK Today: ${ukToday.toISOString()}, Is Today: ${isToday}`);
+      
+      return isToday;
+    } catch (error) {
+      console.error('Error in isTodayUK:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get current date in UK timezone
+   */
+  private getCurrentDateUK(): Date {
+    try {
+      // Get current date in UK timezone directly
+      const ukDateString = new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      const ukDate = new Date(ukDateString);
+      
+      if (isNaN(ukDate.getTime())) {
+        console.error('Failed to create UK current date, falling back to local date');
+        return new Date();
+      }
+      
+      console.log(`Current date: Local: ${new Date().toISOString()}, UK: ${ukDate.toISOString()}`);
+      
+      return ukDate;
+    } catch (error) {
+      console.error('Error in getCurrentDateUK:', error);
+      return new Date(); // Fallback to local date
+    }
+  }
+
+  // Debug method to show timezone information
+  debugTimezoneInfo(): void {
+    try {
+      console.log('=== TIMEZONE DEBUG INFO ===');
+      
+      const now = new Date();
+      console.log('Current local time:', now.toISOString());
+      console.log('Current local timezone offset:', now.getTimezoneOffset(), 'minutes');
+      
+      // Test UK timezone conversion safely
+      const ukDateString = now.toLocaleString('en-GB', { timeZone: 'Europe/London' });
+      const ukDate = new Date(ukDateString);
+      console.log('Current UK time:', ukDate.toISOString());
+      
+      if (this.selectedDate) {
+        console.log('Selected date local:', this.selectedDate.toISOString());
+        
+        const ukSelectedString = this.selectedDate.toLocaleString('en-GB', { timeZone: 'Europe/London' });
+        const ukSelected = new Date(ukSelectedString);
+        console.log('Selected date UK:', ukSelected.toISOString());
+        
+        const dateKeyLocal = this.selectedDate.toISOString().split('T')[0];
+        const dateKeyUK = this.getDateKeyUK(this.selectedDate);
+        console.log('Date key comparison:');
+        console.log('  Local:', dateKeyLocal);
+        console.log('  UK:', dateKeyUK);
+        console.log('  Match:', dateKeyLocal === dateKeyUK);
+      }
+      
+      console.log('=== END TIMEZONE DEBUG INFO ===');
+    } catch (error) {
+      console.error('Error in debugTimezoneInfo:', error);
+    }
   }
 }
