@@ -583,44 +583,75 @@
         <!-- Enhanced slot details display -->
         <div class="detail-item" *ngIf="bookingConfirmationData.slotDetails && bookingConfirmationData.slotDetails.length > 0">
           <span class="label">Slots:</span>
-          <div class="value slots-list">
-            <div class="slot-item" *ngFor="let slot of bookingConfirmationData.slotDetails">
-              <div class="slot-row">
-                <div class="slot-main-info">
-                  <span class="slot-tee-info">{{slot.tee}}: {{slot.time}}</span>
-                  <span class="slot-date">{{slot.date}}</span>
-                  <span class="slot-participants">{{slot.participants}}p</span>
-                </div>
-                <div class="slot-booking-id">
-                  <strong>{{slot.bookingId}}</strong>
-                </div>
-              </div>
-              <div class="slot-status-badge" 
-                   [class.status-confirmed]="slot.status === 'Completed'"
-                   [class.status-pending]="slot.status === 'Pending'">
-                {{slot.status}}
-              </div>
-            </div>
+          <div class="value slots-table-container">
+            <table class="slots-table">
+              <thead>
+                <tr>
+                  <th>Booking ID</th>
+                  <th>Date</th>
+                  <th>Tee</th>
+                  <th>Time</th>
+                  <th>Participants</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let slot of bookingConfirmationData.slotDetails" class="slot-row">
+                  <td class="slot-booking-id">{{slot.bookingId}}</td>
+                  <td class="slot-date">{{slot.date}}</td>
+                  <td class="slot-tee">{{slot.tee}}</td>
+                  <td class="slot-time">{{slot.time}}</td>
+                  <td class="slot-participants">{{slot.participants}}p</td>
+                  <td class="slot-status">
+                    <span class="slot-status-badge" 
+                          [class.status-confirmed]="slot.status === 'Completed'"
+                          [class.status-pending]="slot.status === 'Pending'">
+                      {{slot.status}}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
         
         <!-- Fallback slot details for backward compatibility -->
         <div class="detail-item" *ngIf="!bookingConfirmationData.slotDetails && bookingConfirmationData.selectedSlots">
           <span class="label">Slots:</span>
-          <div class="value slots-list">
-            <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
-              <div class="slot-row">
-                <div class="slot-main-info">
-                  <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
-                  <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
-                  <span class="slot-participants">{{slot.participants}}p</span>
-                </div>
-                <!-- Show individual booking ID for each slot -->
-                <div class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
-                  <strong>ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
-                </div>
-              </div>
-            </div>
+          <div class="value slots-table-container">
+            <table class="slots-table">
+              <thead>
+                <tr>
+                  <th>Booking ID</th>
+                  <th>Date</th>
+                  <th>Tee</th>
+                  <th>Time</th>
+                  <th>Participants</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index" class="slot-row">
+                  <td class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
+                    {{bookingConfirmationData.slotBookings[i].booking_id}}
+                  </td>
+                  <td class="slot-booking-id" *ngIf="!bookingConfirmationData.slotBookings || !bookingConfirmationData.slotBookings[i]">
+                    N/A
+                  </td>
+                  <td class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</td>
+                  <td class="slot-tee">{{slot.tee_name || slot.tee || 'Unknown Tee'}}</td>
+                  <td class="slot-time">{{slot.time}}</td>
+                  <td class="slot-participants">{{slot.participants}}p</td>
+                  <td class="slot-status">
+                    <span class="slot-status-badge" 
+                          [class.status-confirmed]="slot.status === 'confirmed'"
+                          [class.status-pending]="slot.status === 'pending'">
+                      {{slot.status === 'confirmed' ? 'CONFIRMED' : 'PENDING REQUEST'}}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
