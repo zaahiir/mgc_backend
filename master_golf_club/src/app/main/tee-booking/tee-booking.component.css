@@ -1792,19 +1792,7 @@
     }
 }
 
-/* Debug and Loading Styles */
-.debug-info {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 15px;
-    font-family: monospace;
-}
-
-.debug-info div {
-    margin-bottom: 5px;
-}
+/* Loading Styles */
 
 .no-tees-message {
     text-align: center;
@@ -2423,31 +2411,7 @@
 
 
 
-.slot-modal-section {
-  margin-bottom: 25px;
-}
 
-.slot-modal-section-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 15px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--title-color);
-}
-
-.slot-modal-section-icon {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--secondary-color);
-  color: white;
-  border-radius: 50%;
-  font-size: 12px;
-}
 
 
 

@@ -484,7 +484,7 @@
             <div class="slot-info-item" *ngIf="currentSlotForModal?.slot_status === 'partially_available'">
               <span class="slot-info-label">Slot Type:</span>
               <span class="slot-info-value slot-type-warning">
-                ⚠️ Join Request (Pending Approval)
+                ⚠️ Join Request
               </span>
             </div>
             <!-- Show note for partially available slots -->
@@ -498,18 +498,7 @@
         </div>
       </div>
 
-      <!-- Debug Information (remove in production) -->
-      <div class="slot-modal-section" style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 15px;">
-        <div class="slot-modal-section-title" style="font-size: 12px; color: #666;">
-          Debug Info (Raw Data)
-        </div>
-        <div style="font-size: 11px; color: #888; font-family: monospace;">
-          <div>Time: {{currentSlotForModal?.time}} | Formatted: {{currentSlotForModal?.formatted_time}}</div>
-          <div>Status: {{currentSlotForModal?.slot_status}} | Available: {{currentSlotForModal?.available}} | IsSelected: {{isSlotAlreadySelected(currentSlotForModal)}}</div>
-          <div>Spots: {{currentSlotForModal?.available_spots}} | Participants: {{currentSlotForModal?.total_participants}}</div>
-          <div>Date: {{currentSlotForModal?.slot_date}} | Tee: {{currentSlotForModal?.tee_id}} - {{currentSlotForModal?.tee_name}}</div>
-        </div>
-      </div>
+
 
       <!-- Action Buttons -->
       <div class="slot-modal-actions">
