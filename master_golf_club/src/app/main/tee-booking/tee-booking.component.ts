@@ -253,7 +253,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   // Slot management
   selectedSlots: SlotSelection[] = [];
   showSlotModal: boolean = false;
-  currentSlotForModal: TimeSlot | null = null;
+  currentSlotForModal: (TimeSlot & { isOwnBooking?: boolean }) | null = null;
   currentSlotParticipants: number = 1;
 
   private destroy$ = new Subject<void>();
@@ -717,7 +717,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
     // Open modal for available and partially_available slots
     if (slot.slot_status === 'available' || slot.slot_status === 'partially_available') {
-      this.openSlotModal(slot);
+      this.openSlotModal(slot).catch(error => {
+        console.error('Error opening slot modal:', error);
+      });
       return;
     }
   }
@@ -732,10 +734,14 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
     if (isAlreadySelected) {
       // If slot is already selected, open modal to allow modification
-      this.openSlotModal(slot);
+      this.openSlotModal(slot).catch(error => {
+        console.error('Error opening slot modal:', error);
+      });
     } else {
       // Select the slot
-      this.openSlotModal(slot);
+      this.openSlotModal(slot).catch(error => {
+        console.error('Error opening slot modal:', error);
+      });
     }
   }
 
@@ -769,7 +775,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     });
   }
 
-  openSlotModal(slot: TimeSlot): void {
+  async openSlotModal(slot: TimeSlot): Promise<void> {
+    // Check slot availability first to get the correct isOwnBooking status
+    await this.checkSingleSlotAvailability(slot);
+    
     const isAlreadySelected = this.isSlotAlreadySelected(slot);
     
     let requestedParticipants = 1;
@@ -797,7 +806,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       total_participants: slot.total_participants || 0,
       slot_date: slot.slot_date || this.getDateKey(this.selectedDate),
       tee_id: slot.tee_id || this.selectedTee?.id,
-      tee_name: slot.tee_name || this.selectedTee?.label
+      tee_name: slot.tee_name || this.selectedTee?.label,
+      // Set isOwnBooking property for partially available slots
+      isOwnBooking: (slot as any).isOwnBooking || false
     };
     
     this.currentSlotParticipants = requestedParticipants;
@@ -808,6 +819,38 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.showSlotModal = false;
     this.currentSlotForModal = null;
     this.currentSlotParticipants = 1;
+  }
+
+  async checkSingleSlotAvailability(slot: TimeSlot): Promise<void> {
+    // Check availability for partially available slots to get isOwnBooking status
+    if (slot.slot_status === 'partially_available') {
+      try {
+        const teeId = slot.tee_id || this.selectedTee?.id;
+        if (!teeId) {
+          console.warn('No tee ID available for slot availability check');
+          return;
+        }
+        
+        const response = await this.collectionService.checkSlotAvailability(
+          this.course.id,
+          teeId,
+          slot.slot_date || this.getDateKey(this.selectedDate),
+          slot.time
+        );
+        
+        if (response && response.data && response.data.code === 1) {
+          const availabilityData = response.data.data;
+          
+          // Update slot information with availability details
+          (slot as any).isOwnBooking = availabilityData.isOwnBooking;
+          slot.available_spots = availabilityData.availableSpots;
+          slot.total_participants = availabilityData.originalParticipants || slot.total_participants;
+        }
+      } catch (error) {
+        console.error(`Error checking availability for slot ${slot.time}:`, error);
+        // Keep existing values if availability check fails
+      }
+    }
   }
 
   incrementModalParticipants(): void {
