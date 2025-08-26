@@ -227,19 +227,25 @@
                         <span class="value">{{slot.participants}} player{{slot.participants > 1 ? 's' : ''}}</span>
                       </div>
                       <!-- Show status for partially available slots -->
-                      <div class="slot-detail-row" *ngIf="slot.isJoinRequest">
+                      <div class="slot-detail-row" *ngIf="slot.isJoinRequest || slot.isOwnBooking">
                         <span class="label">Status:</span>
-                        <span class="value status-pending">PENDING REQUEST</span>
+                        <span class="value" [class.status-pending]="slot.isJoinRequest" [class.status-owner]="slot.isOwnBooking">
+                          <span *ngIf="slot.isJoinRequest">PENDING REQUEST</span>
+                          <span *ngIf="slot.isOwnBooking">OWNER BOOKING</span>
+                        </span>
                       </div>
-                      <!-- Show additional info for join requests -->
-                      <div class="slot-detail-row" *ngIf="slot.isJoinRequest && slot.currentParticipants">
+                      <!-- Show additional info for join requests or owner bookings -->
+                      <div class="slot-detail-row" *ngIf="(slot.isJoinRequest || slot.isOwnBooking) && slot.currentParticipants">
                         <span class="label">Slot Info:</span>
                         <span class="value">{{slot.currentParticipants}}/4 participants ({{slot.availableSpots}} spots left)</span>
                       </div>
-                      <!-- Show note for join requests -->
-                      <div class="slot-join-note" *ngIf="slot.isJoinRequest">
-                        <small class="join-request-info">
+                      <!-- Show note for join requests or owner bookings -->
+                      <div class="slot-join-note" *ngIf="slot.isJoinRequest || slot.isOwnBooking">
+                        <small class="join-request-info" *ngIf="slot.isJoinRequest">
                           ⚠️ This slot already has participants. Your request will be pending approval.
+                        </small>
+                        <small class="owner-booking-info" *ngIf="slot.isOwnBooking">
+                          👑 This is your existing booking. You're adding more participants to this slot.
                         </small>
                       </div>
                     </div>
@@ -483,15 +489,22 @@
             <!-- Show additional info for partially available slots -->
             <div class="slot-info-item" *ngIf="currentSlotForModal?.slot_status === 'partially_available'">
               <span class="slot-info-label">Slot Type:</span>
-              <span class="slot-info-value slot-type-warning">
-                ⚠️ Join Request
+              <span class="slot-info-value" [class.slot-type-warning]="!currentSlotForModal?.isOwnBooking" [class.slot-type-owner]="currentSlotForModal?.isOwnBooking">
+                <span *ngIf="currentSlotForModal?.isOwnBooking">👑 Owner Booking</span>
+                <span *ngIf="!currentSlotForModal?.isOwnBooking">⚠️ Join Request</span>
               </span>
             </div>
             <!-- Show note for partially available slots -->
             <div class="slot-info-note" *ngIf="currentSlotForModal?.slot_status === 'partially_available'">
               <div class="note-content">
-                <strong>Note:</strong> This slot already has {{currentSlotForModal.total_participants}} participant(s). 
-                If you select this slot, it will create a join request that needs approval from the original booker.
+                <strong>Note:</strong> 
+                <span *ngIf="currentSlotForModal?.isOwnBooking">
+                  This is your booking with {{currentSlotForModal.total_participants}} participant(s). You can add more participants to this slot.
+                </span>
+                <span *ngIf="!currentSlotForModal?.isOwnBooking">
+                  This slot already has {{currentSlotForModal.total_participants}} participant(s). 
+                  If you select this slot, it will create a join request that needs approval from the original booker.
+                </span>
               </div>
             </div>
           </div>
@@ -613,11 +626,14 @@
                   <strong>ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
                 </div>
               </div>
-              <!-- Show additional info for join requests -->
-              <div class="slot-join-info" *ngIf="slot.isJoinRequest">
-                <small class="join-request-note">
+              <!-- Show additional info for join requests or owner bookings -->
+              <div class="slot-join-info" *ngIf="slot.isJoinRequest || slot.isOwnBooking">
+                <small class="join-request-note" *ngIf="slot.isJoinRequest">
                   ⚠️ This slot already has {{slot.originalSlotParticipants}} participant(s). 
                   Your request is pending approval from the original booker.
+                </small>
+                <small class="owner-booking-note" *ngIf="slot.isOwnBooking">
+                  👑 This is your existing booking. You've added {{slot.participants}} more participant(s) to this slot.
                 </small>
               </div>
             </div>
