@@ -365,10 +365,9 @@ export class OrdersComponent implements OnInit {
             booking.requesterEmail = this.getRequesterEmail(booking);
           }
         });
-        
 
-        
-
+        // Load and merge join requests
+        await this.loadAndMergeJoinRequests();
         
         this.updateStatusFilterCounts();
       } else {
@@ -381,6 +380,83 @@ export class OrdersComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  // New method to load and merge join requests
+  private async loadAndMergeJoinRequests() {
+    try {
+      // Load incoming join requests
+      const incomingResponse = await this.collectionService.getIncomingJoinRequests();
+      if (incomingResponse && incomingResponse.data && incomingResponse.data.code === 1) {
+        this.incomingJoinRequests = incomingResponse.data.data;
+        console.log('Loaded incoming join requests:', this.incomingJoinRequests);
+        
+        // Convert incoming join requests to booking format and add to bookings array
+        for (const joinRequest of this.incomingJoinRequests) {
+          const joinRequestBooking = this.convertJoinRequestToBooking(joinRequest, 'incoming');
+          this.bookings.push(joinRequestBooking);
+        }
+      }
+
+      // Load outgoing join requests
+      const outgoingResponse = await this.collectionService.getOutgoingJoinRequests();
+      if (outgoingResponse && outgoingResponse.data && outgoingResponse.data.code === 1) {
+        this.outgoingJoinRequests = outgoingResponse.data.data;
+        console.log('Loaded outgoing join requests:', this.outgoingJoinRequests);
+        
+        // Convert outgoing join requests to booking format and add to bookings array
+        for (const joinRequest of this.outgoingJoinRequests) {
+          const joinRequestBooking = this.convertJoinRequestToBooking(joinRequest, 'outgoing');
+          this.bookings.push(joinRequestBooking);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading join requests:', error);
+    }
+  }
+
+  // Convert join request to booking format for display
+  private convertJoinRequestToBooking(joinRequest: any, type: 'incoming' | 'outgoing'): Booking {
+    const originalBooking = joinRequest.original_booking;
+    
+    return {
+      id: joinRequest.id,
+      booking_id: joinRequest.request_id || `RQ${joinRequest.id}`,
+      request_id: joinRequest.request_id,
+      memberName: joinRequest.member?.firstName + ' ' + joinRequest.member?.lastName || 'Unknown Member',
+      memberFullName: joinRequest.member?.firstName + ' ' + joinRequest.member?.lastName || 'Unknown Member',
+      courseName: originalBooking?.course?.courseName || 'Unknown Course',
+      course: originalBooking?.course?.id,
+      tee: originalBooking?.tee?.id,
+      teeInfo: originalBooking?.tee ? `${originalBooking.tee.holeNumber} Holes` : 'Unknown Tee',
+      teeName: originalBooking?.tee ? `${originalBooking.tee.holeNumber} Holes` : 'Unknown Tee',
+      bookingDate: joinRequest.createdAt || new Date().toISOString(),
+      slotDate: originalBooking?.slot_date,
+      booking_time: originalBooking?.booking_time,
+      participants: joinRequest.participants,
+      status: joinRequest.status,
+      is_join_request: true,
+      original_booking: originalBooking?.id,
+      originalBookingId: originalBooking?.id,
+      originalBookingInfo: {
+        memberName: originalBooking?.member?.firstName + ' ' + originalBooking?.member?.lastName,
+        participants: originalBooking?.participants
+      },
+      isIncomingRequest: type === 'incoming',
+      requesterName: joinRequest.member?.firstName + ' ' + joinRequest.member?.lastName,
+      requesterEmail: joinRequest.member?.email,
+      formattedDate: this.formatDate(joinRequest.createdAt),
+      createdAt: joinRequest.createdAt,
+      // Additional properties for join requests
+      slotStatus: 'pending_approval',
+      availableSpots: 0,
+      slotParticipantCount: joinRequest.participants,
+      canJoinSlot: false,
+      isSlotFull: false,
+      canAcceptMoreParticipants: false,
+      isOwnBooking: false,
+      canAddParticipants: false
+    };
   }
 
   private processSlotBooking(booking: any, slot: any, index: number): Booking {
@@ -1187,13 +1263,11 @@ export class OrdersComponent implements OnInit {
   // Refresh data
   async refreshData() {
     await Promise.all([
-      this.loadBookings(),
+      this.loadBookings(), // This now includes join requests
       this.loadNotifications(),
       this.loadUnreadCount(),
       this.loadOrderStatistics(),
       this.loadPendingReviewRequests(),
-      this.loadIncomingJoinRequests(),
-      this.loadOutgoingJoinRequests(),
       this.loadJoinRequestStatistics(),
       this.loadEnhancedOrderStatistics()
     ]);
