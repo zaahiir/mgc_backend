@@ -542,8 +542,28 @@
       </div>
       
       <div class="confirmation-message">
-        <h4>Your tee time has been booked successfully!</h4>
-        <p *ngIf="bookingConfirmationData.totalSlots" class="total-bookings">{{bookingConfirmationData.totalSlots}} individual booking{{bookingConfirmationData.totalSlots > 1 ? 's' : ''}} created</p>
+        <h4 *ngIf="bookingConfirmationData.confirmedCount > 0 && bookingConfirmationData.pendingCount === 0">
+          Your tee time has been booked successfully!
+        </h4>
+        <h4 *ngIf="bookingConfirmationData.pendingCount > 0 && bookingConfirmationData.confirmedCount === 0">
+          Your tee time has been Requested!
+        </h4>
+        <h4 *ngIf="bookingConfirmationData.confirmedCount > 0 && bookingConfirmationData.pendingCount > 0">
+          Your tee time has been partially booked!
+        </h4>
+        <h4 *ngIf="bookingConfirmationData.confirmedCount === 0 && bookingConfirmationData.pendingCount === 0">
+          Your tee time has been processed!
+        </h4>
+        
+        <p *ngIf="bookingConfirmationData.confirmedCount > 0" class="total-bookings">
+          {{bookingConfirmationData.confirmedCount}} individual booking{{bookingConfirmationData.confirmedCount > 1 ? 's' : ''}} created
+        </p>
+        <p *ngIf="bookingConfirmationData.pendingCount > 0" class="total-bookings">
+          {{bookingConfirmationData.pendingCount}} request{{bookingConfirmationData.pendingCount > 1 ? 's' : ''}} created
+        </p>
+        <p *ngIf="addParticipantsCount > 0" class="total-bookings">
+          {{addParticipantsCount}} participant{{addParticipantsCount > 1 ? 's' : ''}} added to existing slot{{addParticipantsCount > 1 ? 's' : ''}}
+        </p>
       </div>
       
       <div class="booking-details">

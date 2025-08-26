@@ -156,9 +156,12 @@
               <tbody>
                 <tr *ngFor="let booking of getFilteredBookings()" [class]="getStatusClass(booking.status)">
                   <td>
-                    <strong>{{booking.booking_id}}</strong>
+                    <strong>{{booking.is_join_request ? (booking.request_id || booking.booking_id) : booking.booking_id}}</strong>
                     <span *ngIf="booking.hasMultipleSlots" class="badge badge-info ms-1">
                       Slot {{booking.slotNumber}}
+                    </span>
+                    <span *ngIf="booking.is_join_request" class="badge badge-warning ms-1">
+                      Request
                     </span>
                   </td>
                   <td>{{booking.formattedDate}}</td>
@@ -177,18 +180,30 @@
                     </span>
                   </td>
                   <td>
-                    <button 
-                      class="btn btn-sm"
-                      [class]="getActionButton(booking).color === 'green' ? 'btn-success' : 
-                               getActionButton(booking).color === 'purple' ? 'btn-warning' : 
-                               getActionButton(booking).color === 'blue' ? 'btn-primary' : 'btn-secondary'"
-                      (click)="handleActionButtonClick(booking)"
-                      [disabled]="!getActionButton(booking).enabled">
-                      <fa-icon [icon]="getActionButton(booking).action === 'addParticipants' ? plusIcon : 
-                                     getActionButton(booking).action === 'reviewRequest' ? infoIcon : eyeIcon"
-                               class="me-1"></fa-icon>
-                      {{getActionButton(booking).text}}
-                    </button>
+                    <div class="btn-group" role="group">
+                      <button 
+                        class="btn btn-sm"
+                        [class]="getActionButton(booking).color === 'green' ? 'btn-success' : 
+                                 getActionButton(booking).color === 'purple' ? 'btn-warning' : 
+                                 getActionButton(booking).color === 'blue' ? 'btn-primary' : 'btn-secondary'"
+                        (click)="handleActionButtonClick(booking)"
+                        [disabled]="!getActionButton(booking).enabled">
+                        <fa-icon [icon]="getActionButton(booking).action === 'addParticipants' ? plusIcon : 
+                                       getActionButton(booking).action === 'reviewRequest' ? infoIcon : eyeIcon"
+                                 class="me-1"></fa-icon>
+                        {{getActionButton(booking).text}}
+                      </button>
+                      
+                      <!-- Cancel button for confirmed bookings -->
+                      <button 
+                        *ngIf="canCancelBooking(booking)"
+                        class="btn btn-sm btn-danger"
+                        (click)="cancelBooking(booking)"
+                        title="Cancel this booking">
+                        <fa-icon [icon]="timesIcon" class="me-1"></fa-icon>
+                        Cancel
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>

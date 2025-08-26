@@ -12,6 +12,7 @@ import {
 interface Booking {
   id: number;
   booking_id: string;
+  request_id?: string;
   memberName: string;
   memberFullName?: string;
   courseName: string;
@@ -336,7 +337,7 @@ export class OrdersComponent implements OnInit {
       slot_status: slot.slot_status,
       slot_order: slot.slot_order,
       endTime: slot.endTime,
-      slot_date: slot.slot_date, // Add slot date
+      slot_date: slot.slotDate || slot.slot_date, // Add slot date
       // Mark as multi-slot
       hasMultipleSlots: booking.slots.length > 1,
       isMultiSlotBooking: true,
@@ -542,6 +543,36 @@ export class OrdersComponent implements OnInit {
     return booking.status === 'confirmed' && !booking.is_join_request;
   }
 
+  // Cancel a booking
+  async cancelBooking(booking: Booking) {
+    if (!this.canCancelBooking(booking)) {
+      console.log('Booking cannot be cancelled');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to cancel your booking for ${booking.courseName} on ${this.formatDate(booking.slotDate || booking.bookingDate)} at ${booking.booking_time}?`)) {
+      try {
+        // Use originalBookingId for API calls, fallback to id if not available
+        const bookingId = booking.originalBookingId || booking.id;
+        console.log('Cancelling booking with ID:', bookingId, 'Original ID:', booking.originalBookingId, 'Display ID:', booking.id);
+        
+        const response = await this.collectionService.cancelBooking(bookingId);
+        
+        if (response && response.data && response.data.code === 1) {
+          console.log('Booking cancelled successfully');
+          // Reload data to reflect changes
+          await this.refreshData();
+        } else {
+          console.error('Failed to cancel booking:', response);
+          alert('Failed to cancel booking. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error cancelling booking:', error);
+        alert('Error cancelling booking. Please try again.');
+      }
+    }
+  }
+
   // Check if slot can accept more participants
   canJoinSlot(booking: Booking): boolean {
     // Only allow joining slots that are not full and are confirmed
@@ -579,6 +610,42 @@ export class OrdersComponent implements OnInit {
   viewBookingDetails(booking: Booking) {
     this.selectedBooking = booking;
     this.showBookingDetails = true;
+    
+    // Log detailed information for debugging
+    console.log('Viewing details for booking:', booking);
+    
+    let detailsMessage = `Booking Details:\n`;
+    detailsMessage += `ID: ${booking.is_join_request ? (booking.request_id || booking.booking_id) : booking.booking_id}\n`;
+    detailsMessage += `Course: ${booking.courseName}\n`;
+    detailsMessage += `Tee: ${booking.teeInfo}\n`;
+    detailsMessage += `Date: ${this.formatDate(booking.slotDate || booking.bookingDate)}\n`;
+    detailsMessage += `Time: ${booking.booking_time}\n`;
+    detailsMessage += `Participants: ${this.getParticipantDisplayText(booking)}\n`;
+    detailsMessage += `Status: ${this.getStatusDisplayText(booking)}\n`;
+    
+    if (booking.is_join_request) {
+      detailsMessage += `\nThis is a join request for an existing slot.\n`;
+      if (booking.originalBookingInfo) {
+        detailsMessage += `Original Booking ID: ${booking.originalBookingInfo.id}\n`;
+        detailsMessage += `Original Booker: ${booking.originalBookingInfo.memberName}\n`;
+      }
+    }
+    
+    if (booking.allParticipantsInfo && booking.allParticipantsInfo.length > 1) {
+      detailsMessage += `\nAll Participants:\n`;
+      booking.allParticipantsInfo.forEach((participant, index) => {
+        detailsMessage += `${index + 1}. ${participant.member_name} (${participant.participants} participant${participant.participants > 1 ? 's' : ''})`;
+        if (participant.is_original_booker) {
+          detailsMessage += ` - Original Booker`;
+        }
+        if (participant.approved_at) {
+          detailsMessage += ` - Approved at ${new Date(participant.approved_at).toLocaleString()}`;
+        }
+        detailsMessage += `\n`;
+      });
+    }
+    
+    console.log(detailsMessage);
   }
 
   // Close booking details
@@ -728,6 +795,16 @@ export class OrdersComponent implements OnInit {
 
   // Enhanced action handling methods
   getActionButton(booking: Booking): any {
+    // For join requests (outgoing), show only View Details
+    if (booking.is_join_request && !booking.isIncomingRequest) {
+      return {
+        text: 'View Details',
+        color: 'gray',
+        action: 'viewDetails',
+        enabled: true
+      };
+    }
+    
     if (booking.status === 'confirmed') {
       if (booking.isOwnBooking && booking.canAddParticipants) {
         return {
@@ -740,7 +817,8 @@ export class OrdersComponent implements OnInit {
       return {
         text: 'View Details',
         color: 'blue',
-        action: 'viewDetails'
+        action: 'viewDetails',
+        enabled: true
       };
     } else if (booking.status === 'pending_approval') {
       if (booking.isIncomingRequest) {
@@ -754,20 +832,23 @@ export class OrdersComponent implements OnInit {
       return {
         text: 'View Details',
         color: 'gray',
-        action: 'viewDetails'
+        action: 'viewDetails',
+        enabled: true
       };
     } else if (booking.status === 'cancelled') {
       return {
         text: 'View Details',
         color: 'gray',
-        action: 'viewDetails'
+        action: 'viewDetails',
+        enabled: true
       };
     }
     
     return {
       text: 'View Details',
       color: 'blue',
-      action: 'viewDetails'
+      action: 'viewDetails',
+      enabled: true
     };
   }
 
@@ -790,6 +871,11 @@ export class OrdersComponent implements OnInit {
 
   // Get participant display text
   getParticipantDisplayText(booking: Booking): string {
+    // For join requests, show participants as read-only
+    if (booking.is_join_request && !booking.isIncomingRequest) {
+      return `${booking.participants} player${booking.participants > 1 ? 's' : ''} (Request)`;
+    }
+    
     if (booking.status === 'confirmed') {
       // Check if this booking has approved join requests (merged participants)
       if (booking.allParticipantsInfo && booking.allParticipantsInfo.length > 1) {

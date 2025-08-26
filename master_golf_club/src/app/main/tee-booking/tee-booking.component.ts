@@ -142,6 +142,7 @@ interface BookingConfirmationData {
   individualBookingIds?: string[];
   confirmedCount?: number;
   pendingCount?: number;
+  addParticipantsCount?: number;
 }
 
 interface CalendarDay {
@@ -1130,6 +1131,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           slot.canJoinRequest = availabilityData.canJoinRequest;
           slot.userExistingRequest = availabilityData.userExistingRequest;
           slot.availableSpots = availabilityData.availableSpots;
+          slot.originalBookingId = availabilityData.slotId;
           
           // Update tooltip text based on availability
           if (availabilityData.isOwnBooking) {
@@ -1211,14 +1213,6 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         try {
           if (slot.isOwnBooking && slot.canAddParticipants) {
             // User can add participants to their own slot
-            const addParticipantsData = {
-              course: this.course.id,
-              tee: slot.tee_id,
-              slotDate: typeof slot.date === 'string' ? slot.date : this.getDateKey(slot.date),
-              bookingTime: slot.time,
-              participants: slot.participants
-            };
-            
             if (!slot.originalBookingId) {
               failedBookings.push({
                 slot,
@@ -1228,9 +1222,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
               continue;
             }
             
-            const response = await this.collectionService.addParticipantsToBooking(
+            const response = await this.collectionService.addParticipants(
               slot.originalBookingId,
-              addParticipantsData
+              slot.participants
             );
             
             if (response && response.data && response.data.code === 1) {
@@ -1403,8 +1397,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           const slot = partiallyAvailableSlots[index];
           const requestData = response.data.data;
           slotBookings.push({
-            id: requestData.requestId,
-            booking_id: requestData.requestId,
+            id: requestData.requestId || requestData.id,
+            booking_id: requestData.requestId || requestData.id,
             slot_date: slot.slot_date,
             booking_time: slot.time,
             participants: slot.participants,
@@ -1445,7 +1439,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           individualBookingIds: individualBookingIds,
           // Separate counts for display
           confirmedCount: successfulBookings.length,
-          pendingCount: joinRequests.length
+          pendingCount: joinRequests.length,
+          addParticipantsCount: addParticipantsCount
         };
         
         this.showBookingModal = true;

@@ -2265,7 +2265,15 @@ class BookingViewSet(viewsets.ModelViewSet):
     def cancel(self, request, pk=None):
         """Cancel a booking"""
         try:
+            # Add debugging
+            print(f"Cancel called with pk: {pk}")
+            print(f"Request user: {request.user}")
+            print(f"Request headers: {request.headers}")
+            
+            # Get the booking using the standard get_object method
+            # This will automatically check permissions and authentication
             booking = self.get_object()
+            print(f"Found booking: {booking}")
             
             if not booking.can_cancel:
                 return Response({
@@ -2282,6 +2290,10 @@ class BookingViewSet(viewsets.ModelViewSet):
             })
             
         except Exception as e:
+            print(f"Error in cancel: {str(e)}")
+            print(f"Error type: {type(e)}")
+            import traceback
+            traceback.print_exc()
             return Response({
                 'code': 0,
                 'message': str(e)
@@ -2339,12 +2351,16 @@ class BookingViewSet(viewsets.ModelViewSet):
                 
                 return Response({
                     'code': 1,
-                    'message': 'Join request approved successfully',
+                    'message': 'Join request approved successfully. Participants merged into existing booking.',
                     'data': {
-                        'joinRequestId': join_request.id,
-                        'newBookingId': join_request.booking_id,
+                        'joinRequestId': join_request.request_id or join_request.id,
+                        'originalBookingId': original_booking.booking_id,
+                        'originalBookingParticipants': original_booking.participants,
+                        'joinRequestParticipants': join_request.participants,
+                        'totalParticipants': original_booking.participants,
                         'status': join_request.status,
-                        'isSlotFull': original_booking.is_slot_full()
+                        'isSlotFull': original_booking.is_slot_full(),
+                        'message': f'Successfully merged {join_request.participants} participant(s) into booking {original_booking.booking_id}'
                     }
                 })
             else:
@@ -2834,11 +2850,32 @@ class BookingViewSet(viewsets.ModelViewSet):
         print(f"Total slots generated: {len(slots)}")
         return slots
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='add_participants', url_name='add_participants')
     def add_participants(self, request, pk=None):
         """Add participants to an existing booking"""
         try:
             print(f"add_participants called with pk: {pk}, request data: {request.data}")
+            
+            # Get the authenticated member from the JWT token
+            auth_header = request.headers.get('Authorization', '')
+            if not auth_header.startswith('Bearer '):
+                return Response({
+                    'code': 0,
+                    'message': 'Authorization header required'
+                }, status=401)
+            
+            token = auth_header.split(' ')[1]
+            from rest_framework_simplejwt.tokens import UntypedToken
+            token_data = UntypedToken(token)
+            member_id = token_data.get('member_id')
+            
+            if not member_id:
+                return Response({
+                    'code': 0,
+                    'message': 'Invalid token - member_id not found'
+                }, status=401)
+            
+            member = MemberModel.objects.get(id=member_id)
             
             # Get the booking object directly by ID
             try:
@@ -2851,6 +2888,13 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': f'Error getting booking: {str(e)}'
                 }, status=500)
             
+            # Check if the authenticated user owns this booking
+            if booking.member.id != member.id:
+                return Response({
+                    'code': 0,
+                    'message': 'You can only add participants to your own bookings'
+                }, status=403)
+            
             additional_participants = request.data.get('additional_participants', 1)
             print(f"Additional participants requested: {additional_participants}")
             
@@ -2859,9 +2903,6 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': 'Additional participants must be greater than 0'
                 }, status=400)
-            
-            # For now, just update the booking without authentication check
-            # TODO: Add proper authentication later
             
             # Check if slot can accommodate more participants
             total_participants = booking.participants + additional_participants
@@ -3001,123 +3042,64 @@ class BookingViewSet(viewsets.ModelViewSet):
             ).first()
             
             if existing_request:
-                if existing_request.status == 'approved':
-                    return Response({
-                        'code': 0,
-                        'message': 'Your join request has already been approved for this slot',
-                        'data': {
-                            'existingRequestId': existing_request.id,
-                            'existingStatus': existing_request.status,
-                            'existingParticipants': existing_request.participants,
-                            'message': 'You can view your approved request in the orders section'
-                        }
-                    }, status=400)
-                else:
-                    return Response({
-                        'code': 0,
-                        'message': 'You already have a pending join request for this slot',
-                        'data': {
-                            'existingRequestId': existing_request.id,
-                            'existingStatus': existing_request.status,
-                            'existingParticipants': existing_request.participants,
-                            'message': 'You can view the status of your existing request in the orders section'
-                        }
-                    }, status=400)
-            
-            # Check if there's a rejected request that can be updated
-            rejected_request = BookingModel.objects.filter(
-                member=member,
-                original_booking=original_booking,
-                is_join_request=True,
-                status='rejected',
-                hideStatus=0
-            ).first()
-            
-            if rejected_request:
-                # Update the rejected request instead of creating a new one
-                rejected_request.participants = participants
-                rejected_request.status = 'pending_approval'
-                rejected_request.notes = f'Updated join request for {participants} participant(s)'
-                rejected_request.save()
-                
-                # Create notification for the original booker
-                NotificationModel.create_join_request_notification(
-                    recipient=original_booking.member,
-                    sender=member,
-                    booking=original_booking,
-                    join_request=rejected_request
-                )
-                
-                return Response({
-                    'code': 1,
-                    'message': 'Join request updated successfully',
-                    'data': {
-                        'requestId': rejected_request.id,
-                        'status': rejected_request.status,
-                        'participants': rejected_request.participants,
-                        'slotDate': slot_date.strftime('%Y-%m-%d'),
-                        'bookingTime': booking_time.strftime('%H:%M'),
-                        'courseName': original_booking.course.courseName,
-                        'teeHoles': original_booking.tee.holeNumber if original_booking.tee else None,
-                        'isUpdated': True
-                    }
-                }, status=200)
-            
-            # Create the join request
-            join_request_data = {
-                'member': member.id,
-                'course': course_id,
-                'tee': tee_id,
-                'slot_date': slot_date,
-                'booking_time': booking_time,
-                'participants': participants,
-                'status': 'pending_approval',
-                'is_join_request': True,
-                'original_booking': original_booking.id,
-                'notes': f'Join request for {participants} participant(s)'
-            }
-            
-            serializer = self.get_serializer(data=join_request_data)
-            if serializer.is_valid():
-                join_request = serializer.save()
-                
-                # Create notification for the original booker
-                NotificationModel.create_join_request_notification(
-                    recipient=original_booking.member,
-                    sender=member,
-                    booking=original_booking,
-                    join_request=join_request
-                )
-                
-                return Response({
-                    'code': 1,
-                    'message': 'Join request created successfully',
-                    'data': {
-                        'requestId': join_request.id,
-                        'status': join_request.status,
-                        'participants': join_request.participants,
-                        'slotDate': slot_date.strftime('%Y-%m-%d'),
-                        'bookingTime': booking_time.strftime('%H:%M'),
-                        'courseName': original_booking.course.courseName,
-                        'teeHoles': original_booking.tee.holeNumber if original_booking.tee else None
-                    }
-                }, status=201)
-            else:
                 return Response({
                     'code': 0,
-                    'message': f'Validation error: {serializer.errors}'
+                    'message': 'You already have a request for this slot',
+                    'data': {
+                        'existingRequestId': existing_request.request_id or existing_request.id,
+                        'existingStatus': existing_request.status,
+                        'existingParticipants': existing_request.participants
+                    }
                 }, status=400)
-                
+            
+            # Create the join request
+            join_request = BookingModel.objects.create(
+                member=member,
+                course_id=course_id,
+                tee_id=tee_id,
+                slot_date=slot_date,
+                booking_time=booking_time,
+                participants=participants,
+                status='pending_approval',
+                is_join_request=True,
+                original_booking=original_booking
+            )
+            
+            # Create notification for the original booker
+            NotificationModel.create_join_request_notification(
+                recipient=original_booking.member,
+                sender=member,
+                booking=original_booking,
+                join_request=join_request
+            )
+            
+            return Response({
+                'code': 1,
+                'message': 'Join request created successfully',
+                'data': {
+                    'id': join_request.id,
+                    'requestId': join_request.request_id,
+                    'courseName': join_request.course.courseName,
+                    'teeLabel': f"{join_request.tee.holeNumber} Holes" if join_request.tee else "Tee not specified",
+                    'date': join_request.slot_date,
+                    'time': join_request.booking_time,
+                    'participants': join_request.participants,
+                    'status': join_request.status,
+                    'originalBookingId': original_booking.booking_id,
+                    'originalBookingParticipants': original_booking.participants
+                }
+            }, status=201)
+            
         except MemberModel.DoesNotExist:
             return Response({
                 'code': 0,
                 'message': 'Member not found'
             }, status=404)
         except Exception as e:
-                            return Response({
-                    'code': 0,
-                    'message': f'Error creating join request: {str(e)}'
-                }, status=500)
+            return Response({
+                'code': 0,
+                'message': str(e)
+            }, status=400)
 
     @action(detail=False, methods=['GET'])
     def check_slot_availability(self, request):
