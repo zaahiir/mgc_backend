@@ -2122,7 +2122,7 @@
 
 /* Status classes for booking history */
 .status-confirmed {
-  color: #4caf50;
+  color: var(--theme-color);
   font-weight: bold;
 }
 
@@ -2132,7 +2132,7 @@
 }
 
 .status-cancelled {
-  color: #f44336;
+  color: var(--secondary-color);
   font-weight: bold;
 }
 
@@ -2142,17 +2142,17 @@
 }
 
 .status-approved {
-  color: #4caf50;
+  color: var(--theme-color);
   font-weight: bold;
 }
 
 .status-rejected {
-  color: #f44336;
+  color: var(--secondary-color);
   font-weight: bold;
 }
 
 .status-default {
-  color: #666;
+  color: var(--text-color);
   font-weight: bold;
 }
 
@@ -3020,6 +3020,137 @@
   color: var(--theme-color) !important;
   font-weight: 600;
   font-size: 1.1rem;
+}
+
+/* Enhanced confirmation message styling */
+.confirmation-message h4 {
+  color: var(--theme-color);
+  margin-bottom: 15px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.confirmation-message .total-bookings {
+  color: var(--text-color);
+  margin: 0 0 20px 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-align: center;
+  padding: 10px;
+  background: rgba(119, 169, 106, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid var(--theme-color);
+}
+
+/* Enhanced slot details styling */
+.slots-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.slots-list .slot-item {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+.slots-list .slot-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.slot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.slot-main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.slot-tee-info {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.slot-date {
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.slot-participants {
+  color: var(--theme-color);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.slot-booking-id {
+  text-align: right;
+  color: var(--theme-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: rgba(119, 169, 106, 0.1);
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--theme-color);
+}
+
+.slot-status-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-align: center;
+  min-width: 100px;
+  margin-top: 10px;
+}
+
+.slot-status-badge.status-confirmed {
+  background-color: var(--theme-color);
+  color: var(--text-color-one);
+}
+
+.slot-status-badge.status-pending {
+  background-color: var(--secondary-color);
+  color: var(--text-color-one);
+}
+
+/* Responsive adjustments for slot details */
+@media (max-width: 768px) {
+  .slot-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .slot-booking-id {
+    text-align: left;
+    align-self: flex-start;
+  }
+  
+  .slots-list .slot-item {
+    padding: 12px;
+  }
+  
+  .confirmation-message h4 {
+    font-size: 1.2rem;
+  }
+  
+  .confirmation-message .total-bookings {
+    font-size: 1rem;
+  }
 }
 
 

@@ -143,6 +143,19 @@ interface BookingConfirmationData {
   confirmedCount?: number;
   pendingCount?: number;
   addParticipantsCount?: number;
+  confirmationType?: string;
+  confirmationTitle?: string;
+  confirmationSubtitle?: string;
+  slotDetails?: Array<{
+    bookingId: string;
+    date: string;
+    tee: string;
+    time: string;
+    status: string;
+    participants: number;
+    isJoinRequest: boolean;
+    isAddParticipants: boolean;
+  }>;
 }
 
 interface CalendarDay {
@@ -1459,6 +1472,17 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           });
         });
         
+        // Determine if this is a multi-slot booking
+        const isMultiSlot = this.selectedSlots.length > 1;
+        
+        // Generate appropriate confirmation message
+        const confirmationMessage = this.generateConfirmationMessage(
+          successfulBookings.length,
+          joinRequests.length,
+          addParticipantsCount,
+          isMultiSlot
+        );
+        
         this.bookingConfirmationData = {
           courseName: this.course.name,
           teeLabel: this.selectedTee?.label,
@@ -1483,7 +1507,12 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           // Separate counts for display
           confirmedCount: successfulBookings.length,
           pendingCount: joinRequests.length,
-          addParticipantsCount: addParticipantsCount
+          addParticipantsCount: addParticipantsCount,
+          // New fields for enhanced confirmation
+          confirmationType: confirmationMessage.type as any,
+          confirmationTitle: confirmationMessage.title,
+          confirmationSubtitle: confirmationMessage.subtitle,
+          slotDetails: this.generateSlotDetails(this.selectedSlots, slotBookings)
         };
         
         this.showBookingModal = true;
@@ -1513,6 +1542,102 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     
     // Reset the component state
     this.resetBookingForm();
+  }
+
+  // Generate enhanced confirmation messages based on booking type
+  generateConfirmationMessage(
+    confirmedCount: number,
+    pendingCount: number,
+    addParticipantsCount: number,
+    isMultiSlot: boolean = false
+  ): { title: string; subtitle: string; type: string } {
+    if (isMultiSlot) {
+      // Multi-slot booking
+      if (confirmedCount > 0 && pendingCount === 0 && addParticipantsCount === 0) {
+        return {
+          title: 'Your tee time has been booked successfully!',
+          subtitle: `${confirmedCount} individual booking${confirmedCount > 1 ? 's' : ''} created`,
+          type: 'multi_success'
+        };
+      } else if (pendingCount > 0 && confirmedCount === 0 && addParticipantsCount === 0) {
+        return {
+          title: 'Your tee time has been Requested!',
+          subtitle: `${pendingCount} request${pendingCount > 1 ? 's' : ''} created`,
+          type: 'multi_request'
+        };
+      } else if (addParticipantsCount > 0 && confirmedCount === 0 && pendingCount === 0) {
+        return {
+          title: 'Your participant add in the existing slot!',
+          subtitle: `${addParticipantsCount} participant${addParticipantsCount > 1 ? 's' : ''} added`,
+          type: 'multi_add'
+        };
+      } else {
+        return {
+          title: 'Your tee time has been partially processed!',
+          subtitle: `${confirmedCount} confirmed, ${pendingCount} requested, ${addParticipantsCount} added`,
+          type: 'multi_mixed'
+        };
+      }
+    } else {
+      // Single slot booking
+      if (confirmedCount > 0 && pendingCount === 0 && addParticipantsCount === 0) {
+        return {
+          title: 'Your tee time has been booked successfully!',
+          subtitle: `${confirmedCount} individual booking${confirmedCount > 1 ? 's' : ''} created`,
+          type: 'single_available'
+        };
+      } else if (pendingCount > 0 && confirmedCount === 0 && addParticipantsCount === 0) {
+        return {
+          title: 'Your tee time has been Requested!',
+          subtitle: `${pendingCount} request${pendingCount > 1 ? 's' : ''} created`,
+          type: 'single_partial_request'
+        };
+      } else if (addParticipantsCount > 0 && confirmedCount === 0 && pendingCount === 0) {
+        return {
+          title: 'Your participant add in the existing slot!',
+          subtitle: `${addParticipantsCount} participant${addParticipantsCount > 1 ? 's' : ''} added`,
+          type: 'single_partial_add'
+        };
+      } else {
+        return {
+          title: 'Your tee time has been processed!',
+          subtitle: `${confirmedCount} confirmed, ${pendingCount} requested, ${addParticipantsCount} added`,
+          type: 'single_mixed'
+        };
+      }
+    }
+  }
+
+  // Generate slot details for confirmation display
+  generateSlotDetails(
+    selectedSlots: SlotSelection[],
+    slotBookings: any[]
+  ): Array<{
+    bookingId: string;
+    date: string;
+    tee: string;
+    time: string;
+    status: string;
+    participants: number;
+    isJoinRequest: boolean;
+    isAddParticipants: boolean;
+  }> {
+    return selectedSlots.map((slot, index) => {
+      const booking = slotBookings[index];
+      const isJoinRequest = slot.isJoinRequest || false;
+      const isAddParticipants = slot.isOwnBooking || false;
+      
+      return {
+        bookingId: booking?.booking_id || 'N/A',
+        date: slot.slot_date ? this.formatDateForDisplayUK(new Date(slot.slot_date)) : 'N/A',
+        tee: `${slot.tee.holeNumber} Holes`,
+        time: slot.time,
+        status: isJoinRequest ? 'Pending' : (isAddParticipants ? 'Completed' : 'Completed'),
+        participants: slot.participants,
+        isJoinRequest,
+        isAddParticipants
+      };
+    });
   }
 
   resetBookingForm(): void {

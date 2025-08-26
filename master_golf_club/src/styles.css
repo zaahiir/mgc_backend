@@ -350,6 +350,22 @@ p {
   color: white;
 }
 
+/* Enhanced booking confirmation status classes */
+.status-requested {
+  background-color: var(--secondary-color);
+  color: var(--text-color-one);
+}
+
+.status-completed {
+  background-color: var(--theme-color);
+  color: var(--text-color-one);
+}
+
+.status-mixed {
+  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
+  color: var(--text-color-one);
+}
+
 /* Participant prompt styles */
 .participant-prompt {
   background-color: #f8f9fa;

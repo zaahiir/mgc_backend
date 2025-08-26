@@ -541,26 +541,35 @@
       </div>
       
       <div class="confirmation-message">
-        <h4 *ngIf="bookingConfirmationData.confirmedCount > 0 && bookingConfirmationData.pendingCount === 0">
+        <!-- Enhanced confirmation messages -->
+        <h4 *ngIf="bookingConfirmationData.confirmationTitle">
+          {{bookingConfirmationData.confirmationTitle}}
+        </h4>
+        <p *ngIf="bookingConfirmationData.confirmationSubtitle" class="total-bookings">
+          {{bookingConfirmationData.confirmationSubtitle}}
+        </p>
+        
+        <!-- Fallback messages for backward compatibility -->
+        <h4 *ngIf="!bookingConfirmationData.confirmationTitle && bookingConfirmationData.confirmedCount > 0 && bookingConfirmationData.pendingCount === 0">
           Your tee time has been booked successfully!
         </h4>
-        <h4 *ngIf="bookingConfirmationData.pendingCount > 0 && bookingConfirmationData.confirmedCount === 0">
+        <h4 *ngIf="!bookingConfirmationData.confirmationTitle && bookingConfirmationData.pendingCount > 0 && bookingConfirmationData.confirmedCount === 0">
           Your tee time has been Requested!
         </h4>
-        <h4 *ngIf="bookingConfirmationData.confirmedCount > 0 && bookingConfirmationData.pendingCount > 0">
+        <h4 *ngIf="!bookingConfirmationData.confirmationTitle && bookingConfirmationData.confirmedCount > 0 && bookingConfirmationData.pendingCount > 0">
           Your tee time has been partially booked!
         </h4>
-        <h4 *ngIf="bookingConfirmationData.confirmedCount === 0 && bookingConfirmationData.pendingCount === 0">
+        <h4 *ngIf="!bookingConfirmationData.confirmationTitle && bookingConfirmationData.confirmedCount === 0 && bookingConfirmationData.pendingCount === 0">
           Your tee time has been processed!
         </h4>
         
-        <p *ngIf="bookingConfirmationData.confirmedCount > 0" class="total-bookings">
+        <p *ngIf="!bookingConfirmationData.confirmationSubtitle && bookingConfirmationData.confirmedCount > 0" class="total-bookings">
           {{bookingConfirmationData.confirmedCount}} individual booking{{bookingConfirmationData.confirmedCount > 1 ? 's' : ''}} created
         </p>
-        <p *ngIf="bookingConfirmationData.pendingCount > 0" class="total-bookings">
+        <p *ngIf="!bookingConfirmationData.confirmationSubtitle && bookingConfirmationData.pendingCount > 0" class="total-bookings">
           {{bookingConfirmationData.pendingCount}} request{{bookingConfirmationData.pendingCount > 1 ? 's' : ''}} created
         </p>
-        <p *ngIf="addParticipantsCount > 0" class="total-bookings">
+        <p *ngIf="!bookingConfirmationData.confirmationSubtitle && addParticipantsCount > 0" class="total-bookings">
           {{addParticipantsCount}} participant{{addParticipantsCount > 1 ? 's' : ''}} added to existing slot{{addParticipantsCount > 1 ? 's' : ''}}
         </p>
       </div>
@@ -570,7 +579,33 @@
           <span class="label">Course:</span>
           <span class="value">{{bookingConfirmationData.courseName || course.name}}</span>
         </div>
-        <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
+        
+        <!-- Enhanced slot details display -->
+        <div class="detail-item" *ngIf="bookingConfirmationData.slotDetails && bookingConfirmationData.slotDetails.length > 0">
+          <span class="label">Slots:</span>
+          <div class="value slots-list">
+            <div class="slot-item" *ngFor="let slot of bookingConfirmationData.slotDetails">
+              <div class="slot-row">
+                <div class="slot-main-info">
+                  <span class="slot-tee-info">{{slot.tee}}: {{slot.time}}</span>
+                  <span class="slot-date">{{slot.date}}</span>
+                  <span class="slot-participants">{{slot.participants}}p</span>
+                </div>
+                <div class="slot-booking-id">
+                  <strong>{{slot.bookingId}}</strong>
+                </div>
+              </div>
+              <div class="slot-status-badge" 
+                   [class.status-confirmed]="slot.status === 'Completed'"
+                   [class.status-pending]="slot.status === 'Pending'">
+                {{slot.status}}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Fallback slot details for backward compatibility -->
+        <div class="detail-item" *ngIf="!bookingConfirmationData.slotDetails && bookingConfirmationData.selectedSlots">
           <span class="label">Slots:</span>
           <div class="value slots-list">
             <div class="slot-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
@@ -602,7 +637,7 @@
         </div>
         
         <!-- Show separate status for each slot -->
-        <div class="detail-item" *ngIf="bookingConfirmationData.selectedSlots">
+        <div class="detail-item" *ngIf="!bookingConfirmationData.slotDetails && bookingConfirmationData.selectedSlots">
           <span class="label">Slot Status:</span>
           <div class="value slots-status-list">
             <div class="slot-status-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
