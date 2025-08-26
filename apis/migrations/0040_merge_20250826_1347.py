@@ -7,7 +7,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('apis', '0039_remove_bookingmodel_bookingdate_and_more'),
-        ('apis', 'add_request_id_field'),
     ]
 
     operations = [

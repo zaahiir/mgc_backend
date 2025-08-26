@@ -2353,7 +2353,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'code': 1,
                     'message': 'Join request approved successfully. Participants merged into existing booking.',
                     'data': {
-                        'joinRequestId': join_request.request_id or join_request.id,
+                        'joinRequestId': getattr(join_request, 'request_id', None) or join_request.id,
                         'originalBookingId': original_booking.booking_id,
                         'originalBookingParticipants': original_booking.participants,
                         'joinRequestParticipants': join_request.participants,
@@ -3046,13 +3046,28 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': 'You already have a request for this slot',
                     'data': {
-                        'existingRequestId': existing_request.request_id or existing_request.id,
+                        'existingRequestId': getattr(existing_request, 'request_id', None) or existing_request.id,
                         'existingStatus': existing_request.status,
                         'existingParticipants': existing_request.participants
                     }
                 }, status=400)
             
-            # Create the join request
+            # Create the join request with manual request_id generation
+            from datetime import datetime
+            now = datetime.now()
+            year_suffix = str(now.year)[-2:]
+            month_abbr = now.strftime('%b').upper()
+            base_id = f"MGCRQ{year_suffix}{month_abbr}"
+            
+            # Generate unique timestamp-based ID
+            timestamp = int(datetime.now().timestamp() * 1000) % 100000
+            request_id = f"{base_id}{timestamp:05d}"
+            
+            # Ensure uniqueness by checking database
+            while BookingModel.objects.filter(request_id=request_id).exists():
+                timestamp = int(datetime.now().timestamp() * 1000) % 100000
+                request_id = f"{base_id}{timestamp:05d}"
+            
             join_request = BookingModel.objects.create(
                 member=member,
                 course_id=course_id,
@@ -3062,7 +3077,8 @@ class BookingViewSet(viewsets.ModelViewSet):
                 participants=participants,
                 status='pending_approval',
                 is_join_request=True,
-                original_booking=original_booking
+                original_booking=original_booking,
+                request_id=request_id
             )
             
             # Create notification for the original booker
@@ -3078,7 +3094,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': 'Join request created successfully',
                 'data': {
                     'id': join_request.id,
-                    'requestId': join_request.request_id,
+                    'requestId': getattr(join_request, 'request_id', None),
                     'courseName': join_request.course.courseName,
                     'teeLabel': f"{join_request.tee.holeNumber} Holes" if join_request.tee else "Tee not specified",
                     'date': join_request.slot_date,

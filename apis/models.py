@@ -266,6 +266,7 @@ class TeeModel(models.Model):
 class BookingModel(models.Model):
     id = models.AutoField(primary_key=True)
     booking_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Unique booking ID in format MGCBK25AUG00010")
+    request_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Unique request ID in format MGCRQ25AUG00010 for join requests")
 
     member = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="bookings")
     course = models.ForeignKey(CourseModel, on_delete=models.CASCADE, related_name="bookings")
@@ -314,6 +315,7 @@ class BookingModel(models.Model):
         db_table = 'apis_bookingmodel'
         indexes = [
             models.Index(fields=['booking_id']),
+            models.Index(fields=['request_id']),
             models.Index(fields=['slot_date', 'booking_time', 'tee']),
             models.Index(fields=['member', 'status']),
             models.Index(fields=['createdAt']),
@@ -325,6 +327,20 @@ class BookingModel(models.Model):
         # Generate booking ID if not provided
         if not self.booking_id:
             self.booking_id = self.generate_booking_id()
+        
+        # Generate request ID for join requests if not provided
+        if self.is_join_request and not self.request_id:
+            try:
+                self.request_id = self.generate_request_id()
+            except Exception as e:
+                # Fallback to timestamp-based ID if generation fails
+                from datetime import datetime
+                now = datetime.now()
+                year_suffix = str(now.year)[-2:]
+                month_abbr = now.strftime('%b').upper()
+                base_id = f"MGCRQ{year_suffix}{month_abbr}"
+                timestamp = int(datetime.now().timestamp() * 1000) % 100000
+                self.request_id = f"{base_id}{timestamp:05d}"
         
         # Handle migration from old structure
         if not self.slot_date and hasattr(self, 'bookingDate'):
@@ -431,6 +447,75 @@ class BookingModel(models.Model):
         timestamp = int(time.time() * 1000) % 100000
         return f"{base_id}{timestamp:05d}"
     
+    def generate_request_id(self):
+        """Generate unique request ID in format: MGCRQ25AUG00010"""
+        from datetime import datetime
+        import time
+        from django.db import transaction
+        
+        max_retries = 10
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                with transaction.atomic():
+                    now = datetime.now()
+                    year_suffix = str(now.year)[-2:]  # Last 2 digits of year
+                    month_abbr = now.strftime('%b').upper()  # 3-letter month
+                    
+                    base_id = f"MGCRQ{year_suffix}{month_abbr}"
+                    
+                    # Get the next sequential number for this month with row-level locking
+                    existing_requests = BookingModel.objects.filter(
+                        request_id__startswith=base_id
+                    ).select_for_update().order_by('-request_id')
+                    
+                    if existing_requests.exists():
+                        # Extract the last number and increment
+                        last_request_id = existing_requests.first().request_id
+                        try:
+                            # Extract the number part (last 5 digits)
+                            last_number = int(last_request_id[-5:])
+                            next_number = last_number + 1
+                        except (ValueError, IndexError):
+                            next_number = 1
+                    else:
+                        next_number = 1
+                    
+                    # Format with leading zeros (5 digits)
+                    request_id = f"{base_id}{next_number:05d}"
+                    
+                    # Verify this ID doesn't exist (double-check)
+                    if not BookingModel.objects.filter(request_id=request_id).exists():
+                        return request_id
+                    
+                    # If we get here, the ID was taken by another process, retry
+                    retry_count += 1
+                    time.sleep(0.01)  # Small delay before retry
+                    continue
+                    
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    # Fallback: use timestamp-based ID
+                    timestamp = int(time.time() * 1000) % 100000
+                    now = datetime.now()
+                    year_suffix = str(now.year)[-2:]
+                    month_abbr = now.strftime('%b').upper()
+                    base_id = f"MGCRQ{year_suffix}{month_abbr}"
+                    return f"{base_id}{timestamp:05d}"
+                
+                time.sleep(0.01)  # Small delay before retry
+                continue
+        
+        # Final fallback if all else fails
+        now = datetime.now()
+        year_suffix = str(now.year)[-2:]
+        month_abbr = now.strftime('%b').upper()
+        base_id = f"MGCRQ{year_suffix}{month_abbr}"
+        timestamp = int(time.time() * 1000) % 100000
+        return f"{base_id}{timestamp:05d}"
+    
     @property
     def duration_hours(self):
         # Fixed 8 minutes duration for all slots
@@ -501,6 +586,59 @@ class BookingModel(models.Model):
             return False
         return self.available_spots >= requested_participants
     
+    def auto_reject_ineligible_requests(self):
+        """Automatically reject join requests that can no longer be accommodated"""
+        if self.slot_status == 'booked':
+            # Slot is full, reject all pending requests
+            pending_requests = self.join_requests.filter(
+                status='pending_approval',
+                hideStatus=0
+            )
+            
+            for request in pending_requests:
+                request.status = 'rejected'
+                request.notes = 'Automatically rejected - slot is full'
+                request.save()
+                
+                # Create notification for the rejected member
+                from .models import NotificationModel
+                NotificationModel.create_join_response_notification(
+                    recipient=request.member,
+                    sender=self.member,
+                    booking=self,
+                    is_approved=False,
+                    reason='Slot is full'
+                )
+        
+        elif self.slot_status == 'partially_available':
+            # Check each pending request to see if it can still be accommodated
+            pending_requests = self.join_requests.filter(
+                status='pending_approval',
+                hideStatus=0
+            ).order_by('createdAt')  # Process oldest requests first
+            
+            current_participants = self.participants
+            
+            for request in pending_requests:
+                if current_participants + request.participants > 4:
+                    # This request can no longer be accommodated
+                    request.status = 'rejected'
+                    request.notes = f'Automatically rejected - only {4 - current_participants} spots available'
+                    request.save()
+                    
+                    # Create notification for the rejected member
+                    from .models import NotificationModel
+                    NotificationModel.create_join_response_notification(
+                        recipient=request.member,
+                        sender=self.member,
+                        booking=self,
+                        is_approved=False,
+                        reason=f'Only {4 - current_participants} spots available'
+                    )
+                else:
+                    # This request can still be accommodated
+                    break
+    
     def get_join_requests(self):
         """Get all join requests for this slot"""
         return BookingModel.objects.filter(
@@ -551,6 +689,9 @@ class BookingModel(models.Model):
             
             # Save the updated original booking
             self.save()
+            
+            # Auto-reject any ineligible requests after this approval
+            self.auto_reject_ineligible_requests()
             
             return True
             
@@ -724,13 +865,17 @@ class NotificationModel(models.Model):
         )
 
     @classmethod
-    def create_join_response_notification(cls, recipient, sender, booking, is_approved):
+    def create_join_response_notification(cls, recipient, sender, booking, is_approved, reason=None):
         """Create a join response notification"""
         notification_type = 'join_approved' if is_approved else 'join_rejected'
         title = 'Join Request Approved' if is_approved else 'Join Request Rejected'
         time_str = booking.booking_time.strftime('%H:%M') if booking.booking_time else "Time not specified"
         date_str = booking.slot_date.strftime('%B %d, %Y') if booking.slot_date else "Date not specified"
-        message = f"Your join request for {time_str} on {date_str} has been {'approved' if is_approved else 'rejected'}."
+        
+        if reason:
+            message = f"Your join request for {time_str} on {date_str} has been {'approved' if is_approved else 'rejected'}. Reason: {reason}"
+        else:
+            message = f"Your join request for {time_str} on {date_str} has been {'approved' if is_approved else 'rejected'}."
         
         return cls.objects.create(
             recipient=recipient,

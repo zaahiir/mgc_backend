@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('apis', '0001_initial'),  # Update this to the latest migration
+        ('apis', '0039_remove_bookingmodel_bookingdate_and_more'),
     ]
 
     operations = [
