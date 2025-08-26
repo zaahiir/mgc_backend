@@ -592,4 +592,75 @@ export class CollectionService {
     
     return axios.post(url, participantData, config);
   }
+
+  // Join Request Management Methods
+  getIncomingJoinRequests() {
+    return axios.get<any>(`${this.apiUrl}joinRequest/incoming_requests/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  getOutgoingJoinRequests() {
+    return axios.get<any>(`${this.apiUrl}joinRequest/outgoing_requests/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+
+
+  getJoinRequestStatistics() {
+    return axios.get<any>(`${this.apiUrl}joinRequest/statistics/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  // Enhanced create join request with better validation
+  createJoinRequestEnhanced(joinRequestData: {
+    course: number;
+    tee: number;
+    slotDate: string;
+    bookingTime: string;
+    participants: number;
+    originalBookingId: number;
+  }) {
+    return axios.post<any>(`${this.apiUrl}booking/create_join_request/`, joinRequestData, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  // Get all join requests for a specific booking
+  getJoinRequestsForBooking(bookingId: number) {
+    return axios.get<any>(`${this.apiUrl}joinRequest/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      },
+      params: { original_booking: bookingId }
+    });
+  }
+
+  // Enhanced order statistics with join request counts
+  getEnhancedOrderStatistics() {
+    return axios.get<any>(`${this.apiUrl}orders/statistics/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  // Get pending review requests with enhanced data
+  getPendingReviewRequestsEnhanced() {
+    return axios.get<any>(`${this.apiUrl}orders/pending_review/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
 }

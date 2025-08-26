@@ -96,6 +96,59 @@
               </div>
             </div>
           </div>
+          
+          <!-- Enhanced Join Request Statistics -->
+          <div class="row mt-4" *ngIf="joinRequestStatistics">
+            <div class="col-12">
+              <h4 class="section-title">Join Request Statistics</h4>
+              <div class="row">
+                <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                  <div class="stat-card incoming-pending">
+                    <div class="stat-icon">
+                      <fa-icon [icon]="exclamationTriangleIcon"></fa-icon>
+                    </div>
+                    <div class="stat-content">
+                      <h3>{{joinRequestStatistics.incoming?.pending || 0}}</h3>
+                      <p>Incoming Pending</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                  <div class="stat-card incoming-approved">
+                    <div class="stat-icon">
+                      <fa-icon [icon]="checkCircleIcon"></fa-icon>
+                    </div>
+                    <div class="stat-content">
+                      <h3>{{joinRequestStatistics.incoming?.approved || 0}}</h3>
+                      <p>Incoming Approved</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                  <div class="stat-card outgoing-pending">
+                    <div class="stat-icon">
+                      <fa-icon [icon]="exclamationTriangleIcon"></fa-icon>
+                    </div>
+                    <div class="stat-content">
+                      <h3>{{joinRequestStatistics.outgoing?.pending || 0}}</h3>
+                      <p>Outgoing Pending</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                  <div class="stat-card outgoing-approved">
+                    <div class="stat-icon">
+                      <fa-icon [icon]="checkCircleIcon"></fa-icon>
+                    </div>
+                    <div class="stat-content">
+                      <h3>{{joinRequestStatistics.outgoing?.approved || 0}}</h3>
+                      <p>Outgoing Approved</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Filter Controls -->

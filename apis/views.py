@@ -80,15 +80,12 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Q
 import json
 import random
 import string
 import qrcode
 from io import BytesIO
 import base64
-from .models import *
-from .serializers import *
 
 logger = logging.getLogger(__name__)
  
@@ -5008,5 +5005,291 @@ class OrdersViewSet(viewsets.ModelViewSet):
             return Response({
                 'code': 0,
                 'message': f'Error retrieving pending review requests: {str(e)}'
+            }, status=500)
+
+
+class JoinRequestViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing join requests"""
+    serializer_class = JoinRequestSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get join requests based on user role"""
+        try:
+            member = MemberModel.objects.get(email=self.request.user.email)
+            
+            # Get join requests where the current user is either:
+            # 1. The requester (outgoing requests)
+            # 2. The original booker (incoming requests)
+            return JoinRequestModel.objects.filter(
+                Q(member=member) | Q(original_booking__member=member),
+                hideStatus=0
+            ).select_related('member', 'original_booking', 'original_booking__course', 'original_booking__tee')
+        except MemberModel.DoesNotExist:
+            return JoinRequestModel.objects.none()
+    
+    @action(detail=False, methods=['GET'])
+    def incoming_requests(self, request):
+        """Get incoming join requests for the current user's bookings"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Get join requests for bookings owned by the current user
+            incoming_requests = JoinRequestModel.objects.filter(
+                original_booking__member=member,
+                status='pending_approval',
+                hideStatus=0
+            ).select_related(
+                'member', 'original_booking', 'original_booking__course', 
+                'original_booking__tee'
+            ).order_by('-createdAt')
+            
+            serializer = self.get_serializer(incoming_requests, many=True)
+            
+            return Response({
+                'code': 1,
+                'message': 'Incoming join requests retrieved successfully',
+                'data': serializer.data
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving incoming requests: {str(e)}'
+            }, status=500)
+    
+    @action(detail=False, methods=['GET'])
+    def outgoing_requests(self, request):
+        """Get outgoing join requests made by the current user"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Get join requests made by the current user
+            outgoing_requests = JoinRequestModel.objects.filter(
+                member=member,
+                hideStatus=0
+            ).select_related(
+                'original_booking', 'original_booking__course', 
+                'original_booking__tee', 'original_booking__member'
+            ).order_by('-createdAt')
+            
+            serializer = self.get_serializer(outgoing_requests, many=True)
+            
+            return Response({
+                'code': 1,
+                'message': 'Outgoing join requests retrieved successfully',
+                'data': serializer.data
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving outgoing requests: {str(e)}'
+            }, status=500)
+    
+    @action(detail=True, methods=['POST'])
+    def approve(self, request, pk=None):
+        """Approve a join request"""
+        try:
+            join_request = self.get_object()
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Verify the current user owns the original booking
+            if join_request.original_booking.member != member:
+                return Response({
+                    'code': 0,
+                    'message': 'You can only approve requests for your own bookings'
+                }, status=403)
+            
+            # Check if request is still pending
+            if join_request.status != 'pending_approval':
+                return Response({
+                    'code': 0,
+                    'message': 'This request has already been processed'
+                }, status=400)
+            
+            # Check if slot can accommodate the request
+            original_booking = join_request.original_booking
+            total_participants = original_booking.participants + join_request.participants
+            
+            if total_participants > 4:
+                return Response({
+                    'code': 0,
+                    'message': f'Slot cannot accommodate {join_request.participants} additional participants. Maximum is 4.'
+                }, status=400)
+            
+            # Approve the request
+            join_request.status = 'approved'
+            join_request.approved_by = member
+            join_request.approved_at = timezone.now().astimezone(UK_TIMEZONE)
+            join_request.save()
+            
+            # Update original booking participants
+            original_booking.participants = total_participants
+            original_booking.save()
+            
+            # Create notification for the requester
+            NotificationModel.create_join_response_notification(
+                recipient=join_request.member,
+                sender=member,
+                booking=original_booking,
+                is_approved=True
+            )
+            
+            # Auto-reject other pending requests if slot is now full
+            if total_participants == 4:
+                other_pending = JoinRequestModel.objects.filter(
+                    original_booking=original_booking,
+                    status='pending_approval',
+                    hideStatus=0
+                ).exclude(id=join_request.id)
+                
+                for other_request in other_pending:
+                    other_request.status = 'rejected'
+                    other_request.notes = 'Automatically rejected - slot is full'
+                    other_request.save()
+                    
+                    # Notify other rejected requesters
+                    NotificationModel.create_join_response_notification(
+                        recipient=other_request.member,
+                        sender=member,
+                        booking=original_booking,
+                        is_approved=False,
+                        reason='Slot is full'
+                    )
+            
+            return Response({
+                'code': 1,
+                'message': 'Join request approved successfully',
+                'data': {
+                    'requestId': join_request.request_id,
+                    'originalBookingId': original_booking.booking_id,
+                    'newTotalParticipants': total_participants,
+                    'remainingSlots': max(0, 4 - total_participants)
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error approving join request: {str(e)}'
+            }, status=500)
+    
+    @action(detail=True, methods=['POST'])
+    def reject(self, request, pk=None):
+        """Reject a join request"""
+        try:
+            join_request = self.get_object()
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Verify the current user owns the original booking
+            if join_request.original_booking.member != member:
+                return Response({
+                    'code': 0,
+                    'message': 'You can only reject requests for your own bookings'
+                }, status=403)
+            
+            # Check if request is still pending
+            if join_request.status != 'pending_approval':
+                return Response({
+                    'code': 0,
+                    'message': 'This request has already been processed'
+                }, status=400)
+            
+            # Reject the request
+            join_request.status = 'rejected'
+            join_request.save()
+            
+            # Create notification for the requester
+            NotificationModel.create_join_response_notification(
+                recipient=join_request.member,
+                sender=member,
+                booking=join_request.original_booking,
+                is_approved=False
+            )
+            
+            return Response({
+                'code': 1,
+                'message': 'Join request rejected successfully',
+                'data': {
+                    'requestId': join_request.request_id,
+                    'originalBookingId': join_request.original_booking.booking_id
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error rejecting join request: {str(e)}'
+            }, status=500)
+    
+    @action(detail=False, methods=['GET'])
+    def statistics(self, request):
+        """Get join request statistics for the current user"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Incoming requests (for user's bookings)
+            incoming_pending = JoinRequestModel.objects.filter(
+                original_booking__member=member,
+                status='pending_approval',
+                hideStatus=0
+            ).count()
+            
+            incoming_approved = JoinRequestModel.objects.filter(
+                original_booking__member=member,
+                status='approved',
+                hideStatus=0
+            ).count()
+            
+            incoming_rejected = JoinRequestModel.objects.filter(
+                original_booking__member=member,
+                status='rejected',
+                hideStatus=0
+            ).count()
+            
+            # Outgoing requests (made by user)
+            outgoing_pending = JoinRequestModel.objects.filter(
+                member=member,
+                status='pending_approval',
+                hideStatus=0
+            ).count()
+            
+            outgoing_approved = JoinRequestModel.objects.filter(
+                member=member,
+                status='approved',
+                hideStatus=0
+            ).count()
+            
+            outgoing_rejected = JoinRequestModel.objects.filter(
+                member=member,
+                status='rejected',
+                hideStatus=0
+            ).count()
+            
+            return Response({
+                'code': 1,
+                'message': 'Join request statistics retrieved successfully',
+                'data': {
+                    'incoming': {
+                        'pending': incoming_pending,
+                        'approved': incoming_approved,
+                        'rejected': incoming_rejected,
+                        'total': incoming_pending + incoming_approved + incoming_rejected
+                    },
+                    'outgoing': {
+                        'pending': outgoing_pending,
+                        'approved': outgoing_approved,
+                        'rejected': outgoing_rejected,
+                        'total': outgoing_pending + outgoing_approved + outgoing_rejected
+                    }
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving statistics: {str(e)}'
             }, status=500)
 

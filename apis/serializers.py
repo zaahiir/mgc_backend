@@ -800,6 +800,101 @@ class BookingSerializer(serializers.ModelSerializer):
         return data
 
 
+class JoinRequestSerializer(serializers.ModelSerializer):
+    """Enhanced serializer for join requests with comprehensive data"""
+    requestId = serializers.CharField(source='request_id', read_only=True)
+    originalBookingId = serializers.CharField(source='original_booking.booking_id', read_only=True)
+    requesterId = serializers.IntegerField(source='member.id', read_only=True)
+    requesterName = serializers.CharField(source='requester_name', read_only=True)
+    requesterMemberId = serializers.CharField(source='requester_member_id', read_only=True)
+    requestDate = serializers.DateTimeField(source='request_date', read_only=True)
+    requestedParticipants = serializers.IntegerField(source='participants', read_only=True)
+    courseName = serializers.CharField(source='course_name', read_only=True)
+    tee = serializers.CharField(source='tee_info', read_only=True)
+    slotDate = serializers.DateField(source='slot_date', read_only=True)
+    slotTime = serializers.TimeField(source='slot_time', read_only=True)
+    originalBookerId = serializers.IntegerField(source='original_booker_id', read_only=True)
+    originalBookerName = serializers.CharField(source='original_booker_name', read_only=True)
+    
+    # Enhanced fields for request management
+    currentSlotStatus = serializers.SerializerMethodField(read_only=True)
+    totalParticipantsIfApproved = serializers.SerializerMethodField(read_only=True)
+    remainingSlotsIfApproved = serializers.SerializerMethodField(read_only=True)
+    otherPendingRequests = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = JoinRequestModel
+        fields = [
+            'id', 'requestId', 'originalBookingId', 'requesterId', 'requesterName', 
+            'requesterMemberId', 'requestDate', 'requestedParticipants', 'status',
+            'courseName', 'tee', 'slotDate', 'slotTime', 'originalBookerId', 
+            'originalBookerName', 'currentSlotStatus', 'totalParticipantsIfApproved',
+            'remainingSlotsIfApproved', 'otherPendingRequests', 'notes', 'createdAt'
+        ]
+        read_only_fields = ['createdAt', 'updatedAt']
+    
+    def get_currentSlotStatus(self, obj):
+        """Get current slot status information"""
+        try:
+            original_booking = obj.original_booking
+            current_participants = original_booking.participants
+            max_participants = 4
+            
+            return {
+                'currentParticipants': current_participants,
+                'maxParticipants': max_participants,
+                'availableSlots': max_participants - current_participants,
+                'slotStatus': original_booking.slot_status
+            }
+        except (TypeError, ValueError, AttributeError):
+            return {
+                'currentParticipants': 0,
+                'maxParticipants': 4,
+                'availableSlots': 4,
+                'slotStatus': 'unknown'
+            }
+    
+    def get_totalParticipantsIfApproved(self, obj):
+        """Calculate total participants if this request is approved"""
+        try:
+            original_booking = obj.original_booking
+            current_participants = original_booking.participants
+            requested_participants = obj.participants
+            
+            return current_participants + requested_participants
+        except (TypeError, ValueError, AttributeError):
+            return 0
+    
+    def get_remainingSlotsIfApproved(self, obj):
+        """Calculate remaining slots if this request is approved"""
+        try:
+            total_if_approved = self.get_totalParticipantsIfApproved(obj)
+            max_participants = 4
+            remaining = max_participants - total_if_approved
+            return max(0, remaining)
+        except (TypeError, ValueError, AttributeError):
+            return 4
+    
+    def get_otherPendingRequests(self, obj):
+        """Get other pending requests for the same slot"""
+        try:
+            original_booking = obj.original_booking
+            other_pending = JoinRequestModel.objects.filter(
+                original_booking=original_booking,
+                status='pending_approval',
+                hideStatus=0
+            ).exclude(id=obj.id)
+            
+            return [{
+                'requestId': req.request_id,
+                'requesterName': req.requester_name,
+                'requestedParticipants': req.participants,
+                'requestDate': req.request_date
+            } for req in other_pending]
+        except (TypeError, ValueError, AttributeError):
+            return []
+
+
 class NotificationSerializer(serializers.ModelSerializer):
     """Serializer for notifications"""
     senderName = serializers.SerializerMethodField(read_only=True)
