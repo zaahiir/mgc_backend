@@ -33,7 +33,7 @@ interface BookingData {
   slotDate: string;  // Date for this specific slot
   bookingTime: string;
   participants: number;
-  status?: 'pending' | 'confirmed' | 'cancelled' | 'pending_approval' | 'approved' | 'rejected' | 'completed';
+  status?: 'pending' | 'confirmed' | 'pending_approval' | 'approved' | 'rejected' | 'completed';
   is_join_request?: boolean;
   original_booking?: number;
   group_id?: string;  // For grouping multi-slot bookings
@@ -84,7 +84,7 @@ interface Notification {
   recipientName: string;
   sender?: number;
   senderName?: string;
-  notification_type: 'join_request' | 'join_approved' | 'join_rejected' | 'booking_confirmed' | 'booking_cancelled';
+  notification_type: 'join_request' | 'join_approved' | 'join_rejected' | 'booking_confirmed';
   title: string;
   message: string;
   related_booking?: number;
@@ -100,7 +100,7 @@ interface BookingWithDetails extends BookingData {
   memberFullName: string;
   courseName: string;
   teeInfo: string;
-  canCancel: boolean;
+
   endTime: string;
   formattedDate: string;
   slotStatus: string;
@@ -307,21 +307,7 @@ export class CollectionService {
     return axios.post(url, { join_request_id: joinRequestId }, config);
   }
 
-  // Cancel booking method
-  cancelBooking(bookingId: number) {
-    const url = `${this.apiUrl}booking/${bookingId}/cancel/`;
-    const config: any = {};
-    
-    // Add authorization headers if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    }
-    
-    return axios.post(url, {}, config);
-  }
+
 
   // Notification methods
   getNotifications() {

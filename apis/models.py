@@ -279,7 +279,6 @@ class BookingModel(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
-        ('cancelled', 'Cancelled'),
         ('pending_approval', 'Pending Approval'),  # For join requests
         ('approved', 'Approved'),  # For approved join requests
         ('rejected', 'Rejected'),  # For rejected join requests
@@ -456,19 +455,7 @@ class BookingModel(models.Model):
         end_datetime = start_datetime + duration
         return end_datetime.time()
     
-    @property
-    def can_cancel(self):
-        # Allow cancellation up to 24 hours before the slot (using UK time)
-        if not self.slot_date or not self.booking_time:
-            return False
-        
-        try:
-            booking_datetime = timezone.datetime.combine(self.slot_date, self.booking_time)
-            uk_now = timezone.now().astimezone(UK_TIMEZONE)
-            return booking_datetime - uk_now > timezone.timedelta(hours=24)
-        except (TypeError, ValueError):
-            pass
-        return True
+
     
     @property
     def slot_participant_count(self):
@@ -857,7 +844,6 @@ class NotificationModel(models.Model):
         ('join_approved', 'Join Approved'),
         ('join_rejected', 'Join Rejected'),
         ('booking_confirmed', 'Booking Confirmed'),
-        ('booking_cancelled', 'Booking Cancelled'),
     ]
     
     id = models.AutoField(primary_key=True)

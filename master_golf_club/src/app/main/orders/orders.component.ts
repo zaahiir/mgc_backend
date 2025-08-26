@@ -28,7 +28,7 @@ interface Booking {
   originalBookingInfo?: any;
   originalBookingId?: number;
   joinRequests?: Booking[];
-  canCancel?: boolean;
+
   slotStatus?: string;
   availableSpots?: number;
   slotParticipantCount?: number;
@@ -98,7 +98,7 @@ interface OrderStatistics {
   pendingRequests: number;
   requestsAccepted: number;
   acceptRejectActions: number;
-  cancelled: number;
+
 }
 
 @Component({
@@ -171,7 +171,7 @@ export class OrdersComponent implements OnInit {
     { value: 'confirmed', label: 'Confirmed', count: 0 },
     { value: 'pending_approval', label: 'Pending Requests', count: 0 },
     { value: 'approved', label: 'Requests Accepted', count: 0 },
-    { value: 'cancelled', label: 'Cancelled', count: 0 }
+
   ];
 
   // Icons
@@ -296,6 +296,15 @@ export class OrdersComponent implements OnInit {
           }
         }
         
+        // Now set the isIncomingRequest property for all bookings
+        this.bookings.forEach(booking => {
+          booking.isIncomingRequest = this.isIncomingRequest(booking);
+          if (booking.isIncomingRequest) {
+            booking.requesterName = this.getRequesterName(booking);
+            booking.requesterEmail = this.getRequesterEmail(booking);
+          }
+        });
+        
         console.log('Final processed bookings:', this.bookings);
         
         // Debug: Show specific fields for each booking
@@ -305,7 +314,12 @@ export class OrdersComponent implements OnInit {
             teeInfo: booking.teeInfo,
             teeName: booking.teeName,
             booking_time: booking.booking_time,
-            formattedDate: booking.formattedDate
+            formattedDate: booking.formattedDate,
+            is_join_request: booking.is_join_request,
+            isOwnBooking: booking.isOwnBooking,
+            isIncomingRequest: booking.isIncomingRequest,
+            status: booking.status,
+            original_booking: booking.original_booking
           });
         });
         
@@ -345,15 +359,14 @@ export class OrdersComponent implements OnInit {
       slotNumber: index + 1,
       // Format display data - use created_at as booked date
       formattedDate: this.formatDate(slot.created_at || slot.formatted_created_date || booking.bookingDate || booking.formattedDate),
-      canCancel: this.canCancelBooking(booking),
       canJoinSlot: this.canJoinSlot(booking),
       // New order management fields
       isOwnBooking: !booking.is_join_request,
       canAddParticipants: this.canAddParticipants(booking, slot),
       maxParticipants: 4,
-      isIncomingRequest: this.isIncomingRequest(booking),
-      requesterName: this.getRequesterName(booking),
-      requesterEmail: this.getRequesterEmail(booking)
+      isIncomingRequest: false, // Will be set after isOwnBooking is set
+      requesterName: '',
+      requesterEmail: ''
     };
     
     console.log('Created slot booking:', slotBooking);
@@ -371,7 +384,6 @@ export class OrdersComponent implements OnInit {
       slot_date: booking.slotDate || booking.bookingDate,
       participants: booking.participants,
       formattedDate: this.formatDate(booking.createdAt || booking.bookingDate || booking.formattedDate),
-      canCancel: this.canCancelBooking(booking),
       canJoinSlot: this.canJoinSlot(booking),
       hasMultipleSlots: false,
       isMultiSlotBooking: false,
@@ -381,9 +393,9 @@ export class OrdersComponent implements OnInit {
       isOwnBooking: !booking.is_join_request,
       canAddParticipants: this.canAddParticipants(booking, null),
       maxParticipants: 4,
-      isIncomingRequest: this.isIncomingRequest(booking),
-      requesterName: this.getRequesterName(booking),
-      requesterEmail: this.getRequesterEmail(booking)
+      isIncomingRequest: false, // Will be set after isOwnBooking is set
+      requesterName: '',
+      requesterEmail: ''
     };
     
     console.log('Created single booking:', processedBooking);
@@ -400,7 +412,9 @@ export class OrdersComponent implements OnInit {
   }
 
   private isIncomingRequest(booking: any): boolean {
-    return booking.original_booking && booking.is_join_request;
+    // An incoming request is a join request that is NOT made by the current user
+    // It's a request from another member to join the current user's slot
+    return booking.is_join_request && !booking.isOwnBooking;
   }
 
   private getRequesterName(booking: any): string {
@@ -415,6 +429,78 @@ export class OrdersComponent implements OnInit {
       return booking.member?.email || '';
     }
     return '';
+  }
+
+  // Get original booker name for join requests
+  getOriginalBookerName(booking: any): string {
+    if (booking.originalBookingInfo) {
+      return booking.originalBookingInfo.memberName || 'Unknown';
+    }
+    return 'Unknown';
+  }
+
+  // Get original booking participants count
+  getOriginalBookingParticipants(booking: any): number {
+    if (booking.originalBookingInfo) {
+      return booking.originalBookingInfo.participants || 0;
+    }
+    return 0;
+  }
+
+  // Check if a request can be accepted
+  canAcceptRequest(booking: any): boolean {
+    if (!booking.isIncomingRequest || booking.status !== 'pending_approval') {
+      return false;
+    }
+    
+    // Check if there are available spots
+    const currentParticipants = this.getOriginalBookingParticipants(booking);
+    const requestedParticipants = booking.participants;
+    return (currentParticipants + requestedParticipants) <= 4;
+  }
+
+  // Handle accept request
+  async handleAcceptRequest(booking: any) {
+    if (!this.canAcceptRequest(booking)) {
+      return;
+    }
+
+    try {
+      const response = await this.collectionService.reviewJoinRequest(
+        booking.originalBookingId || booking.id,
+        booking.id,
+        'approve'
+      );
+      
+      if (response && response.data && response.data.code === 1) {
+        // Success - reload data
+        await this.refreshData();
+      } else {
+        console.error('Failed to accept join request:', response);
+      }
+    } catch (error) {
+      console.error('Error accepting join request:', error);
+    }
+  }
+
+  // Handle reject request
+  async handleRejectRequest(booking: any) {
+    try {
+      const response = await this.collectionService.reviewJoinRequest(
+        booking.originalBookingId || booking.id,
+        booking.id,
+        'reject'
+      );
+      
+      if (response && response.data && response.data.code === 1) {
+        // Success - reload data
+        await this.refreshData();
+      } else {
+        console.error('Failed to reject join request:', response);
+      }
+    } catch (error) {
+      console.error('Error rejecting join request:', error);
+    }
   }
 
   async loadNotifications() {
@@ -504,7 +590,6 @@ export class OrdersComponent implements OnInit {
     const confirmed = this.bookings.filter(b => b.status === 'confirmed').length;
     const pendingRequests = this.bookings.filter(b => b.status === 'pending_approval').length;
     const requestsAccepted = this.bookings.filter(b => b.status === 'approved').length;
-    const cancelled = this.bookings.filter(b => b.status === 'cancelled').length;
     const acceptRejectActions = this.bookings.filter(b => 
       b.status === 'pending_approval' && b.is_join_request
     ).length;
@@ -514,8 +599,7 @@ export class OrdersComponent implements OnInit {
       confirmed,
       pendingRequests,
       requestsAccepted,
-      acceptRejectActions,
-      cancelled
+      acceptRejectActions
     };
   }
 
@@ -537,41 +621,7 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-  // Check if booking can be cancelled
-  canCancelBooking(booking: Booking): boolean {
-    // Only allow cancellation of confirmed bookings that are not join requests
-    return booking.status === 'confirmed' && !booking.is_join_request;
-  }
 
-  // Cancel a booking
-  async cancelBooking(booking: Booking) {
-    if (!this.canCancelBooking(booking)) {
-      console.log('Booking cannot be cancelled');
-      return;
-    }
-
-    if (confirm(`Are you sure you want to cancel your booking for ${booking.courseName} on ${this.formatDate(booking.slotDate || booking.bookingDate)} at ${booking.booking_time}?`)) {
-      try {
-        // Use originalBookingId for API calls, fallback to id if not available
-        const bookingId = booking.originalBookingId || booking.id;
-        console.log('Cancelling booking with ID:', bookingId, 'Original ID:', booking.originalBookingId, 'Display ID:', booking.id);
-        
-        const response = await this.collectionService.cancelBooking(bookingId);
-        
-        if (response && response.data && response.data.code === 1) {
-          console.log('Booking cancelled successfully');
-          // Reload data to reflect changes
-          await this.refreshData();
-        } else {
-          console.error('Failed to cancel booking:', response);
-          alert('Failed to cancel booking. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error cancelling booking:', error);
-        alert('Error cancelling booking. Please try again.');
-      }
-    }
-  }
 
   // Check if slot can accept more participants
   canJoinSlot(booking: Booking): boolean {
@@ -835,13 +885,6 @@ export class OrdersComponent implements OnInit {
         action: 'viewDetails',
         enabled: true
       };
-    } else if (booking.status === 'cancelled') {
-      return {
-        text: 'View Details',
-        color: 'gray',
-        action: 'viewDetails',
-        enabled: true
-      };
     }
     
     return {
@@ -904,8 +947,6 @@ export class OrdersComponent implements OnInit {
         return 'badge-info';
       case 'approved':
         return 'badge-success';
-      case 'cancelled':
-        return 'badge-danger';
       default:
         return 'badge-secondary';
     }
@@ -923,8 +964,6 @@ export class OrdersComponent implements OnInit {
         return 'PENDING REQUEST';
       case 'approved':
         return 'CONFIRMED';
-      case 'cancelled':
-        return 'CANCELLED';
       default:
         return booking.status.toUpperCase();
     }
@@ -983,8 +1022,6 @@ export class OrdersComponent implements OnInit {
         return 'status-approved';
       case 'pending_approval':
         return 'status-pending';
-      case 'cancelled':
-        return 'status-cancelled';
       default:
         return 'status-default';
     }
@@ -999,8 +1036,6 @@ export class OrdersComponent implements OnInit {
         return 'Approved';
       case 'pending_approval':
         return 'Pending Approval';
-      case 'cancelled':
-        return 'Cancelled';
       default:
         return status;
     }
@@ -1039,8 +1074,21 @@ export class OrdersComponent implements OnInit {
     return this.bookings.filter(booking => booking.is_join_request).length;
   }
 
-  getCancelledBookings(): number {
-    return this.bookings.filter(booking => booking.status === 'cancelled').length;
+  // Get count of received requests (incoming join requests)
+  getReceivedRequestsCount(): number {
+    const receivedRequests = this.bookings.filter(booking => 
+      booking.isIncomingRequest && booking.status === 'pending_approval'
+    );
+    console.log('Received requests count:', receivedRequests.length);
+    console.log('All bookings with isIncomingRequest:', this.bookings.filter(b => b.isIncomingRequest));
+    return receivedRequests.length;
+  }
+
+  // Get count of rejected requests
+  getRejectedRequestsCount(): number {
+    return this.bookings.filter(booking => 
+      booking.isIncomingRequest && booking.status === 'rejected'
+    ).length;
   }
 
   getGroupedBookings(): Booking[] {

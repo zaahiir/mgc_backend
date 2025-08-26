@@ -2261,43 +2261,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': str(e)
             }, status=400)
 
-    @action(detail=True, methods=['post'])
-    def cancel(self, request, pk=None):
-        """Cancel a booking"""
-        try:
-            # Add debugging
-            print(f"Cancel called with pk: {pk}")
-            print(f"Request user: {request.user}")
-            print(f"Request headers: {request.headers}")
-            
-            # Get the booking using the standard get_object method
-            # This will automatically check permissions and authentication
-            booking = self.get_object()
-            print(f"Found booking: {booking}")
-            
-            if not booking.can_cancel:
-                return Response({
-                    'code': 0,
-                    'message': 'Cannot cancel booking within 24 hours of tee time'
-                }, status=400)
-            
-            booking.status = 'cancelled'
-            booking.save()
-            
-            return Response({
-                'code': 1,
-                'message': 'Booking cancelled successfully'
-            })
-            
-        except Exception as e:
-            print(f"Error in cancel: {str(e)}")
-            print(f"Error type: {type(e)}")
-            import traceback
-            traceback.print_exc()
-            return Response({
-                'code': 0,
-                'message': str(e)
-            }, status=400)
+
 
     @action(detail=True, methods=['post'])
     def approve_join_request(self, request, pk=None):
@@ -4921,9 +4885,6 @@ class OrdersViewSet(viewsets.ModelViewSet):
                 is_join_request=True
             )
             
-            # Get cancelled bookings
-            cancelled_bookings = all_bookings.filter(status='cancelled')
-            
             # Get incoming join requests that need review
             incoming_requests = BookingModel.objects.filter(
                 original_booking__member=member,
@@ -4938,7 +4899,6 @@ class OrdersViewSet(viewsets.ModelViewSet):
             pending_requests_count = pending_requests.count()
             requests_accepted = approved_requests.count()
             actions_required = incoming_requests.count()
-            cancelled = cancelled_bookings.count()
             
             return Response({
                 'code': 1,
@@ -4948,8 +4908,7 @@ class OrdersViewSet(viewsets.ModelViewSet):
                     'confirmed': confirmed,
                     'pendingRequests': pending_requests_count,
                     'requestsAccepted': requests_accepted,
-                    'acceptRejectActions': actions_required,
-                    'cancelled': cancelled
+                    'acceptRejectActions': actions_required
                 }
             })
             
@@ -4983,8 +4942,6 @@ class OrdersViewSet(viewsets.ModelViewSet):
                     status='approved',
                     is_join_request=True
                 )
-            elif status == 'cancelled':
-                queryset = queryset.filter(status='cancelled')
             # 'all' shows everything (no additional filtering)
             
             serializer = self.get_serializer(queryset, many=True)

@@ -513,7 +513,7 @@ class BookingSerializer(serializers.ModelSerializer):
     memberFullName = serializers.SerializerMethodField(read_only=True)
     courseName = serializers.CharField(source='course.courseName', read_only=True)
     teeInfo = serializers.SerializerMethodField(read_only=True)
-    canCancel = serializers.BooleanField(source='can_cancel', read_only=True)
+
     endTime = serializers.TimeField(source='end_time', read_only=True)
     formattedDate = serializers.SerializerMethodField(read_only=True)
     slotStatus = serializers.CharField(source='slot_status', read_only=True)
@@ -550,7 +550,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
             'tee', 'slot_date', 'booking_time', 'teeInfo', 'teeName', 'slotDate', 'bookingTime', 'formattedDate', 'endTime',
-            'participants', 'status', 'notes', 'canCancel',
+            'participants', 'status', 'notes',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
             'joinRequests', 'originalBookingInfo', 'allParticipantsInfo', 'is_join_request', 'original_booking',
             'isMultiSlotBooking', 'totalParticipants',

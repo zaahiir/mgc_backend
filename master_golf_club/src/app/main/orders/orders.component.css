@@ -67,9 +67,7 @@
   border-left-color: #9C27B0;
 }
 
-.stat-card.cancelled {
-  border-left-color: #f44336;
-}
+
 
 .stat-icon {
   font-size: 2rem;
@@ -93,9 +91,23 @@
   color: #9C27B0;
 }
 
-.stat-card.cancelled .stat-icon {
-  color: #f44336;
+.stat-card.accept-requests .stat-icon {
+  color: #4CAF50;
 }
+
+.stat-card.reject-requests .stat-icon {
+  color: #F44336;
+}
+
+.stat-card.accept-requests {
+  border-left-color: #4CAF50;
+}
+
+.stat-card.reject-requests {
+  border-left-color: #F44336;
+}
+
+
 
 .stat-content h3 {
   font-size: 2rem;
@@ -260,10 +272,7 @@
   color: white;
 }
 
-.status-cancelled {
-  background-color: #f44336;
-  color: white;
-}
+
 
 .status-default {
   background-color: #9E9E9E;
@@ -715,4 +724,39 @@
     flex: 1;
     max-width: 120px;
   }
+}
+
+/* Accept/Reject Button Styling */
+.btn-group .d-flex.gap-1 {
+  gap: 0.25rem !important;
+}
+
+.btn-group .btn-success.btn-sm {
+  min-width: 70px;
+}
+
+.btn-group .btn-danger.btn-sm {
+  min-width: 70px;
+}
+
+/* Enhanced request details styling */
+.requester-info,
+.original-booking-info,
+.booking-details {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--theme-color);
+}
+
+.requester-info {
+  border-left-color: #FF9800;
+}
+
+.original-booking-info {
+  border-left-color: #2196F3;
+}
+
+.booking-details {
+  border-left-color: #4CAF50;
 }

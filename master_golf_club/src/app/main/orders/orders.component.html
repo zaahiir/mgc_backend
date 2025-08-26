@@ -74,13 +74,24 @@
               </div>
             </div>
             <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="stat-card cancelled">
+              <div class="stat-card accept-requests">
                 <div class="stat-icon">
-                  <fa-icon [icon]="timesIcon"></fa-icon>
+                  <fa-icon [icon]="checkIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
-                  <h3>{{getBookingStatistics().cancelled}}</h3>
-                  <p>Cancelled</p>
+                  <h3>{{getReceivedRequestsCount()}}</h3>
+                  <p>Received Requests</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+              <div class="stat-card reject-requests">
+                <div class="stat-icon">
+                  <fa-icon [icon]="banIcon"></fa-icon>
+                </div>
+                <div class="stat-content">
+                  <h3>{{getRejectedRequestsCount()}}</h3>
+                  <p>Rejected Requests</p>
                 </div>
               </div>
             </div>
@@ -107,13 +118,7 @@
               </div>
             </div>
             <div class="col-md-6 text-end">
-              <button 
-                class="btn btn-warning me-2" 
-                (click)="openPendingReviewModal()"
-                [disabled]="pendingReviewRequests.length === 0">
-                <fa-icon [icon]="infoIcon" class="me-1"></fa-icon>
-                Pending Review ({{pendingReviewRequests.length}})
-              </button>
+
               <button class="btn btn-outline-primary" (click)="refreshData()">
                 <fa-icon [icon]="spinnerIcon" *ngIf="isLoading"></fa-icon>
                 Refresh
@@ -181,7 +186,30 @@
                   </td>
                   <td>
                     <div class="btn-group" role="group">
+                      <!-- For incoming join requests, show separate accept/reject buttons -->
+                      <div *ngIf="booking.isIncomingRequest && booking.status === 'pending_approval'" class="d-flex gap-1">
+                        <!-- Debug info -->
+                        <small class="text-muted d-block mb-1">
+                          Debug: isIncomingRequest={{booking.isIncomingRequest}}, status={{booking.status}}, isOwnBooking={{booking.isOwnBooking}}
+                        </small>
+                        <button 
+                          class="btn btn-success btn-sm"
+                          (click)="handleAcceptRequest(booking)"
+                          [disabled]="!canAcceptRequest(booking)">
+                          <fa-icon [icon]="checkIcon" class="me-1"></fa-icon>
+                          Accept
+                        </button>
+                        <button 
+                          class="btn btn-danger btn-sm"
+                          (click)="handleRejectRequest(booking)">
+                          <fa-icon [icon]="banIcon" class="me-1"></fa-icon>
+                          Reject
+                        </button>
+                      </div>
+                      
+                      <!-- For other actions, show the standard action button -->
                       <button 
+                        *ngIf="!(booking.isIncomingRequest && booking.status === 'pending_approval')"
                         class="btn btn-sm"
                         [class]="getActionButton(booking).color === 'green' ? 'btn-success' : 
                                  getActionButton(booking).color === 'purple' ? 'btn-warning' : 
@@ -192,16 +220,6 @@
                                        getActionButton(booking).action === 'reviewRequest' ? infoIcon : eyeIcon"
                                  class="me-1"></fa-icon>
                         {{getActionButton(booking).text}}
-                      </button>
-                      
-                      <!-- Cancel button for confirmed bookings -->
-                      <button 
-                        *ngIf="canCancelBooking(booking)"
-                        class="btn btn-sm btn-danger"
-                        (click)="cancelBooking(booking)"
-                        title="Cancel this booking">
-                        <fa-icon [icon]="timesIcon" class="me-1"></fa-icon>
-                        Cancel
                       </button>
                     </div>
                   </td>
@@ -284,6 +302,14 @@
           <p><strong>Name:</strong> {{selectedJoinRequest.requesterName}}</p>
           <p><strong>Email:</strong> {{selectedJoinRequest.requesterEmail}}</p>
           <p><strong>Request Date:</strong> {{selectedJoinRequest.formattedDate}}</p>
+          <p><strong>Request ID:</strong> {{selectedJoinRequest.request_id || selectedJoinRequest.booking_id}}</p>
+        </div>
+        
+        <div class="original-booking-info mb-3">
+          <h6>Original Booking Information:</h6>
+          <p><strong>Original Booker:</strong> {{getOriginalBookerName(selectedJoinRequest)}}</p>
+          <p><strong>Original Booking ID:</strong> {{selectedJoinRequest.originalBookingId}}</p>
+          <p><strong>Original Booking Date:</strong> {{formatDate(selectedJoinRequest.originalBookingInfo?.createdAt || selectedJoinRequest.bookingDate)}}</p>
         </div>
         
         <div class="booking-details mb-3">
@@ -292,9 +318,9 @@
           <p><strong>Tee:</strong> {{selectedJoinRequest.teeInfo}}</p>
           <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slot_date)}}</p>
           <p><strong>Time:</strong> {{selectedJoinRequest.booking_time}}</p>
-          <p><strong>Current Participants:</strong> {{selectedJoinRequest.participants}} (You)</p>
+          <p><strong>Current Participants:</strong> {{getOriginalBookingParticipants(selectedJoinRequest)}} (Original Booking)</p>
           <p><strong>Requested Participants:</strong> {{selectedJoinRequest.participants}}</p>
-          <p><strong>Total if Approved:</strong> {{selectedJoinRequest.participants + selectedJoinRequest.participants}} participants</p>
+          <p><strong>Total if Approved:</strong> {{getOriginalBookingParticipants(selectedJoinRequest) + selectedJoinRequest.participants}} participants</p>
         </div>
         
         <div class="form-group">
