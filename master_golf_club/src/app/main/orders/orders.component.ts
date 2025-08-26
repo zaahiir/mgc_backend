@@ -851,7 +851,7 @@ export class OrdersComponent implements OnInit {
 
   // Navigate to tee booking
   navigateToTeeBooking() {
-    this.router.navigate(['/tee-booking']);
+    this.router.navigate(['/collection']);
   }
 
   // Handle notification click
