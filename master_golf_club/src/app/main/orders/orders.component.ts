@@ -69,6 +69,15 @@ interface Booking {
   isIncomingRequest?: boolean;
   requesterName?: string;
   requesterEmail?: string;
+  // Participant information for merged bookings
+  allParticipantsInfo?: Array<{
+    member_id: number;
+    member_name: string;
+    participants: number;
+    is_original_booker: boolean;
+    join_request_id?: number;
+    approved_at?: string;
+  }>;
 }
 
 interface Notification {
@@ -149,6 +158,10 @@ export class OrdersComponent implements OnInit {
   showReviewRequestModal = false;
   selectedJoinRequest: Booking | null = null;
   reviewAction: 'approve' | 'reject' = 'approve';
+  
+  // Pending review requests
+  pendingReviewRequests: any[] = [];
+  showPendingReviewModal = false;
 
   // Filter state
   selectedStatusFilter: string = 'all';
@@ -184,6 +197,7 @@ export class OrdersComponent implements OnInit {
     this.loadNotifications();
     this.loadUnreadCount();
     this.loadOrderStatistics();
+    this.loadPendingReviewRequests();
     
     // Check if redirected from notification
     this.checkNotificationRedirect();
@@ -213,6 +227,18 @@ export class OrdersComponent implements OnInit {
       }
     } catch (error) {
       console.error('Error loading order statistics:', error);
+    }
+  }
+
+  async loadPendingReviewRequests() {
+    try {
+      const response = await this.collectionService.getPendingReviewRequests();
+      if (response && response.data && response.data.code === 1) {
+        this.pendingReviewRequests = response.data.data;
+        console.log('Loaded pending review requests:', this.pendingReviewRequests);
+      }
+    } catch (error) {
+      console.error('Error loading pending review requests:', error);
     }
   }
 
@@ -643,6 +669,35 @@ export class OrdersComponent implements OnInit {
     this.selectedJoinRequest = null;
   }
 
+  // Pending review modal methods
+  openPendingReviewModal() {
+    this.showPendingReviewModal = true;
+  }
+
+  closePendingReviewModal() {
+    this.showPendingReviewModal = false;
+  }
+
+  async handlePendingReviewAction(request: any, action: 'approve' | 'reject') {
+    try {
+      const response = await this.collectionService.reviewJoinRequest(
+        request.originalBookingId,
+        request.id,
+        action
+      );
+      
+      if (response && response.data && response.data.code === 1) {
+        // Success - close modal and reload data
+        this.closePendingReviewModal();
+        await this.refreshData();
+      } else {
+        console.error(`Failed to ${action} join request:`, response);
+      }
+    } catch (error) {
+        console.error(`Error ${action}ing join request:`, error);
+    }
+  }
+
   async confirmReviewRequest() {
     if (!this.selectedJoinRequest) return;
 
@@ -653,6 +708,7 @@ export class OrdersComponent implements OnInit {
       // Call API to review join request
       const response = await this.collectionService.reviewJoinRequest(
         bookingId,
+        this.selectedJoinRequest.id,
         this.reviewAction
       );
       
@@ -735,7 +791,12 @@ export class OrdersComponent implements OnInit {
   // Get participant display text
   getParticipantDisplayText(booking: Booking): string {
     if (booking.status === 'confirmed') {
-      if (booking.participants < 4) {
+      // Check if this booking has approved join requests (merged participants)
+      if (booking.allParticipantsInfo && booking.allParticipantsInfo.length > 1) {
+        const totalParticipants = booking.allParticipantsInfo.reduce((sum, p) => sum + p.participants, 0);
+        const spotsLeft = 4 - totalParticipants;
+        return `${totalParticipants} players (${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left)`;
+      } else if (booking.participants < 4) {
         const spotsLeft = 4 - booking.participants;
         return `${booking.participants} player${booking.participants > 1 ? 's' : ''} (${spotsLeft} spot${spotsLeft > 1 ? 's' : ''} left)`;
       } else {
@@ -869,7 +930,9 @@ export class OrdersComponent implements OnInit {
     await Promise.all([
       this.loadBookings(),
       this.loadNotifications(),
-      this.loadUnreadCount()
+      this.loadUnreadCount(),
+      this.loadOrderStatistics(),
+      this.loadPendingReviewRequests()
     ]);
   }
 

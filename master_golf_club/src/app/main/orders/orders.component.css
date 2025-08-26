@@ -655,3 +655,64 @@
     text-align: center;
   }
 }
+
+/* Pending Review Modal Styles */
+.review-requests-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.review-request-item {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.review-request-item:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.request-details p {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.request-details strong {
+  color: var(--theme-color);
+  min-width: 120px;
+  display: inline-block;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.action-buttons .btn {
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+}
+
+.review-request-item .row {
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .review-request-item .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .action-buttons {
+    margin-top: 1rem;
+    flex-direction: row;
+    justify-content: center;
+  }
+  
+  .action-buttons .btn {
+    flex: 1;
+    max-width: 120px;
+  }
+}

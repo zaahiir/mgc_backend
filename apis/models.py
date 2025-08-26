@@ -474,7 +474,8 @@ class BookingModel(models.Model):
             # For join requests, count the original booking participants
             return self.original_booking.participants if self.original_booking else 0
         else:
-            # For regular bookings, count this slot's participants
+            # For original bookings, return the total participants (including merged ones)
+            # This ensures that after merging, the count reflects all participants
             return self.participants
     
     @property
@@ -517,7 +518,7 @@ class BookingModel(models.Model):
         )
     
     def approve_join_request(self, join_request_id, approved_by):
-        """Approve a join request and update status"""
+        """Approve a join request and merge participants into original booking"""
         try:
             join_request = BookingModel.objects.get(
                 id=join_request_id,
@@ -527,24 +528,29 @@ class BookingModel(models.Model):
             )
             
             # Check if slot can accommodate the join request
-            total_participants = self.slot_participant_count + join_request.participants
+            total_participants = self.participants + join_request.participants
             if total_participants > 4:
                 raise ValidationError("Slot cannot accommodate additional participants")
             
-            # Approve the join request
+            # Merge participants into the original booking
+            self.participants = total_participants
+            
+            # Store join request details for reference
+            if not hasattr(self, 'join_requests'):
+                self.join_requests = []
+            
+            # Mark the join request as approved and link it to the original booking
             join_request.status = 'approved'
             join_request.approved_by = approved_by
             join_request.approved_at = timezone.now().astimezone(UK_TIMEZONE)
             join_request.save()
             
-            # Generate new booking ID for the approved slot
-            join_request.booking_id = join_request.generate_booking_id()
-            join_request.save()
-            
             # Update original booking status if slot is now full
             if total_participants == 4:
                 self.status = 'completed'
-                self.save()
+            
+            # Save the updated original booking
+            self.save()
             
             return True
             
@@ -588,6 +594,58 @@ class BookingModel(models.Model):
     def get_total_participants(self):
         """Get total participants for this slot"""
         return self.participants
+
+    def get_all_participants_info(self):
+        """Get information about all participants in this slot"""
+        participants_info = []
+        
+        # Since participants are now merged into the original booking's participants field,
+        # we need to reconstruct the participant breakdown from the join requests
+        
+        # Get approved join requests to understand the breakdown
+        approved_requests = BookingModel.objects.filter(
+            original_booking=self,
+            is_join_request=True,
+            status='approved',
+            hideStatus=0
+        )
+        
+        # Calculate original booker's participants (total minus approved join requests)
+        total_approved_join_participants = sum(request.participants for request in approved_requests)
+        original_booker_participants = self.participants - total_approved_join_participants
+        
+        # Ensure original booker has at least 1 participant
+        if original_booker_participants < 1:
+            original_booker_participants = 1
+        
+        # Add original booker
+        participants_info.append({
+            'member_id': self.member.id,
+            'member_name': f"{self.member.firstName} {self.member.lastName}",
+            'participants': original_booker_participants,
+            'is_original_booker': True,
+            'join_request_id': None
+        })
+        
+        # Add approved join requests
+        approved_requests = BookingModel.objects.filter(
+            original_booking=self,
+            is_join_request=True,
+            status='approved',
+            hideStatus=0
+        )
+        
+        for request in approved_requests:
+            participants_info.append({
+                'member_id': request.member.id,
+                'member_name': f"{request.member.firstName} {request.member.lastName}",
+                'participants': request.participants,
+                'is_original_booker': False,
+                'join_request_id': request.id,
+                'approved_at': request.approved_at
+            })
+        
+        return participants_info
 
     def is_multi_slot_booking(self):
         """Check if this is part of a multi-slot booking group"""

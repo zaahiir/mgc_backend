@@ -259,28 +259,7 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
-  // Join request methods
-  createJoinRequest(joinRequestData: {
-    course: number;
-    tee: number;
-    slotDate: string;
-    bookingTime: string;
-    participants: number;
-    originalSlotParticipants: number;
-  }) {
-    const url = `${this.apiUrl}booking/create-join-request/`;
-    const config: any = {};
-    
-    // Add authorization headers if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    }
-    
-    return axios.post(url, joinRequestData, config);
-  }
+
 
   // Multi-slot booking method
   createMultiSlotBooking(bookingData: MultiSlotBookingData) {
@@ -470,21 +449,7 @@ export class CollectionService {
     return axios.post(url, { additional_participants: additionalParticipants }, config);
   }
 
-  // Review join request (approve/reject)
-  reviewJoinRequest(requestId: number, action: 'approve' | 'reject') {
-    const url = `${this.apiUrl}booking/${requestId}/review_join_request/`;
-    const config: any = {};
-    
-    // Add authorization headers if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    }
-    
-    return axios.post(url, { action: action }, config);
-  }
+
 
   // Get order statistics
   getOrderStatistics() {
@@ -536,6 +501,22 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
+  // Create join request for partially available slot
+  createJoinRequest(joinRequestData: { course: number; tee: number; slotDate: string; bookingTime: string; participants: number; originalSlotParticipants: number; }) {
+    const url = `${this.apiUrl}booking/create_join_request/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, joinRequestData, config);
+  }
+
   // Get join request status
   getJoinRequestStatus(requestId: string) {
     const url = `${this.apiUrl}booking/join-request/${requestId}/status/`;
@@ -550,5 +531,79 @@ export class CollectionService {
     }
     
     return axios.get(url, config);
+  }
+
+  // Get pending review requests (for original bookers)
+  getPendingReviewRequests() {
+    const url = `${this.apiUrl}orders/pending_review/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  // Review join request (approve/reject) - updated to use original booking ID
+  reviewJoinRequest(originalBookingId: number, joinRequestId: number, action: 'approve' | 'reject') {
+    const url = `${this.apiUrl}booking/${originalBookingId}/review_join_request/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, { 
+      action: action, 
+      join_request_id: joinRequestId 
+    }, config);
+  }
+
+  // Check slot availability and existing requests
+  checkSlotAvailability(course: number, tee: number, slotDate: string, bookingTime: string) {
+    const url = `${this.apiUrl}booking/check_slot_availability/`;
+    const config: any = {
+      params: {
+        course: course,
+        tee: tee,
+        slotDate: slotDate,
+        bookingTime: bookingTime
+      }
+    };
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
+  // Add participants to existing booking
+  addParticipantsToBooking(bookingId: number, participantData: any) {
+    const url = `${this.apiUrl}booking/${bookingId}/add_participants/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.post(url, participantData, config);
   }
 }

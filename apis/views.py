@@ -2141,12 +2141,25 @@ class BookingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Get bookings for the authenticated member"""
         try:
-            member = MemberModel.objects.get(email=self.request.user.email)
+            # Get the authenticated member from the JWT token
+            auth_header = self.request.headers.get('Authorization', '')
+            if not auth_header.startswith('Bearer '):
+                return BookingModel.objects.none()
+            
+            token = auth_header.split(' ')[1]
+            from rest_framework_simplejwt.tokens import UntypedToken
+            token_data = UntypedToken(token)
+            member_id = token_data.get('member_id')
+            
+            if not member_id:
+                return BookingModel.objects.none()
+            
+            member = MemberModel.objects.get(id=member_id)
             return BookingModel.objects.filter(
                 member=member,
                 hideStatus=0
             ).prefetch_related('tee__course').order_by('-createdAt')
-        except MemberModel.DoesNotExist:
+        except Exception:
             return BookingModel.objects.none()
 
 
@@ -2177,7 +2190,26 @@ class BookingViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """Create a new booking with automatic member assignment and booking ID generation"""
         try:
-            member = MemberModel.objects.get(email=request.user.email)
+            # Get the authenticated member from the JWT token
+            auth_header = request.headers.get('Authorization', '')
+            if not auth_header.startswith('Bearer '):
+                return Response({
+                    'code': 0,
+                    'message': 'Authorization header required'
+                }, status=401)
+            
+            token = auth_header.split(' ')[1]
+            from rest_framework_simplejwt.tokens import UntypedToken
+            token_data = UntypedToken(token)
+            member_id = token_data.get('member_id')
+            
+            if not member_id:
+                return Response({
+                    'code': 0,
+                    'message': 'Invalid token - member_id not found'
+                }, status=401)
+            
+            member = MemberModel.objects.get(id=member_id)
             
             # Add member to request data
             data = request.data.copy()
@@ -2865,11 +2897,388 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': f'Error adding participants: {str(e)}'
             }, status=500)
 
+    @action(detail=False, methods=['post'])
+    def create_join_request(self, request):
+        """Create a join request for a partially available slot"""
+        try:
+            # Get the authenticated member from the JWT token
+            auth_header = request.headers.get('Authorization', '')
+            if not auth_header.startswith('Bearer '):
+                return Response({
+                    'code': 0,
+                    'message': 'Authorization header required'
+                }, status=401)
+            
+            token = auth_header.split(' ')[1]
+            from rest_framework_simplejwt.tokens import UntypedToken
+            token_data = UntypedToken(token)
+            member_id = token_data.get('member_id')
+            
+            if not member_id:
+                return Response({
+                    'code': 0,
+                    'message': 'Invalid token - member_id not found'
+                }, status=401)
+            
+            member = MemberModel.objects.get(id=member_id)
+            
+            # Get request data
+            course_id = request.data.get('course')
+            tee_id = request.data.get('tee')
+            slot_date = request.data.get('slotDate')
+            booking_time = request.data.get('bookingTime')
+            participants = request.data.get('participants', 1)
+            original_slot_participants = request.data.get('originalSlotParticipants', 0)
+            
+            # Validate required fields
+            if not all([course_id, tee_id, slot_date, booking_time, participants]):
+                return Response({
+                    'code': 0,
+                    'message': 'Course, tee, slot date, booking time, and participants are required'
+                }, status=400)
+            
+            # Convert date string to date object
+            if isinstance(slot_date, str):
+                try:
+                    from datetime import datetime
+                    slot_date = datetime.strptime(slot_date, '%Y-%m-%d').date()
+                except ValueError:
+                    return Response({
+                        'code': 0,
+                        'message': 'Invalid date format. Expected YYYY-MM-DD'
+                    }, status=400)
+            
+            # Convert time string to time object
+            if isinstance(booking_time, str):
+                try:
+                    from datetime import datetime
+                    booking_time = datetime.strptime(booking_time, '%H:%M').time()
+                except ValueError:
+                    return Response({
+                        'code': 0,
+                        'message': 'Invalid time format. Expected HH:MM'
+                    }, status=400)
+            
+            # Find the original booking for this slot
+            try:
+                original_booking = BookingModel.objects.get(
+                    course_id=course_id,
+                    tee_id=tee_id,
+                    slot_date=slot_date,
+                    booking_time=booking_time,
+                    status='confirmed',
+                    is_join_request=False,
+                    hideStatus=0
+                )
+            except BookingModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'No confirmed booking found for this slot'
+                }, status=404)
+            
+            # Check if this is the user's own booking
+            if original_booking.member.id == member.id:
+                return Response({
+                    'code': 0,
+                    'message': 'Cannot create join request for your own booking'
+                }, status=400)
+            
+            # Check if slot can accommodate the join request
+            total_participants = original_booking.participants + participants
+            if total_participants > 4:
+                return Response({
+                    'code': 0,
+                    'message': f'Slot cannot accommodate {participants} additional participants. Maximum 4 participants allowed.'
+                }, status=400)
+            
+            # Check if there's already a pending or approved join request from this member
+            existing_request = BookingModel.objects.filter(
+                member=member,
+                original_booking=original_booking,
+                is_join_request=True,
+                status__in=['pending_approval', 'approved'],
+                hideStatus=0
+            ).first()
+            
+            if existing_request:
+                if existing_request.status == 'approved':
+                    return Response({
+                        'code': 0,
+                        'message': 'Your join request has already been approved for this slot',
+                        'data': {
+                            'existingRequestId': existing_request.id,
+                            'existingStatus': existing_request.status,
+                            'existingParticipants': existing_request.participants,
+                            'message': 'You can view your approved request in the orders section'
+                        }
+                    }, status=400)
+                else:
+                    return Response({
+                        'code': 0,
+                        'message': 'You already have a pending join request for this slot',
+                        'data': {
+                            'existingRequestId': existing_request.id,
+                            'existingStatus': existing_request.status,
+                            'existingParticipants': existing_request.participants,
+                            'message': 'You can view the status of your existing request in the orders section'
+                        }
+                    }, status=400)
+            
+            # Check if there's a rejected request that can be updated
+            rejected_request = BookingModel.objects.filter(
+                member=member,
+                original_booking=original_booking,
+                is_join_request=True,
+                status='rejected',
+                hideStatus=0
+            ).first()
+            
+            if rejected_request:
+                # Update the rejected request instead of creating a new one
+                rejected_request.participants = participants
+                rejected_request.status = 'pending_approval'
+                rejected_request.notes = f'Updated join request for {participants} participant(s)'
+                rejected_request.save()
+                
+                # Create notification for the original booker
+                NotificationModel.create_join_request_notification(
+                    recipient=original_booking.member,
+                    sender=member,
+                    booking=original_booking,
+                    join_request=rejected_request
+                )
+                
+                return Response({
+                    'code': 1,
+                    'message': 'Join request updated successfully',
+                    'data': {
+                        'requestId': rejected_request.id,
+                        'status': rejected_request.status,
+                        'participants': rejected_request.participants,
+                        'slotDate': slot_date.strftime('%Y-%m-%d'),
+                        'bookingTime': booking_time.strftime('%H:%M'),
+                        'courseName': original_booking.course.courseName,
+                        'teeHoles': original_booking.tee.holeNumber if original_booking.tee else None,
+                        'isUpdated': True
+                    }
+                }, status=200)
+            
+            # Create the join request
+            join_request_data = {
+                'member': member.id,
+                'course': course_id,
+                'tee': tee_id,
+                'slot_date': slot_date,
+                'booking_time': booking_time,
+                'participants': participants,
+                'status': 'pending_approval',
+                'is_join_request': True,
+                'original_booking': original_booking.id,
+                'notes': f'Join request for {participants} participant(s)'
+            }
+            
+            serializer = self.get_serializer(data=join_request_data)
+            if serializer.is_valid():
+                join_request = serializer.save()
+                
+                # Create notification for the original booker
+                NotificationModel.create_join_request_notification(
+                    recipient=original_booking.member,
+                    sender=member,
+                    booking=original_booking,
+                    join_request=join_request
+                )
+                
+                return Response({
+                    'code': 1,
+                    'message': 'Join request created successfully',
+                    'data': {
+                        'requestId': join_request.id,
+                        'status': join_request.status,
+                        'participants': join_request.participants,
+                        'slotDate': slot_date.strftime('%Y-%m-%d'),
+                        'bookingTime': booking_time.strftime('%H:%M'),
+                        'courseName': original_booking.course.courseName,
+                        'teeHoles': original_booking.tee.holeNumber if original_booking.tee else None
+                    }
+                }, status=201)
+            else:
+                return Response({
+                    'code': 0,
+                    'message': f'Validation error: {serializer.errors}'
+                }, status=400)
+                
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=404)
+        except Exception as e:
+                            return Response({
+                    'code': 0,
+                    'message': f'Error creating join request: {str(e)}'
+                }, status=500)
+
+    @action(detail=False, methods=['GET'])
+    def check_slot_availability(self, request):
+        """Check slot availability and existing requests for a specific slot"""
+        try:
+            # Get the authenticated member from the JWT token
+            auth_header = request.headers.get('Authorization', '')
+            if not auth_header.startswith('Bearer '):
+                return Response({
+                    'code': 0,
+                    'message': 'Authorization header required'
+                }, status=401)
+            
+            token = auth_header.split(' ')[1]
+            from rest_framework_simplejwt.tokens import UntypedToken
+            token_data = UntypedToken(token)
+            member_id = token_data.get('member_id')
+            
+            if not member_id:
+                return Response({
+                    'code': 0,
+                    'message': 'Invalid token - member_id not found'
+                }, status=401)
+            
+            member = MemberModel.objects.get(id=member_id)
+            
+            # Get query parameters
+            course_id = request.query_params.get('course')
+            tee_id = request.query_params.get('tee')
+            slot_date = request.query_params.get('slotDate')
+            booking_time = request.query_params.get('bookingTime')
+            
+            if not all([course_id, tee_id, slot_date, booking_time]):
+                return Response({
+                    'code': 0,
+                    'message': 'Course, tee, slot date, and booking time are required'
+                }, status=400)
+            
+            # Convert date string to date object
+            if isinstance(slot_date, str):
+                try:
+                    from datetime import datetime
+                    slot_date = datetime.strptime(slot_date, '%Y-%m-%d').date()
+                except ValueError:
+                    return Response({
+                        'code': 0,
+                        'message': 'Invalid date format. Expected YYYY-MM-DD'
+                    }, status=400)
+            
+            # Convert time string to time object
+            if isinstance(booking_time, str):
+                try:
+                    from datetime import datetime
+                    booking_time = datetime.strptime(booking_time, '%H:%M').time()
+                except ValueError:
+                    return Response({
+                        'code': 0,
+                        'message': 'Invalid time format. Expected HH:MM'
+                    }, status=400)
+            
+            # Find the original booking for this slot
+            try:
+                original_booking = BookingModel.objects.get(
+                    course_id=course_id,
+                    tee_id=tee_id,
+                    slot_date=slot_date,
+                    booking_time=booking_time,
+                    status='confirmed',
+                    is_join_request=False,
+                    hideStatus=0
+                )
+            except BookingModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'No confirmed booking found for this slot'
+                }, status=404)
+            
+            # Check if this is the user's own booking
+            is_own_booking = original_booking.member.id == member.id
+            
+            # Get existing join requests for this slot
+            existing_requests = BookingModel.objects.filter(
+                original_booking=original_booking,
+                is_join_request=True,
+                status__in=['pending_approval', 'approved'],
+                hideStatus=0
+            )
+            
+            # Calculate available spots
+            total_booked_participants = original_booking.participants
+            total_requested_participants = sum(req.participants for req in existing_requests if req.status == 'approved')
+            available_spots = 4 - total_booked_participants - total_requested_participants
+            
+            # Check if user has existing request
+            user_existing_request = None
+            if not is_own_booking:
+                user_existing_request = existing_requests.filter(
+                    member=member,
+                    status='pending_approval'
+                ).first()
+            
+            # Determine what actions user can take
+            can_add_participants = is_own_booking and available_spots > 0
+            can_join_request = not is_own_booking and available_spots > 0 and not user_existing_request
+            
+            return Response({
+                'code': 1,
+                'message': 'Slot availability checked successfully',
+                'data': {
+                    'slotId': original_booking.id,
+                    'courseName': original_booking.course.courseName,
+                    'teeHoles': original_booking.tee.holeNumber if original_booking.tee else None,
+                    'slotDate': slot_date.strftime('%Y-%m-%d'),
+                    'bookingTime': booking_time.strftime('%H:%M'),
+                    'originalBooker': {
+                        'id': original_booking.member.id,
+                        'name': f"{original_booking.member.firstName} {original_booking.member.lastName}"
+                    },
+                    'isOwnBooking': is_own_booking,
+                    'originalParticipants': original_booking.participants,
+                    'approvedJoinRequests': [
+                        {
+                            'memberName': f"{req.member.firstName} {req.member.lastName}",
+                            'participants': req.participants
+                        } for req in existing_requests if req.status == 'approved'
+                    ],
+                    'pendingJoinRequests': [
+                        {
+                            'memberName': f"{req.member.firstName} {req.member.lastName}",
+                            'participants': req.participants
+                        } for req in existing_requests if req.status == 'pending_approval'
+                    ],
+                    'availableSpots': available_spots,
+                    'canAddParticipants': can_add_participants,
+                    'canJoinRequest': can_join_request,
+                    'userExistingRequest': {
+                        'id': user_existing_request.id,
+                        'status': user_existing_request.status,
+                        'participants': user_existing_request.participants,
+                        'message': 'You already have a request for this slot'
+                    } if user_existing_request else None
+                }
+            })
+            
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error checking slot availability: {str(e)}'
+            }, status=500)
+
     @action(detail=True, methods=['post'])
     def review_join_request(self, request, pk=None):
         """Review and approve/reject a join request"""
         try:
             original_booking = get_object_or_404(BookingModel, id=pk, hideStatus=0)
+            
             action = request.data.get('action')
             
             if action not in ['approve', 'reject']:
@@ -2878,35 +3287,33 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Action must be either "approve" or "reject"'
                 }, status=400)
             
-            # Get the authenticated member from the request
+            # Get the authenticated member from the JWT token
             try:
-                # Try to get member from the token
-                member_id = request.user.id if hasattr(request.user, 'id') else None
-                if not member_id:
-                    # Try to get from token payload
-                    auth_header = request.headers.get('Authorization', '')
-                    if auth_header.startswith('Bearer '):
-                        token = auth_header.split(' ')[1]
-                        # Decode token to get member_id
-                        from rest_framework_simplejwt.tokens import UntypedToken
-                        try:
-                            token_data = UntypedToken(token)
-                            member_id = token_data.get('member_id')
-                        except:
-                            pass
+                # Extract member_id from JWT token
+                auth_header = request.headers.get('Authorization', '')
+                if not auth_header.startswith('Bearer '):
+                    return Response({
+                        'code': 0,
+                        'message': 'Authorization header required'
+                    }, status=401)
+                
+                token = auth_header.split(' ')[1]
+                from rest_framework_simplejwt.tokens import UntypedToken
+                token_data = UntypedToken(token)
+                member_id = token_data.get('member_id')
                 
                 if not member_id:
                     return Response({
                         'code': 0,
-                        'message': 'Authentication required'
+                        'message': 'Invalid token - member_id not found'
                     }, status=401)
                 
                 member = MemberModel.objects.get(id=member_id)
-            except MemberModel.DoesNotExist:
+            except Exception as e:
                 return Response({
                     'code': 0,
-                    'message': 'Member not found'
-                }, status=404)
+                    'message': 'Authentication failed'
+                }, status=401)
             
             # Check if this is the original booker
             if original_booking.member.id != member.id:
@@ -2955,7 +3362,9 @@ class BookingViewSet(viewsets.ModelViewSet):
                         'data': {
                             'action': 'approved',
                             'joinRequestId': join_request.id,
-                            'newTotalParticipants': original_booking.slot_participant_count
+                            'originalBookingId': original_booking.id,
+                            'newTotalParticipants': original_booking.participants,
+                            'allParticipantsInfo': original_booking.get_all_participants_info()
                         }
                     })
                 else:
@@ -4612,5 +5021,61 @@ class OrdersViewSet(viewsets.ModelViewSet):
             return Response({
                 'code': 0,
                 'message': f'Error filtering orders: {str(e)}'
+            }, status=500)
+
+    @action(detail=False, methods=['GET'])
+    def pending_review(self, request):
+        """Get incoming join requests that need review by the authenticated member"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Get join requests for slots booked by this member
+            incoming_requests = BookingModel.objects.filter(
+                original_booking__member=member,
+                is_join_request=True,
+                status='pending_approval',
+                hideStatus=0
+            ).select_related(
+                'member', 'course', 'tee', 'original_booking'
+            ).order_by('-createdAt')
+            
+            # Create a custom response with join request details
+            requests_data = []
+            for join_request in incoming_requests:
+                original_booking = join_request.original_booking
+                requests_data.append({
+                    'id': join_request.id,
+                    'requestId': f"JR-{join_request.id}",
+                    'memberName': f"{join_request.member.firstName} {join_request.member.lastName}",
+                    'memberId': join_request.member.id,
+                    'courseName': join_request.course.courseName,
+                    'teeHoles': join_request.tee.holeNumber if join_request.tee else None,
+                    'slotDate': join_request.slot_date.strftime('%Y-%m-%d') if join_request.slot_date else None,
+                    'bookingTime': join_request.booking_time.strftime('%H:%M') if join_request.booking_time else None,
+                    'participants': join_request.participants,
+                    'status': join_request.status,
+                    'createdAt': join_request.createdAt.isoformat() if join_request.createdAt else None,
+                    'originalBookingId': original_booking.id,
+                    'originalBookingParticipants': original_booking.participants,
+                    'availableSpots': 4 - (original_booking.participants + join_request.participants),
+                    'canApprove': (original_booking.participants + join_request.participants) <= 4
+                })
+            
+            return Response({
+                'code': 1,
+                'message': 'Pending review requests retrieved successfully',
+                'data': requests_data,
+                'count': len(requests_data)
+            })
+            
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving pending review requests: {str(e)}'
             }, status=500)
 

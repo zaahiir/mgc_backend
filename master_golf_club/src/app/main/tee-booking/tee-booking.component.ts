@@ -74,6 +74,7 @@ interface BookingDetail {
 }
 
 interface SlotSelection {
+  id?: number;
   time: string;
   participants: number;
   date: Date | string;
@@ -86,6 +87,17 @@ interface SlotSelection {
   originalStatus?: string;
   currentParticipants?: number;
   availableSpots?: number;
+  isOwnBooking?: boolean;
+  canAddParticipants?: boolean;
+  canJoinRequest?: boolean;
+  userExistingRequest?: {
+    id: number;
+    status: string;
+    participants: number;
+    message: string;
+  };
+  tooltipText?: string;
+  originalBookingId?: number;
 }
 
 interface BookingConfirmationData {
@@ -1096,6 +1108,47 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     return this.selectedSlots.length > 0 && this.isAuthenticated() && !this.isLoading;
   }
 
+  async checkSlotAvailabilityForSelectedSlots(): Promise<void> {
+    // Check availability for partially available slots to provide better user feedback
+    const partiallyAvailableSlots = this.selectedSlots.filter(slot => slot.originalStatus === 'partially_available');
+    
+    for (const slot of partiallyAvailableSlots) {
+      try {
+        const response = await this.collectionService.checkSlotAvailability(
+          this.course.id,
+          slot.tee_id,
+          typeof slot.date === 'string' ? slot.date : this.getDateKey(slot.date),
+          slot.time
+        );
+        
+        if (response && response.data && response.data.code === 1) {
+          const availabilityData = response.data.data;
+          
+          // Update slot information with availability details
+          slot.isOwnBooking = availabilityData.isOwnBooking;
+          slot.canAddParticipants = availabilityData.canAddParticipants;
+          slot.canJoinRequest = availabilityData.canJoinRequest;
+          slot.userExistingRequest = availabilityData.userExistingRequest;
+          slot.availableSpots = availabilityData.availableSpots;
+          
+          // Update tooltip text based on availability
+          if (availabilityData.isOwnBooking) {
+            slot.tooltipText = `Your booking: ${availabilityData.originalParticipants} participant(s). You can add up to ${availabilityData.availableSpots} more participant(s).`;
+          } else if (availabilityData.userExistingRequest) {
+            slot.tooltipText = `You already have a ${availabilityData.userExistingRequest.status} request for ${availabilityData.userExistingRequest.participants} participant(s).`;
+          } else if (availabilityData.canJoinRequest) {
+            slot.tooltipText = `Partially Available: ${availabilityData.availableSpots} spots left. Click to join this slot.`;
+          } else {
+            slot.tooltipText = `Slot is full. No more participants can be added.`;
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking availability for slot ${slot.time}:`, error);
+        // Keep existing tooltip if availability check fails
+      }
+    }
+  }
+
   async bookTeeTime(): Promise<void> {
     if (!this.canBook()) {
       this.errorMessage = 'Please select at least one slot and ensure you are logged in';
@@ -1106,6 +1159,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
 
     try {
+      // Check slot availability for partially available slots before processing
+      await this.checkSlotAvailabilityForSelectedSlots();
+      
       // Separate slots by type: available vs partially available
       const availableSlots = this.selectedSlots.filter(slot => slot.originalStatus === 'available');
       const partiallyAvailableSlots = this.selectedSlots.filter(slot => slot.originalStatus === 'partially_available');
@@ -1150,40 +1206,96 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         }
       }
       
-      // Process partially available slots (join requests)
+      // Process partially available slots (join requests or add participants)
       for (const slot of partiallyAvailableSlots) {
         try {
-          // For partially available slots, create a join request
-          const joinRequestData = {
-            course: this.course.id,
-            tee: slot.tee_id,
-            slotDate: typeof slot.date === 'string' ? slot.date : this.getDateKey(slot.date),
-            bookingTime: slot.time,
-            participants: slot.participants,
-            originalSlotParticipants: slot.currentParticipants || 0
-          };
-          
-          const response = await this.collectionService.createJoinRequest(joinRequestData);
-          
-          if (response && response.data && response.data.code === 1) {
-            joinRequests.push({
-              ...response,
-              slotType: 'join_request',
-              slot: slot
-            });
+          if (slot.isOwnBooking && slot.canAddParticipants) {
+            // User can add participants to their own slot
+            const addParticipantsData = {
+              course: this.course.id,
+              tee: slot.tee_id,
+              slotDate: typeof slot.date === 'string' ? slot.date : this.getDateKey(slot.date),
+              bookingTime: slot.time,
+              participants: slot.participants
+            };
+            
+            if (!slot.originalBookingId) {
+              failedBookings.push({
+                slot,
+                error: 'Original booking ID not found',
+                slotType: 'add_participants'
+              });
+              continue;
+            }
+            
+            const response = await this.collectionService.addParticipantsToBooking(
+              slot.originalBookingId,
+              addParticipantsData
+            );
+            
+            if (response && response.data && response.data.code === 1) {
+              successfulBookings.push({
+                ...response,
+                slotType: 'add_participants',
+                slot: slot
+              });
+            } else {
+              failedBookings.push({
+                slot,
+                error: response?.data?.message || 'Failed to add participants',
+                slotType: 'add_participants'
+              });
+            }
+          } else if (slot.canJoinRequest) {
+            // Create a join request for someone else's slot
+            const joinRequestData = {
+              course: this.course.id,
+              tee: slot.tee_id,
+              slotDate: typeof slot.date === 'string' ? slot.date : this.getDateKey(slot.date),
+              bookingTime: slot.time,
+              participants: slot.participants,
+              originalSlotParticipants: slot.currentParticipants || 0
+            };
+            
+            const response = await this.collectionService.createJoinRequest(joinRequestData);
+            
+            if (response && response.data && response.data.code === 1) {
+              joinRequests.push({
+                ...response,
+                slotType: 'join_request',
+                slot: slot
+              });
+            } else {
+              // Handle specific error cases with better user feedback
+              let errorMessage = response?.data?.message || 'Failed to create join request';
+              let errorDetails = '';
+              
+              if (response?.data?.data?.existingRequestId) {
+                errorMessage = 'You already have a request for this slot';
+                errorDetails = `Request ID: ${response.data.data.existingRequestId}, Status: ${response.data.data.existingStatus}, Participants: ${response.data.data.existingParticipants}`;
+              }
+              
+              failedBookings.push({
+                slot,
+                error: errorMessage,
+                errorDetails: errorDetails,
+                slotType: 'join_request'
+              });
+            }
           } else {
+            // Slot is not available for this user
             failedBookings.push({
               slot,
-              error: response?.data?.message || 'Failed to create join request',
-              slotType: 'join_request'
+              error: 'This slot is not available for your request',
+              slotType: 'unavailable'
             });
           }
         } catch (error) {
-          console.error(`Error creating join request for slot ${slot.time}:`, error);
+          console.error(`Error processing slot ${slot.time}:`, error);
           failedBookings.push({
             slot,
             error: error instanceof Error ? error.message : 'Network error',
-            slotType: 'join_request'
+            slotType: 'error'
           });
         }
       }
@@ -1194,10 +1306,21 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       if (totalSuccessful > 0) {
         // Prepare success message based on what was created
         let successMessage = '';
-        if (successfulBookings.length > 0 && joinRequests.length > 0) {
-          successMessage = `Successfully created ${successfulBookings.length} confirmed booking(s) and ${joinRequests.length} join request(s)!`;
-        } else if (successfulBookings.length > 0) {
-          successMessage = `Successfully created ${successfulBookings.length} confirmed booking(s)!`;
+        const addParticipantsCount = successfulBookings.filter(b => b.slotType === 'add_participants').length;
+        const confirmedBookingsCount = successfulBookings.filter(b => b.slotType === 'confirmed').length;
+        
+        if (confirmedBookingsCount > 0 && addParticipantsCount > 0 && joinRequests.length > 0) {
+          successMessage = `Successfully created ${confirmedBookingsCount} confirmed booking(s), added participants to ${addParticipantsCount} existing booking(s), and created ${joinRequests.length} join request(s)!`;
+        } else if (confirmedBookingsCount > 0 && addParticipantsCount > 0) {
+          successMessage = `Successfully created ${confirmedBookingsCount} confirmed booking(s) and added participants to ${addParticipantsCount} existing booking(s)!`;
+        } else if (confirmedBookingsCount > 0 && joinRequests.length > 0) {
+          successMessage = `Successfully created ${confirmedBookingsCount} confirmed booking(s) and ${joinRequests.length} join request(s)!`;
+        } else if (addParticipantsCount > 0 && joinRequests.length > 0) {
+          successMessage = `Successfully added participants to ${addParticipantsCount} existing booking(s) and created ${joinRequests.length} join request(s)!`;
+        } else if (confirmedBookingsCount > 0) {
+          successMessage = `Successfully created ${confirmedBookingsCount} confirmed booking(s)!`;
+        } else if (addParticipantsCount > 0) {
+          successMessage = `Successfully added participants to ${addParticipantsCount} existing booking(s)!`;
         } else {
           successMessage = `Successfully created ${joinRequests.length} join request(s)!`;
         }
@@ -1229,26 +1352,50 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           originalSlotParticipants?: number;
         }> = [];
         
-        // Add confirmed bookings
-        successfulBookings.forEach((response, index) => {
-          const slot = availableSlots[index];
+        // Add confirmed bookings and add participants
+        successfulBookings.forEach((response) => {
+          const slot = response.slot;
           const bookingData = response.data.data;
-          slotBookings.push({
-            id: bookingData.id,
-            booking_id: bookingData.bookingId || bookingData.booking_id || bookingData.id,
-            slot_date: slot.slot_date,
-            booking_time: slot.time,
-            participants: slot.participants,
-            status: 'confirmed',
-            created_at: new Date().toISOString(),
-            formatted_created_date: this.formatDateForDisplayUK(new Date()),
-            tee: {
-              holeNumber: slot.tee.holeNumber
-            },
-            course: {
-              courseName: this.course.name
-            }
-          });
+          
+          if (response.slotType === 'add_participants') {
+            // Handle add participants case
+            slotBookings.push({
+              id: bookingData.bookingId || bookingData.booking_id || bookingData.id,
+              booking_id: bookingData.bookingId || bookingData.booking_id || bookingData.id,
+              slot_date: slot.slot_date,
+              booking_time: slot.time,
+              participants: slot.participants,
+              status: 'participants_added',
+              created_at: new Date().toISOString(),
+              formatted_created_date: this.formatDateForDisplayUK(new Date()),
+              tee: {
+                holeNumber: slot.tee.holeNumber
+              },
+              course: {
+                courseName: this.course.name
+              },
+              isJoinRequest: false,
+              originalSlotParticipants: slot.currentParticipants || 0
+            });
+          } else {
+            // Handle confirmed booking case
+            slotBookings.push({
+              id: bookingData.id,
+              booking_id: bookingData.bookingId || bookingData.booking_id || bookingData.id,
+              slot_date: slot.slot_date,
+              booking_time: slot.time,
+              participants: slot.participants,
+              status: 'confirmed',
+              created_at: new Date().toISOString(),
+              formatted_created_date: this.formatDateForDisplayUK(new Date()),
+              tee: {
+                holeNumber: slot.tee.holeNumber
+              },
+              course: {
+                courseName: this.course.name
+              }
+            });
+          }
         });
         
         // Add join requests

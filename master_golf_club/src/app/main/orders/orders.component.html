@@ -107,6 +107,13 @@
               </div>
             </div>
             <div class="col-md-6 text-end">
+              <button 
+                class="btn btn-warning me-2" 
+                (click)="openPendingReviewModal()"
+                [disabled]="pendingReviewRequests.length === 0">
+                <fa-icon [icon]="infoIcon" class="me-1"></fa-icon>
+                Pending Review ({{pendingReviewRequests.length}})
+              </button>
               <button class="btn btn-outline-primary" (click)="refreshData()">
                 <fa-icon [icon]="spinnerIcon" *ngIf="isLoading"></fa-icon>
                 Refresh
@@ -330,6 +337,29 @@
           <p><strong>Slot Time:</strong> {{selectedBooking.booking_time}}</p>
           <p><strong>Participants:</strong> {{getParticipantDisplayText(selectedBooking)}}</p>
           
+          <!-- Show detailed participant information for merged bookings -->
+          <div *ngIf="selectedBooking.allParticipantsInfo && selectedBooking.allParticipantsInfo.length > 1" class="mt-3">
+            <h6>All Participants:</h6>
+            <div class="participants-list">
+              <div *ngFor="let participant of selectedBooking.allParticipantsInfo" class="participant-item p-2 border rounded mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>{{participant.member_name}}</strong>
+                    <span class="badge" [class]="participant.is_original_booker ? 'badge-primary' : 'badge-success'">
+                      {{participant.is_original_booker ? 'Original Booker' : 'Joined'}}
+                    </span>
+                  </div>
+                  <div class="text-muted">
+                    {{participant.participants}} participant{{participant.participants > 1 ? 's' : ''}}
+                  </div>
+                </div>
+                <div *ngIf="!participant.is_original_booker && participant.approved_at" class="small text-muted mt-1">
+                  Approved: {{participant.approved_at | date:'short'}}
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div *ngIf="selectedBooking.hasMultipleSlots" class="mt-3">
             <h6>Multi-Slot Booking:</h6>
             <p>This is part of a {{selectedBooking.totalSlots}}-slot booking (Slot {{selectedBooking.slotNumber}})</p>
@@ -343,5 +373,65 @@
   </div>
 </div>
 
+<!-- Pending Review Modal -->
+<div class="modal fade" [class.show]="showPendingReviewModal" [style.display]="showPendingReviewModal ? 'block' : 'none'">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Pending Review Requests</h5>
+        <button type="button" class="btn-close" (click)="closePendingReviewModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="pendingReviewRequests.length === 0" class="text-center py-4">
+          <p class="text-muted">No pending review requests found.</p>
+        </div>
+        
+        <div *ngIf="pendingReviewRequests.length > 0" class="review-requests-list">
+          <div *ngFor="let request of pendingReviewRequests" class="review-request-item mb-4 p-3 border rounded">
+            <div class="row">
+              <div class="col-md-8">
+                <h6 class="mb-2">{{request.memberName}} wants to join your slot</h6>
+                <div class="request-details">
+                  <p><strong>Course:</strong> {{request.courseName}}</p>
+                  <p><strong>Tee:</strong> {{request.teeHoles}} Holes</p>
+                  <p><strong>Date:</strong> {{request.slotDate}}</p>
+                  <p><strong>Time:</strong> {{request.bookingTime}}</p>
+                  <p><strong>Requested Participants:</strong> {{request.participants}}</p>
+                  <p><strong>Your Current Participants:</strong> {{request.originalBookingParticipants}}</p>
+                  <p><strong>Available Spots:</strong> {{request.availableSpots}}</p>
+                  <p><strong>Request Date:</strong> {{request.createdAt | date:'short'}}</p>
+                </div>
+              </div>
+              <div class="col-md-4 text-end">
+                <div class="action-buttons">
+                  <button 
+                    class="btn btn-success btn-sm mb-2 w-100"
+                    (click)="handlePendingReviewAction(request, 'approve')"
+                    [disabled]="!request.canApprove">
+                    <fa-icon [icon]="checkIcon" class="me-1"></fa-icon>
+                    Approve
+                  </button>
+                  <button 
+                    class="btn btn-danger btn-sm w-100"
+                    (click)="handlePendingReviewAction(request, 'reject')">
+                    <fa-icon [icon]="banIcon" class="me-1"></fa-icon>
+                    Reject
+                  </button>
+                </div>
+                <div *ngIf="!request.canApprove" class="text-danger small mt-2">
+                  Slot cannot accommodate additional participants
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closePendingReviewModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Backdrop -->
-<div class="modal-backdrop fade show" *ngIf="showParticipantModal || showReviewRequestModal || showBookingDetails"></div>
+<div class="modal-backdrop fade show" *ngIf="showParticipantModal || showReviewRequestModal || showBookingDetails || showPendingReviewModal"></div>
