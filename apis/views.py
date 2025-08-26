@@ -3220,8 +3220,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def review_join_request(self, request, pk=None):
         """Review and approve/reject a join request"""
         try:
-            # pk is the join request ID, not the original booking ID
-            join_request = get_object_or_404(BookingModel, id=pk, is_join_request=True, hideStatus=0)
+            original_booking = get_object_or_404(BookingModel, id=pk, hideStatus=0)
             
             action = request.data.get('action')
             
@@ -3229,14 +3228,6 @@ class BookingViewSet(viewsets.ModelViewSet):
                 return Response({
                     'code': 0,
                     'message': 'Action must be either "approve" or "reject"'
-                }, status=400)
-            
-            # Get the original booking from the join request
-            original_booking = join_request.original_booking
-            if not original_booking:
-                return Response({
-                    'code': 0,
-                    'message': 'Join request has no associated original booking'
                 }, status=400)
             
             # Get the authenticated member from the JWT token
@@ -3274,12 +3265,26 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'message': 'Only the original booker can review join requests'
                 }, status=403)
             
-            # Verify the join request is still pending
-            if join_request.status != 'pending_approval':
+            # Get the join request to review
+            join_request_id = request.data.get('join_request_id')
+            if not join_request_id:
                 return Response({
                     'code': 0,
-                    'message': 'Join request is not in pending status'
+                    'message': 'Join request ID is required'
                 }, status=400)
+            
+            try:
+                join_request = BookingModel.objects.get(
+                    id=join_request_id,
+                    original_booking=original_booking,
+                    is_join_request=True,
+                    status='pending_approval'
+                )
+            except BookingModel.DoesNotExist:
+                return Response({
+                    'code': 0,
+                    'message': 'Join request not found'
+                }, status=404)
             
             if action == 'approve':
                 # Approve the join request

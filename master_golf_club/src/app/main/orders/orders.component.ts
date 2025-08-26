@@ -298,22 +298,30 @@ export class OrdersComponent implements OnInit {
         
         // Now set the isIncomingRequest property for all bookings
         this.bookings.forEach(booking => {
-          const isIncoming = this.isIncomingRequest(booking);
-          booking.isIncomingRequest = isIncoming;
-          console.log(`Setting isIncomingRequest for booking ${booking.id}:`, {
-            is_join_request: booking.is_join_request,
-            original_booking: booking.original_booking,
-            isIncomingRequest: isIncoming
-          });
+          booking.isIncomingRequest = this.isIncomingRequest(booking);
           if (booking.isIncomingRequest) {
             booking.requesterName = this.getRequesterName(booking);
             booking.requesterEmail = this.getRequesterEmail(booking);
           }
         });
         
-
+        console.log('Final processed bookings:', this.bookings);
         
-
+        // Debug: Show specific fields for each booking
+        this.bookings.forEach((booking, index) => {
+          console.log(`Booking ${index + 1}:`, {
+            id: booking.id,
+            teeInfo: booking.teeInfo,
+            teeName: booking.teeName,
+            booking_time: booking.booking_time,
+            formattedDate: booking.formattedDate,
+            is_join_request: booking.is_join_request,
+            isOwnBooking: booking.isOwnBooking,
+            isIncomingRequest: booking.isIncomingRequest,
+            status: booking.status,
+            original_booking: booking.original_booking
+          });
+        });
         
         this.updateStatusFilterCounts();
       } else {
@@ -361,7 +369,7 @@ export class OrdersComponent implements OnInit {
       requesterEmail: ''
     };
     
-
+    console.log('Created slot booking:', slotBooking);
     return slotBooking;
   }
 
@@ -390,7 +398,7 @@ export class OrdersComponent implements OnInit {
       requesterEmail: ''
     };
     
-
+    console.log('Created single booking:', processedBooking);
     return processedBooking;
   }
 
@@ -406,33 +414,19 @@ export class OrdersComponent implements OnInit {
   private isIncomingRequest(booking: any): boolean {
     // An incoming request is a join request that is NOT made by the current user
     // It's a request from another member to join the current user's slot
-    if (!booking.is_join_request) {
-      return false;
-    }
-    
-    // For a join request to be "incoming", it means the current user should see accept/reject buttons
-    // This happens when:
-    // 1. It's a join request (is_join_request = true)
-    // 2. The current user is NOT the one who made the join request (isOwnBooking = false)
-    // 3. The current user owns the original booking that the join request is trying to join
-    
-    // Since we're viewing this in the orders component, if it's a join request and not owned by current user,
-    // it means the current user should be able to approve/reject it
-    return !booking.isOwnBooking;
+    return booking.is_join_request && !booking.isOwnBooking;
   }
 
   private getRequesterName(booking: any): string {
     if (this.isIncomingRequest(booking)) {
-      // For incoming requests, the requester is the member who made the join request
-      return booking.memberName || 'Unknown Member';
+      return `${booking.memberName || 'Unknown'} ${booking.memberFullName || ''}`.trim();
     }
     return '';
   }
 
   private getRequesterEmail(booking: any): string {
     if (this.isIncomingRequest(booking)) {
-      // For incoming requests, try to get email from member object or other fields
-      return booking.member?.email || booking.email || '';
+      return booking.member?.email || '';
     }
     return '';
   }
@@ -462,17 +456,7 @@ export class OrdersComponent implements OnInit {
     // Check if there are available spots
     const currentParticipants = this.getOriginalBookingParticipants(booking);
     const requestedParticipants = booking.participants;
-    const totalParticipants = currentParticipants + requestedParticipants;
-    
-    console.log('Checking if request can be accepted:', {
-      currentParticipants,
-      requestedParticipants,
-      totalParticipants,
-      maxAllowed: 4,
-      canAccept: totalParticipants <= 4
-    });
-    
-    return totalParticipants <= 4;
+    return (currentParticipants + requestedParticipants) <= 4;
   }
 
   // Handle accept request
@@ -482,49 +466,9 @@ export class OrdersComponent implements OnInit {
     }
 
     try {
-      // For join requests, we need to use the original booking ID (the slot being joined)
-      // and the join request ID (the request itself)
-      const originalBookingId = booking.originalBookingInfo?.id || booking.original_booking;
-      
-      // The API expects a numeric ID for the join request, not the request_id string
-      // We need to find the actual numeric ID from the booking data
-      let joinRequestId = null;
-      
-      // Try to find the numeric ID from various possible fields
-      if (booking.id && typeof booking.id === 'number') {
-        joinRequestId = booking.id;
-      } else if (booking.originalBookingId && typeof booking.originalBookingId === 'number') {
-        joinRequestId = booking.originalBookingId;
-      } else if (booking.original_booking && typeof booking.original_booking === 'number') {
-        joinRequestId = booking.original_booking;
-      }
-      
-      // If we still don't have a numeric ID, try to extract it from the string ID
-      if (!joinRequestId && booking.id && typeof booking.id === 'string') {
-        // Try to extract numeric part from string ID like "incoming_5"
-        const numericMatch = booking.id.match(/\d+$/);
-        if (numericMatch) {
-          joinRequestId = parseInt(numericMatch[0]);
-        }
-      }
-      
-      console.log('Accepting join request:', {
-        originalBookingId,
-        joinRequestId,
-        request_id: booking.request_id,
-        booking_id: booking.booking_id,
-        id: booking.id,
-        type: typeof joinRequestId
-      });
-      
-      if (!joinRequestId) {
-        console.error('Could not find numeric join request ID');
-        return;
-      }
-      
       const response = await this.collectionService.reviewJoinRequest(
-        originalBookingId,
-        joinRequestId,
+        booking.originalBookingId || booking.id,
+        booking.id,
         'approve'
       );
       
@@ -542,49 +486,9 @@ export class OrdersComponent implements OnInit {
   // Handle reject request
   async handleRejectRequest(booking: any) {
     try {
-      // For join requests, we need to use the original booking ID (the slot being joined)
-      // and the join request ID (the request itself)
-      const originalBookingId = booking.originalBookingInfo?.id || booking.original_booking;
-      
-      // The API expects a numeric ID for the join request, not the request_id string
-      // We need to find the actual numeric ID from the booking data
-      let joinRequestId = null;
-      
-      // Try to find the numeric ID from various possible fields
-      if (booking.id && typeof booking.id === 'number') {
-        joinRequestId = booking.id;
-      } else if (booking.originalBookingId && typeof booking.originalBookingId === 'number') {
-        joinRequestId = booking.originalBookingId;
-      } else if (booking.original_booking && typeof booking.original_booking === 'number') {
-        joinRequestId = booking.original_booking;
-      }
-      
-      // If we still don't have a numeric ID, try to extract it from the string ID
-      if (!joinRequestId && booking.id && typeof booking.id === 'string') {
-        // Try to extract numeric part from string ID like "incoming_5"
-        const numericMatch = booking.id.match(/\d+$/);
-        if (numericMatch) {
-          joinRequestId = parseInt(numericMatch[0]);
-        }
-      }
-      
-      console.log('Rejecting join request:', {
-        originalBookingId,
-        joinRequestId,
-        request_id: booking.request_id,
-        booking_id: booking.booking_id,
-        id: booking.id,
-        type: typeof joinRequestId
-      });
-      
-      if (!joinRequestId) {
-        console.error('Could not find numeric join request ID');
-        return;
-      }
-      
       const response = await this.collectionService.reviewJoinRequest(
-        originalBookingId,
-        joinRequestId,
+        booking.originalBookingId || booking.id,
+        booking.id,
         'reject'
       );
       
@@ -752,19 +656,47 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-     // View booking details
-   viewBookingDetails(booking: Booking) {
-     this.selectedBooking = booking;
-     this.showBookingDetails = true;
-     
-           // Log basic information for debugging
-      console.log('Viewing details for booking:', booking);
-      console.log('Is incoming request:', booking.isIncomingRequest);
-      console.log('Is join request:', booking.is_join_request);
-      console.log('Status:', booking.status);
-      console.log('Original booking:', booking.original_booking);
-      console.log('Is own booking:', booking.isOwnBooking);
-   }
+  // View booking details
+  viewBookingDetails(booking: Booking) {
+    this.selectedBooking = booking;
+    this.showBookingDetails = true;
+    
+    // Log detailed information for debugging
+    console.log('Viewing details for booking:', booking);
+    
+    let detailsMessage = `Booking Details:\n`;
+    detailsMessage += `ID: ${booking.is_join_request ? (booking.request_id || booking.booking_id) : booking.booking_id}\n`;
+    detailsMessage += `Course: ${booking.courseName}\n`;
+    detailsMessage += `Tee: ${booking.teeInfo}\n`;
+    detailsMessage += `Date: ${this.formatDate(booking.slotDate || booking.bookingDate)}\n`;
+    detailsMessage += `Time: ${booking.booking_time}\n`;
+    detailsMessage += `Participants: ${this.getParticipantDisplayText(booking)}\n`;
+    detailsMessage += `Status: ${this.getStatusDisplayText(booking)}\n`;
+    
+    if (booking.is_join_request) {
+      detailsMessage += `\nThis is a join request for an existing slot.\n`;
+      if (booking.originalBookingInfo) {
+        detailsMessage += `Original Booking ID: ${booking.originalBookingInfo.id}\n`;
+        detailsMessage += `Original Booker: ${booking.originalBookingInfo.memberName}\n`;
+      }
+    }
+    
+    if (booking.allParticipantsInfo && booking.allParticipantsInfo.length > 1) {
+      detailsMessage += `\nAll Participants:\n`;
+      booking.allParticipantsInfo.forEach((participant, index) => {
+        detailsMessage += `${index + 1}. ${participant.member_name} (${participant.participants} participant${participant.participants > 1 ? 's' : ''})`;
+        if (participant.is_original_booker) {
+          detailsMessage += ` - Original Booker`;
+        }
+        if (participant.approved_at) {
+          detailsMessage += ` - Approved at ${new Date(participant.approved_at).toLocaleString()}`;
+        }
+        detailsMessage += `\n`;
+      });
+    }
+    
+    console.log(detailsMessage);
+  }
 
   // Close booking details
   closeBookingDetails() {
@@ -938,22 +870,22 @@ export class OrdersComponent implements OnInit {
         action: 'viewDetails',
         enabled: true
       };
-         } else if (booking.status === 'pending_approval') {
-       if (booking.isIncomingRequest) {
-         return {
-           text: 'View Request',
-           color: 'purple',
-           action: 'viewDetails',
-           enabled: true
-         };
-       }
-       return {
-         text: 'View Details',
-         color: 'gray',
-         action: 'viewDetails',
-         enabled: true
-       };
-     }
+    } else if (booking.status === 'pending_approval') {
+      if (booking.isIncomingRequest) {
+        return {
+          text: 'Accept / Reject',
+          color: 'purple',
+          action: 'reviewRequest',
+          enabled: true
+        };
+      }
+      return {
+        text: 'View Details',
+        color: 'gray',
+        action: 'viewDetails',
+        enabled: true
+      };
+    }
     
     return {
       text: 'View Details',
@@ -963,19 +895,22 @@ export class OrdersComponent implements OnInit {
     };
   }
 
-     handleActionButtonClick(booking: Booking) {
-     const actionButton = this.getActionButton(booking);
-     
-     switch (actionButton.action) {
-       case 'addParticipants':
-         this.openParticipantModal(booking);
-         break;
-       case 'viewDetails':
-       default:
-         this.viewBookingDetails(booking);
-         break;
-     }
-   }
+  handleActionButtonClick(booking: Booking) {
+    const actionButton = this.getActionButton(booking);
+    
+    switch (actionButton.action) {
+      case 'addParticipants':
+        this.openParticipantModal(booking);
+        break;
+      case 'reviewRequest':
+        this.openReviewRequestModal(booking);
+        break;
+      case 'viewDetails':
+      default:
+        this.viewBookingDetails(booking);
+        break;
+    }
+  }
 
   // Get participant display text
   getParticipantDisplayText(booking: Booking): string {
@@ -1017,22 +952,22 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-     // Get status display text with context
-   getStatusDisplayText(booking: Booking): string {
-     switch (booking.status) {
-       case 'confirmed':
-         return 'CONFIRMED';
-       case 'pending_approval':
-         if (booking.isIncomingRequest) {
-           return 'JOIN REQUEST';
-         }
-         return 'PENDING REQUEST';
-       case 'approved':
-         return 'CONFIRMED';
-       default:
-         return booking.status.toUpperCase();
-     }
-   }
+  // Get status display text with context
+  getStatusDisplayText(booking: Booking): string {
+    switch (booking.status) {
+      case 'confirmed':
+        return 'CONFIRMED';
+      case 'pending_approval':
+        if (booking.isIncomingRequest) {
+          return 'REVIEW REQUEST';
+        }
+        return 'PENDING REQUEST';
+      case 'approved':
+        return 'CONFIRMED';
+      default:
+        return booking.status.toUpperCase();
+    }
+  }
 
   // Check if booking is empty state
   isEmptyState(): boolean {
@@ -1141,9 +1076,12 @@ export class OrdersComponent implements OnInit {
 
   // Get count of received requests (incoming join requests)
   getReceivedRequestsCount(): number {
-    return this.bookings.filter(booking => 
+    const receivedRequests = this.bookings.filter(booking => 
       booking.isIncomingRequest && booking.status === 'pending_approval'
-    ).length;
+    );
+    console.log('Received requests count:', receivedRequests.length);
+    console.log('All bookings with isIncomingRequest:', this.bookings.filter(b => b.isIncomingRequest));
+    return receivedRequests.length;
   }
 
   // Get count of rejected requests
