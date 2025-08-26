@@ -2313,61 +2313,67 @@ class BookingViewSet(viewsets.ModelViewSet):
                 }, status=400)
             
             # Get the join request
+            from apis.models import JoinRequestModel
             try:
-                join_request = BookingModel.objects.get(
+                join_request = JoinRequestModel.objects.get(
                     id=join_request_id,
                     original_booking=original_booking,
-                    is_join_request=True,
                     status='pending_approval'
                 )
-            except BookingModel.DoesNotExist:
+            except JoinRequestModel.DoesNotExist:
                 return Response({
                     'code': 0,
                     'message': 'Join request not found'
                 }, status=404)
             
             # Check if slot can accommodate the join request
-            total_participants = original_booking.slot_participant_count + join_request.participants
+            total_participants = original_booking.participants + join_request.participants
             if total_participants > 4:
                 return Response({
                     'code': 0,
                     'message': 'Slot cannot accommodate additional participants'
                 }, status=400)
             
-            # Approve the join request using the model method
-            success = original_booking.approve_join_request(join_request_id, original_booking.member)
+            # Approve the join request and merge participants
+            join_request.status = 'approved'
+            join_request.approved_by = original_booking.member
+            join_request.approved_at = timezone.now()
+            join_request.save()
             
-            if success:
-                # Create notification for the joining member
-                NotificationModel.create_join_response_notification(
-                    recipient=join_request.member,
-                    sender=original_booking.member,
-                    booking=original_booking,
-                    is_approved=True
-                )
-                
-                # Refresh the join request to get updated data
-                join_request.refresh_from_db()
-                
-                return Response({
-                    'code': 1,
-                    'message': 'Join request approved successfully. Participants merged into existing booking.',
-                    'data': {
-                        'joinRequestId': getattr(join_request, 'request_id', None) or join_request.id,
-                        'originalBookingId': original_booking.booking_id,
-                        'originalBookingParticipants': original_booking.participants,
-                        'joinRequestParticipants': join_request.participants,
-                        'totalParticipants': original_booking.participants,
-                        'status': join_request.status,
-                        'isSlotFull': original_booking.is_slot_full(),
-                        'message': f'Successfully merged {join_request.participants} participant(s) into booking {original_booking.booking_id}'
-                    }
-                })
-            else:
-                return Response({
-                    'code': 0,
-                    'message': 'Failed to approve join request'
-                }, status=400)
+            # Merge participants into the original booking
+            original_booking.participants = total_participants
+            
+            # Update original booking status if slot is now full
+            if total_participants == 4:
+                original_booking.status = 'completed'
+            
+            original_booking.save()
+            
+            # Create notification for the joining member
+            NotificationModel.create_join_response_notification(
+                recipient=join_request.member,
+                sender=original_booking.member,
+                booking=original_booking,
+                is_approved=True
+            )
+            
+            # Refresh the join request to get updated data
+            join_request.refresh_from_db()
+            
+            return Response({
+                'code': 1,
+                'message': 'Join request approved successfully. Participants merged into existing booking.',
+                'data': {
+                    'joinRequestId': join_request.request_id,
+                    'originalBookingId': original_booking.booking_id,
+                    'originalBookingParticipants': original_booking.participants,
+                    'joinRequestParticipants': join_request.participants,
+                    'totalParticipants': original_booking.participants,
+                    'status': join_request.status,
+                    'isSlotFull': original_booking.participants >= 4,
+                    'message': f'Successfully merged {join_request.participants} participant(s) into booking {original_booking.booking_id}'
+                }
+            })
             
         except Exception as e:
             return Response({
@@ -2389,40 +2395,35 @@ class BookingViewSet(viewsets.ModelViewSet):
                 }, status=400)
             
             # Get the join request
+            from apis.models import JoinRequestModel
             try:
-                join_request = BookingModel.objects.get(
+                join_request = JoinRequestModel.objects.get(
                     id=join_request_id,
                     original_booking=original_booking,
-                    is_join_request=True,
                     status='pending_approval'
                 )
-            except BookingModel.DoesNotExist:
+            except JoinRequestModel.DoesNotExist:
                 return Response({
                     'code': 0,
                     'message': 'Join request not found'
                 }, status=404)
             
-            # Reject the join request using the model method
-            success = original_booking.reject_join_request(join_request_id)
+            # Reject the join request
+            join_request.status = 'rejected'
+            join_request.save()
             
-            if success:
-                # Create notification for the joining member
-                NotificationModel.create_join_response_notification(
-                    recipient=join_request.member,
-                    sender=original_booking.member,
-                    booking=original_booking,
-                    is_approved=False
-                )
-                
-                return Response({
-                    'code': 1,
-                    'message': 'Join request rejected successfully'
-                })
-            else:
-                return Response({
-                    'code': 0,
-                    'message': 'Failed to reject join request'
-                }, status=400)
+            # Create notification for the joining member
+            NotificationModel.create_join_response_notification(
+                recipient=join_request.member,
+                sender=original_booking.member,
+                booking=original_booking,
+                is_approved=False
+            )
+            
+            return Response({
+                'code': 1,
+                'message': 'Join request rejected successfully'
+            })
             
         except Exception as e:
             return Response({
@@ -3033,10 +3034,10 @@ class BookingViewSet(viewsets.ModelViewSet):
                 }, status=400)
             
             # Check if there's already a pending or approved join request from this member
-            existing_request = BookingModel.objects.filter(
+            from apis.models import JoinRequestModel
+            existing_request = JoinRequestModel.objects.filter(
                 member=member,
                 original_booking=original_booking,
-                is_join_request=True,
                 status__in=['pending_approval', 'approved'],
                 hideStatus=0
             ).first()
@@ -3046,39 +3047,19 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': 'You already have a request for this slot',
                     'data': {
-                        'existingRequestId': getattr(existing_request, 'request_id', None) or existing_request.id,
+                        'existingRequestId': existing_request.request_id,
                         'existingStatus': existing_request.status,
                         'existingParticipants': existing_request.participants
                     }
                 }, status=400)
             
-            # Create the join request with manual request_id generation
-            from datetime import datetime
-            now = datetime.now()
-            year_suffix = str(now.year)[-2:]
-            month_abbr = now.strftime('%b').upper()
-            base_id = f"MGCRQ{year_suffix}{month_abbr}"
+            # Create the join request using the new JoinRequestModel
+            from apis.models import JoinRequestModel
             
-            # Generate unique timestamp-based ID
-            timestamp = int(datetime.now().timestamp() * 1000) % 100000
-            request_id = f"{base_id}{timestamp:05d}"
-            
-            # Ensure uniqueness by checking database
-            while BookingModel.objects.filter(request_id=request_id).exists():
-                timestamp = int(datetime.now().timestamp() * 1000) % 100000
-                request_id = f"{base_id}{timestamp:05d}"
-            
-            join_request = BookingModel.objects.create(
+            join_request = JoinRequestModel.objects.create(
                 member=member,
-                course_id=course_id,
-                tee_id=tee_id,
-                slot_date=slot_date,
-                booking_time=booking_time,
-                participants=participants,
-                status='pending_approval',
-                is_join_request=True,
                 original_booking=original_booking,
-                request_id=request_id
+                participants=participants
             )
             
             # Create notification for the original booker
@@ -3094,11 +3075,11 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'message': 'Join request created successfully',
                 'data': {
                     'id': join_request.id,
-                    'requestId': getattr(join_request, 'request_id', None),
-                    'courseName': join_request.course.courseName,
-                    'teeLabel': f"{join_request.tee.holeNumber} Holes" if join_request.tee else "Tee not specified",
-                    'date': join_request.slot_date,
-                    'time': join_request.booking_time,
+                    'requestId': join_request.request_id,
+                    'courseName': original_booking.course.courseName,
+                    'teeLabel': f"{original_booking.tee.holeNumber} Holes" if original_booking.tee else "Tee not specified",
+                    'date': original_booking.slot_date,
+                    'time': original_booking.booking_time,
                     'participants': join_request.participants,
                     'status': join_request.status,
                     'originalBookingId': original_booking.booking_id,

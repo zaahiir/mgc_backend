@@ -266,7 +266,6 @@ class TeeModel(models.Model):
 class BookingModel(models.Model):
     id = models.AutoField(primary_key=True)
     booking_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Unique booking ID in format MGCBK25AUG00010")
-    request_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Unique request ID in format MGCRQ25AUG00010 for join requests")
 
     member = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="bookings")
     course = models.ForeignKey(CourseModel, on_delete=models.CASCADE, related_name="bookings")
@@ -292,18 +291,19 @@ class BookingModel(models.Model):
     # If multiple slots are booked together, they can share a group_id
     group_id = models.CharField(max_length=50, null=True, blank=True, help_text="Group ID for multi-slot bookings")
     
-    # Join request functionality
+        # Join request functionality - now handled by separate JoinRequestModel
+    # This field is kept for backward compatibility but will be deprecated
     original_booking = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, 
-                                       related_name='join_requests', 
-                                       help_text="Original booking this join request is for")
+                                       related_name='legacy_join_requests', 
+                                       help_text="DEPRECATED: Original booking this join request is for")
     is_join_request = models.BooleanField(default=False, 
-                                         help_text="Whether this booking is a join request")
+                                          help_text="DEPRECATED: Whether this booking is a join request")
     
-    # Enhanced approval tracking
+    # Enhanced approval tracking - now handled by JoinRequestModel
     approved_by = models.ForeignKey(MemberModel, on_delete=models.SET_NULL, null=True, blank=True,
-                                  related_name='approved_bookings',
-                                  help_text="Member who approved this join request")
-    approved_at = models.DateTimeField(null=True, blank=True, help_text="When the join request was approved")
+                                   related_name='legacy_approved_bookings',
+                                   help_text="DEPRECATED: Member who approved this join request")
+    approved_at = models.DateTimeField(null=True, blank=True, help_text="DEPRECATED: When the join request was approved")
     
     notes = models.TextField(null=True, blank=True)
     hideStatus = models.IntegerField(default=0)
@@ -315,7 +315,6 @@ class BookingModel(models.Model):
         db_table = 'apis_bookingmodel'
         indexes = [
             models.Index(fields=['booking_id']),
-            models.Index(fields=['request_id']),
             models.Index(fields=['slot_date', 'booking_time', 'tee']),
             models.Index(fields=['member', 'status']),
             models.Index(fields=['createdAt']),
@@ -327,20 +326,6 @@ class BookingModel(models.Model):
         # Generate booking ID if not provided
         if not self.booking_id:
             self.booking_id = self.generate_booking_id()
-        
-        # Generate request ID for join requests if not provided
-        if self.is_join_request and not self.request_id:
-            try:
-                self.request_id = self.generate_request_id()
-            except Exception as e:
-                # Fallback to timestamp-based ID if generation fails
-                from datetime import datetime
-                now = datetime.now()
-                year_suffix = str(now.year)[-2:]
-                month_abbr = now.strftime('%b').upper()
-                base_id = f"MGCRQ{year_suffix}{month_abbr}"
-                timestamp = int(datetime.now().timestamp() * 1000) % 100000
-                self.request_id = f"{base_id}{timestamp:05d}"
         
         # Handle migration from old structure
         if not self.slot_date and hasattr(self, 'bookingDate'):
@@ -447,74 +432,7 @@ class BookingModel(models.Model):
         timestamp = int(time.time() * 1000) % 100000
         return f"{base_id}{timestamp:05d}"
     
-    def generate_request_id(self):
-        """Generate unique request ID in format: MGCRQ25AUG00010"""
-        from datetime import datetime
-        import time
-        from django.db import transaction
-        
-        max_retries = 10
-        retry_count = 0
-        
-        while retry_count < max_retries:
-            try:
-                with transaction.atomic():
-                    now = datetime.now()
-                    year_suffix = str(now.year)[-2:]  # Last 2 digits of year
-                    month_abbr = now.strftime('%b').upper()  # 3-letter month
-                    
-                    base_id = f"MGCRQ{year_suffix}{month_abbr}"
-                    
-                    # Get the next sequential number for this month with row-level locking
-                    existing_requests = BookingModel.objects.filter(
-                        request_id__startswith=base_id
-                    ).select_for_update().order_by('-request_id')
-                    
-                    if existing_requests.exists():
-                        # Extract the last number and increment
-                        last_request_id = existing_requests.first().request_id
-                        try:
-                            # Extract the number part (last 5 digits)
-                            last_number = int(last_request_id[-5:])
-                            next_number = last_number + 1
-                        except (ValueError, IndexError):
-                            next_number = 1
-                    else:
-                        next_number = 1
-                    
-                    # Format with leading zeros (5 digits)
-                    request_id = f"{base_id}{next_number:05d}"
-                    
-                    # Verify this ID doesn't exist (double-check)
-                    if not BookingModel.objects.filter(request_id=request_id).exists():
-                        return request_id
-                    
-                    # If we get here, the ID was taken by another process, retry
-                    retry_count += 1
-                    time.sleep(0.01)  # Small delay before retry
-                    continue
-                    
-            except Exception as e:
-                retry_count += 1
-                if retry_count >= max_retries:
-                    # Fallback: use timestamp-based ID
-                    timestamp = int(time.time() * 1000) % 100000
-                    now = datetime.now()
-                    year_suffix = str(now.year)[-2:]
-                    month_abbr = now.strftime('%b').upper()
-                    base_id = f"MGCRQ{year_suffix}{month_abbr}"
-                    return f"{base_id}{timestamp:05d}"
-                
-                time.sleep(0.01)  # Small delay before retry
-                continue
-        
-        # Final fallback if all else fails
-        now = datetime.now()
-        year_suffix = str(now.year)[-2:]
-        month_abbr = now.strftime('%b').upper()
-        base_id = f"MGCRQ{year_suffix}{month_abbr}"
-        timestamp = int(time.time() * 1000) % 100000
-        return f"{base_id}{timestamp:05d}"
+
     
     @property
     def duration_hours(self):
@@ -807,6 +725,129 @@ class BookingModel(models.Model):
 
 
 # BookingSlotModel removed - each slot is now a separate BookingModel
+
+
+class JoinRequestModel(models.Model):
+    """Model for managing join requests - separate from bookings to maintain one slot one ID"""
+    id = models.AutoField(primary_key=True)
+    request_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Unique request ID in format MGCRQ25AUG00010")
+    
+    # Member requesting to join
+    member = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="join_requests")
+    
+    # Original booking they want to join
+    original_booking = models.ForeignKey(BookingModel, on_delete=models.CASCADE, related_name='join_requests')
+    
+    # Request details
+    participants = models.PositiveIntegerField(default=1, help_text="Number of participants requesting to join")
+    
+    STATUS_CHOICES = [
+        ('pending_approval', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_approval')
+    
+    # Approval tracking
+    approved_by = models.ForeignKey(MemberModel, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='approved_join_requests',
+                                   help_text="Member who approved this join request")
+    approved_at = models.DateTimeField(null=True, blank=True, help_text="When the join request was approved")
+    
+    notes = models.TextField(null=True, blank=True)
+    hideStatus = models.IntegerField(default=0)
+    
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'apis_joinrequestmodel'
+        indexes = [
+            models.Index(fields=['request_id']),
+            models.Index(fields=['original_booking', 'status']),
+            models.Index(fields=['member', 'status']),
+            models.Index(fields=['createdAt']),
+        ]
+        verbose_name = 'Join Request'
+        verbose_name_plural = 'Join Requests'
+    
+    def save(self, *args, **kwargs):
+        # Generate request ID if not provided
+        if not self.request_id:
+            self.request_id = self.generate_request_id()
+        super().save(*args, **kwargs)
+    
+    def generate_request_id(self):
+        """Generate unique request ID in format: MGCRQ25AUG00010"""
+        from datetime import datetime
+        import time
+        from django.db import transaction
+        
+        max_retries = 10
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                with transaction.atomic():
+                    now = datetime.now()
+                    year_suffix = str(now.year)[-2:]
+                    month_abbr = now.strftime('%b').upper()
+                    
+                    base_id = f"MGCRQ{year_suffix}{month_abbr}"
+                    
+                    # Get the next sequential number for this month with row-level locking
+                    existing_requests = JoinRequestModel.objects.filter(
+                        request_id__startswith=base_id
+                    ).select_for_update().order_by('-request_id')
+                    
+                    if existing_requests.exists():
+                        # Extract the last number and increment
+                        last_request_id = existing_requests.first().request_id
+                        try:
+                            # Extract the number part (last 5 digits)
+                            last_number = int(last_request_id[-5:])
+                            next_number = last_number + 1
+                        except (ValueError, IndexError):
+                            next_number = 1
+                    else:
+                        next_number = 1
+                    
+                    # Format with leading zeros (5 digits)
+                    request_id = f"{base_id}{next_number:05d}"
+                    
+                    # Verify this ID doesn't exist (double-check)
+                    if not JoinRequestModel.objects.filter(request_id=request_id).exists():
+                        return request_id
+                    
+                    # If we get here, the ID was taken by another process, retry
+                    retry_count += 1
+                    time.sleep(0.01)  # Small delay before retry
+                    continue
+                    
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    # Fallback: use timestamp-based ID
+                    timestamp = int(time.time() * 1000) % 100000
+                    now = datetime.now()
+                    year_suffix = str(now.year)[-2:]
+                    month_abbr = now.strftime('%b').upper()
+                    base_id = f"MGCRQ{year_suffix}{month_abbr}"
+                    return f"{base_id}{timestamp:05d}"
+                
+                time.sleep(0.01)  # Small delay before retry
+                continue
+        
+        # Final fallback if all else fails
+        now = datetime.now()
+        year_suffix = str(now.year)[-2:]
+        month_abbr = now.strftime('%b').upper()
+        base_id = f"MGCRQ{year_suffix}{month_abbr}"
+        timestamp = int(time.time() * 1000) % 100000
+        return f"{base_id}{timestamp:05d}"
+    
+    def __str__(self):
+        return f"Join request {self.request_id} from {self.member.firstName} to {self.original_booking.booking_id}"
 
 
 class NotificationModel(models.Model):
