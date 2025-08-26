@@ -2248,7 +2248,6 @@
 
 
 
-
 /* Responsive design for multi-select controls */
 @media (max-width: 768px) {
   .multi-select-controls {
@@ -2959,6 +2958,22 @@
   color: #f39c12;
   background: rgba(243, 156, 18, 0.1);
   border: 1px solid #f39c12;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pending {
+  color: var(--secondary-color);
+  background: rgba(52, 73, 94, 0.1);
+  border: 1px solid var(--secondary-color);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .owner-booking-info {
@@ -3272,6 +3287,212 @@
     padding: 3px 6px;
   }
 }
+
+/* Row-based layout for slots display */
+.slots-row-container {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.slots-row-container .slot-row {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(119, 169, 106, 0.1);
+  transition: all 0.3s ease;
+}
+
+.slots-row-container .slot-row:hover {
+  box-shadow: 0 4px 20px rgba(119, 169, 106, 0.15);
+  border-color: rgba(119, 169, 106, 0.2);
+  transform: translateY(-2px);
+}
+
+.slots-row-container .slot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slots-row-container .slot-main-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  row-gap: 12px;
+}
+
+.slots-row-container .slot-main-details span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.slots-row-container .slot-booking-id {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: var(--theme-color);
+  background: rgba(119, 169, 106, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--theme-color);
+  font-size: 0.85rem;
+}
+
+.slots-row-container .slot-tee {
+  font-weight: 600;
+  color: var(--text-color);
+  background: rgba(119, 169, 106, 0.05);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(119, 169, 106, 0.2);
+}
+
+.slots-row-container .slot-time {
+  font-weight: 600;
+  color: var(--theme-color);
+  background: rgba(119, 169, 106, 0.1);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--theme-color);
+}
+
+.slots-row-container .slot-date {
+  font-weight: 500;
+  color: var(--text-color);
+  background: rgba(119, 169, 106, 0.05);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(119, 169, 106, 0.2);
+}
+
+.slots-row-container .slot-participants {
+  font-weight: 600;
+  color: var(--theme-color);
+  background: rgba(119, 169, 106, 0.1);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--theme-color);
+  text-align: center;
+  min-width: 60px;
+}
+
+/* Slot join note styling for slot details */
+.slot-join-note {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.slot-join-note .note-content {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #856404;
+}
+
+.slot-join-note .note-content strong {
+  color: #856404;
+  font-weight: 600;
+}
+
+.slot-join-note .note-content span {
+  display: block;
+  margin-top: 4px;
+}
+
+/* Status styling for slot details */
+.slot-detail-row .value.status-pending {
+  color: #856404;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.slot-detail-row .value.status-owner {
+  color: #155724;
+  background: rgba(119, 169, 106, 0.1);
+  border: 1px solid rgba(119, 169, 106, 0.3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* Additional info section styling */
+.slots-info-list {
+  margin-top: 10px;
+}
+
+.slots-info-list .slot-info-item {
+  margin-bottom: 8px;
+}
+
+.slots-info-list .slot-join-info {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.slots-info-list .slot-join-info .join-request-note {
+  color: #856404;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.slots-info-list .slot-join-info .owner-booking-note {
+  color: #155724;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Responsive adjustments for row layout */
+@media (max-width: 768px) {
+  .slots-row-container .slot-main-details {
+    gap: 12px;
+    row-gap: 10px;
+  }
+  
+  .slots-row-container .slot-main-details span {
+    font-size: 0.85rem;
+  }
+  
+  .slots-row-container .slot-row {
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .slots-row-container .slot-main-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .slots-row-container .slot-main-details span {
+    font-size: 0.8rem;
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .slots-row-container .slot-row {
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+}
+
 
 
 

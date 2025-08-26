@@ -1618,6 +1618,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     tee: string;
     time: string;
     status: string;
+    statusText: string;
     participants: number;
     isJoinRequest: boolean;
     isAddParticipants: boolean;
@@ -1627,12 +1628,28 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       const isJoinRequest = slot.isJoinRequest || false;
       const isAddParticipants = slot.isOwnBooking || false;
       
+      // Determine status and status text
+      let status: string;
+      let statusText: string;
+      
+      if (isJoinRequest) {
+        status = 'pending';
+        statusText = 'Pending';
+      } else if (isAddParticipants) {
+        status = 'completed';
+        statusText = 'Completed';
+      } else {
+        status = 'confirmed';
+        statusText = 'Completed';
+      }
+      
       return {
         bookingId: booking?.booking_id || 'N/A',
         date: slot.slot_date ? this.formatDateForDisplayUK(new Date(slot.slot_date)) : 'N/A',
         tee: `${slot.tee.holeNumber} Holes`,
         time: slot.time,
-        status: isJoinRequest ? 'Pending' : (isAddParticipants ? 'Completed' : 'Completed'),
+        status: status,
+        statusText: statusText,
         participants: slot.participants,
         isJoinRequest,
         isAddParticipants

@@ -224,26 +224,30 @@
                         <span class="value">{{slot.participants}} player{{slot.participants > 1 ? 's' : ''}}</span>
                       </div>
                       <!-- Show status for partially available slots -->
-                      <div class="slot-detail-row" *ngIf="slot.isJoinRequest || slot.isOwnBooking">
-                        <span class="label">Status:</span>
-                        <span class="value" [class.status-pending]="slot.isJoinRequest" [class.status-owner]="slot.isOwnBooking">
-                          <span *ngIf="slot.isJoinRequest">PENDING REQUEST</span>
-                          <span *ngIf="slot.isOwnBooking">OWNER BOOKING</span>
+                      <div class="slot-detail-row" *ngIf="slot.slot_status === 'partially_available'">
+                        <span class="label">Slot Type:</span>
+                        <span class="value" [class.status-pending]="!slot.isOwnBooking" [class.status-owner]="slot.isOwnBooking">
+                          <span *ngIf="slot.isOwnBooking">👑 Owner Booking</span>
+                          <span *ngIf="!slot.isOwnBooking">⚠️ Join Request</span>
                         </span>
                       </div>
                       <!-- Show additional info for join requests or owner bookings -->
-                      <div class="slot-detail-row" *ngIf="(slot.isJoinRequest || slot.isOwnBooking) && slot.currentParticipants">
+                      <div class="slot-detail-row" *ngIf="slot.slot_status === 'partially_available' && slot.total_participants">
                         <span class="label">Slot Info:</span>
-                        <span class="value">{{slot.currentParticipants}}/4 participants ({{slot.availableSpots}} spots left)</span>
+                        <span class="value">{{slot.total_participants}}/4 participants ({{slot.available_spots || 4}} spots left)</span>
                       </div>
                       <!-- Show note for join requests or owner bookings -->
-                      <div class="slot-join-note" *ngIf="slot.isJoinRequest || slot.isOwnBooking">
-                        <small class="join-request-info" *ngIf="slot.isJoinRequest">
-                          ⚠️ This slot already has participants. Your request will be pending approval.
-                        </small>
-                        <small class="owner-booking-info" *ngIf="slot.isOwnBooking">
-                          👑 This is your existing booking. You're adding more participants to this slot.
-                        </small>
+                      <div class="slot-join-note" *ngIf="slot.slot_status === 'partially_available'">
+                        <div class="note-content">
+                          <strong>Note:</strong> 
+                          <span *ngIf="slot.isOwnBooking">
+                            This is your booking with {{slot.total_participants}} participant(s). You can add more participants to this slot.
+                          </span>
+                          <span *ngIf="!slot.isOwnBooking">
+                            This slot already has {{slot.total_participants}} participant(s). 
+                            If you select this slot, it will create a join request that needs approval from the original booker.
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -481,7 +485,10 @@
             </div>
             <div class="slot-info-item">
               <span class="slot-info-label">Current Participants:</span>
-              <span class="slot-info-value current-participants">{{currentSlotForModal.total_participants}}/4</span>
+              <span class="slot-info-value current-participants">
+                {{currentSlotForModal?.slot_status === 'partially_available' ? 
+                  (currentSlotForModal.total_participants || 0) : 0}}/4
+              </span>
             </div>
             <!-- Show additional info for partially available slots -->
             <div class="slot-info-item" *ngIf="currentSlotForModal?.slot_status === 'partially_available'">
@@ -583,75 +590,41 @@
         <!-- Enhanced slot details display -->
         <div class="detail-item" *ngIf="bookingConfirmationData.slotDetails && bookingConfirmationData.slotDetails.length > 0">
           <span class="label">Slots:</span>
-          <div class="value slots-table-container">
-            <table class="slots-table">
-              <thead>
-                <tr>
-                  <th>Booking ID</th>
-                  <th>Date</th>
-                  <th>Tee</th>
-                  <th>Time</th>
-                  <th>Participants</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let slot of bookingConfirmationData.slotDetails" class="slot-row">
-                  <td class="slot-booking-id">{{slot.bookingId}}</td>
-                  <td class="slot-date">{{slot.date}}</td>
-                  <td class="slot-tee">{{slot.tee}}</td>
-                  <td class="slot-time">{{slot.time}}</td>
-                  <td class="slot-participants">{{slot.participants}}p</td>
-                  <td class="slot-status">
-                    <span class="slot-status-badge" 
-                          [class.status-confirmed]="slot.status === 'Completed'"
-                          [class.status-pending]="slot.status === 'Pending'">
-                      {{slot.status}}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="value slots-row-container">
+            <div class="slot-row" *ngFor="let slot of bookingConfirmationData.slotDetails">
+              <div class="slot-info">
+                <div class="slot-main-details">
+                  <span class="slot-booking-id"><strong>ID: {{slot.bookingId}}</strong></span>
+                  <span class="slot-tee">{{slot.tee}}</span>
+                  <span class="slot-time">{{slot.time}}</span>
+                  <span class="slot-date">{{slot.date}}</span>
+                  <span class="slot-participants">{{slot.participants}}p</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         
         <!-- Fallback slot details for backward compatibility -->
         <div class="detail-item" *ngIf="!bookingConfirmationData.slotDetails && bookingConfirmationData.selectedSlots">
           <span class="label">Slots:</span>
-          <div class="value slots-table-container">
-            <table class="slots-table">
-              <thead>
-                <tr>
-                  <th>Booking ID</th>
-                  <th>Date</th>
-                  <th>Tee</th>
-                  <th>Time</th>
-                  <th>Participants</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index" class="slot-row">
-                  <td class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
-                    {{bookingConfirmationData.slotBookings[i].booking_id}}
-                  </td>
-                  <td class="slot-booking-id" *ngIf="!bookingConfirmationData.slotBookings || !bookingConfirmationData.slotBookings[i]">
-                    N/A
-                  </td>
-                  <td class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</td>
-                  <td class="slot-tee">{{slot.tee_name || slot.tee || 'Unknown Tee'}}</td>
-                  <td class="slot-time">{{slot.time}}</td>
-                  <td class="slot-participants">{{slot.participants}}p</td>
-                  <td class="slot-status">
-                    <span class="slot-status-badge" 
-                          [class.status-confirmed]="slot.status === 'confirmed'"
-                          [class.status-pending]="slot.status === 'pending'">
-                      {{slot.status === 'confirmed' ? 'CONFIRMED' : 'PENDING REQUEST'}}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="value slots-row-container">
+            <div class="slot-row" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
+              <div class="slot-info">
+                <div class="slot-main-details">
+                  <span class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
+                    <strong>ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
+                  </span>
+                  <span class="slot-booking-id" *ngIf="!bookingConfirmationData.slotBookings || !bookingConfirmationData.slotBookings[i]">
+                    <strong>ID: N/A</strong>
+                  </span>
+                  <span class="slot-tee">{{slot.tee_name || slot.tee || 'Unknown Tee'}}</span>
+                  <span class="slot-time">{{slot.time}}</span>
+                  <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
+                  <span class="slot-participants">{{slot.participants}}p</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -667,28 +640,11 @@
           </span>
         </div>
         
-        <!-- Show separate status for each slot -->
+        <!-- Show additional info for join requests or owner bookings -->
         <div class="detail-item" *ngIf="!bookingConfirmationData.slotDetails && bookingConfirmationData.selectedSlots">
-          <span class="label">Slot Status:</span>
-          <div class="value slots-status-list">
-            <div class="slot-status-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
-              <div class="slot-status-row">
-                <div class="slot-status-main-info">
-                  <span class="slot-tee-info">{{slot.tee_name || slot.tee || 'Unknown Tee'}}: {{slot.time}}</span>
-                  <span class="slot-date">{{slot.date ? (slot.date | date:'MMM d, yyyy') : 'N/A'}}</span>
-                  <span class="slot-participants">{{slot.participants}}p</span>
-                </div>
-                <!-- Show status for each slot -->
-                <div class="slot-status-badge" 
-                     [class.status-confirmed]="slot.status === 'confirmed'"
-                     [class.status-pending]="slot.status === 'pending'">
-                  {{slot.status === 'confirmed' ? 'CONFIRMED' : 'PENDING REQUEST'}}
-                </div>
-                <!-- Show individual booking ID for each slot -->
-                <div class="slot-booking-id" *ngIf="bookingConfirmationData.slotBookings && bookingConfirmationData.slotBookings[i]">
-                  <strong>ID: {{bookingConfirmationData.slotBookings[i].booking_id}}</strong>
-                </div>
-              </div>
+          <span class="label">Additional Info:</span>
+          <div class="value slots-info-list">
+            <div class="slot-info-item" *ngFor="let slot of bookingConfirmationData.selectedSlots; let i = index">
               <!-- Show additional info for join requests or owner bookings -->
               <div class="slot-join-info" *ngIf="slot.isJoinRequest || slot.isOwnBooking">
                 <small class="join-request-note" *ngIf="slot.isJoinRequest">
