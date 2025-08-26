@@ -535,9 +535,9 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
-  // Review join request (approve/reject) - updated to use original booking ID
+  // Review join request (approve/reject) - updated to use join request ID as pk
   reviewJoinRequest(originalBookingId: number, joinRequestId: number, action: 'approve' | 'reject') {
-    const url = `${this.apiUrl}booking/${originalBookingId}/review_join_request/`;
+    const url = `${this.apiUrl}booking/${joinRequestId}/review_join_request/`;
     const config: any = {};
     
     // Add authorization headers if available
@@ -548,9 +548,9 @@ export class CollectionService {
       };
     }
     
+    // Backend now gets original_booking from the join request, so we don't need to pass it
     return axios.post(url, { 
-      action: action, 
-      join_request_id: joinRequestId 
+      action: action
     }, config);
   }
 
