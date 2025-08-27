@@ -943,8 +943,10 @@
   border-radius: 20px;
   max-width: 700px;
   width: 95%;
-  max-height: 95vh;
-  overflow-y: auto;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 25px 50px rgba(28, 61, 64, 0.4), 0 10px 20px rgba(119, 169, 106, 0.2);
   border: 2px solid rgba(119, 169, 106, 0.1);
   animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -998,6 +1000,16 @@
 
 .modal-body {
   padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.modal-body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .modal-footer {

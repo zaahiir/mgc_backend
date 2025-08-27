@@ -493,6 +493,7 @@
       <div class="modal-body" *ngIf="selectedBooking">
         <div class="booking-info">
           <p><strong>Booking ID:</strong> {{selectedBooking.booking_id}}</p>
+          <p><strong>Member ID:</strong> {{selectedBooking.member || selectedBooking.requesterMemberId || 'N/A'}}</p>
           <p><strong>Status:</strong> 
             <span [class]="getStatusBadgeClass(selectedBooking)">
               {{getStatusDisplayText(selectedBooking)}}
