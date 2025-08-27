@@ -2260,6 +2260,37 @@ class BookingViewSet(viewsets.ModelViewSet):
 
 
 
+    @action(detail=False, methods=['GET'], url_path='admin/all-bookings')
+    def admin_all_bookings(self, request):
+        """Admin endpoint to get all bookings across all members"""
+        try:
+            # Check if user is admin (you can implement your admin check logic here)
+            # For now, we'll allow any authenticated user to access this
+            
+            # Get all bookings without member filtering
+            all_bookings = BookingModel.objects.filter(
+                hideStatus=0
+            ).select_related(
+                'member', 'course', 'tee'
+            ).prefetch_related(
+                'tee__course'
+            ).order_by('-createdAt')
+            
+            # Serialize the data
+            serializer = self.get_serializer(all_bookings, many=True)
+            
+            return Response({
+                'code': 1,
+                'message': 'All bookings retrieved successfully',
+                'data': serializer.data
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving all bookings: {str(e)}'
+            }, status=500)
+
     @action(detail=True, methods=['post'])
     def approve_join_request(self, request, pk=None):
         """Approve a join request"""
@@ -5107,6 +5138,32 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         except MemberModel.DoesNotExist:
             return JoinRequestModel.objects.none()
     
+    @action(detail=False, methods=['GET'], url_path='admin/all-requests')
+    def admin_all_requests(self, request):
+        """Admin endpoint to get all join requests across all members"""
+        try:
+            # Get all join requests without member filtering
+            all_requests = JoinRequestModel.objects.filter(
+                hideStatus=0
+            ).select_related(
+                'member', 'original_booking', 'original_booking__course', 
+                'original_booking__tee', 'original_booking__member'
+            ).order_by('-createdAt')
+            
+            serializer = self.get_serializer(all_requests, many=True)
+            
+            return Response({
+                'code': 1,
+                'message': 'All join requests retrieved successfully',
+                'data': serializer.data
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving all join requests: {str(e)}'
+            }, status=500)
+
     @action(detail=False, methods=['GET'])
     def incoming_requests(self, request):
         """Get incoming join requests for the current user's bookings"""
