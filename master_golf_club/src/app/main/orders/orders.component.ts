@@ -16,6 +16,7 @@ interface Booking {
   request_id?: string;
   memberName: string;
   memberFullName?: string;
+  memberGolfClubId?: string;
   courseName: string;
   course?: number;
   tee?: number;
@@ -28,6 +29,8 @@ interface Booking {
   original_booking?: number;
   originalBookingInfo?: any;
   originalBookingId?: number;
+  originalBookerId?: string;
+  originalBookerName?: string;
   joinRequests?: Booking[];
 
   slotStatus?: string;
@@ -73,6 +76,7 @@ interface Booking {
   statusType?: string;
   requesterName?: string;
   requesterEmail?: string;
+  requesterMemberId?: string;
   // Participant information for merged bookings
   allParticipantsInfo?: Array<{
     member_id: number;
@@ -133,7 +137,7 @@ interface JoinRequest {
   requesterMemberId?: string;
   requestDate?: string;
   requestedParticipants?: number;
-  originalBookerId?: number;
+  originalBookerId?: string;
   originalBookerName?: string;
   currentSlotStatus?: {
     currentParticipants: number;
@@ -358,8 +362,11 @@ export class OrdersComponent implements OnInit {
     // Convert all data to unified booking format for table display
     this.bookings = [];
 
+    console.log('Enhanced orders data:', this.enhancedOrdersData);
+
     // Add own bookings
     this.enhancedOrdersData.own_bookings.forEach(booking => {
+      console.log('Own booking data:', booking);
       this.bookings.push({
         ...booking,
         isOwnBooking: true,
@@ -370,23 +377,27 @@ export class OrdersComponent implements OnInit {
 
     // Add sent requests
     this.enhancedOrdersData.sent_requests.forEach(request => {
+      console.log('Sent request data:', request);
       const convertedBooking = {
         ...this.convertJoinRequestToBooking(request),
         isOwnBooking: false,
         displayType: 'sent_request' as 'sent_request',
         statusType: this.getSentRequestStatusType(request)
       };
+      console.log('Converted sent request booking:', convertedBooking);
       this.bookings.push(convertedBooking);
     });
 
     // Add received requests
     this.enhancedOrdersData.received_requests.forEach(request => {
+      console.log('Received request data:', request);
       const convertedBooking = {
         ...this.convertJoinRequestToBooking(request),
         isOwnBooking: false,
         displayType: 'received_request' as 'received_request',
         statusType: this.getReceivedRequestStatusType(request)
       };
+      console.log('Converted received request booking:', convertedBooking);
       this.bookings.push(convertedBooking);
     });
 
@@ -402,6 +413,8 @@ export class OrdersComponent implements OnInit {
       request_id: request.requestId,
       memberName: request.requesterName || '',
       memberFullName: request.requesterName || '',
+      memberGolfClubId: request.requesterMemberId,
+      requesterMemberId: request.requesterMemberId,
       courseName: request.courseName || '',
       teeInfo: request.tee || '',
       bookingDate: this.formatDate(request.requestDate || ''),
@@ -415,6 +428,7 @@ export class OrdersComponent implements OnInit {
       originalBookingId: request.originalBookingId ? (typeof request.originalBookingId === 'string' ? parseInt(request.originalBookingId) : request.originalBookingId) : undefined,
       // Additional properties for enhanced display
       originalBookerName: request.originalBookerName,
+      originalBookerId: request.originalBookerId,
       currentSlotStatus: request.currentSlotStatus,
       totalParticipantsIfApproved: request.totalParticipantsIfApproved
     } as Booking;
@@ -585,6 +599,12 @@ export class OrdersComponent implements OnInit {
   }
 
   viewBookingDetails(booking: Booking) {
+    console.log('Selected booking for details modal:', booking);
+    console.log('Member ID fields:', {
+      memberGolfClubId: booking.memberGolfClubId,
+      requesterMemberId: booking.requesterMemberId,
+      originalBookerId: booking.originalBookerId
+    });
     this.selectedBooking = booking;
     this.showBookingDetails = true;
   }

@@ -948,38 +948,74 @@
 }
 
 .modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #dee2e6;
+  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
+  color: var(--text-color-one);
+  padding: 1.5rem 2rem;
+  border-radius: 20px 20px 0 0;
+  border-bottom: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
+  overflow: hidden;
 }
 
-.modal-header h3 {
+.modal-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+.modal-header h3,
+.modal-header h5,
+.modal-header .modal-title {
   margin: 0;
-  color: var(--title-color);
+  color: var(--text-color-one);
   font-weight: 600;
+  font-family: var(--font-sans);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
 }
 
-.modal-close {
-  background: none;
+.modal-close,
+.btn-close {
+  background: rgba(255, 255, 255, 0.2);
   border: none;
-  font-size: 1.5rem;
-  color: #6c757d;
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
+  color: var(--text-color-one);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 1.2rem;
+  position: relative;
+  z-index: 2;
+  padding: 0;
 }
 
-.modal-close:hover {
-  background-color: #f8f9fa;
-  color: var(--title-color);
+.modal-close:hover,
+.btn-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+  color: var(--text-color-one);
 }
 
 .modal-body {
@@ -1002,6 +1038,61 @@
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
+  background: #f8f9fa;
+  border-radius: 0 0 20px 20px;
+}
+
+.modal-footer .btn {
+  font-family: var(--font-poppins);
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+}
+
+.modal-footer .btn-primary {
+  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
+  border: none;
+  color: var(--text-color-one);
+}
+
+.modal-footer .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(119, 169, 106, 0.3);
+}
+
+.modal-footer .btn-secondary {
+  background: #6c757d;
+  border: none;
+  color: var(--text-color-one);
+}
+
+.modal-footer .btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+}
+
+.modal-footer .btn-success {
+  background: linear-gradient(135deg, var(--theme-color), #4CAF50);
+  border: none;
+  color: var(--text-color-one);
+}
+
+.modal-footer .btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(119, 169, 106, 0.3);
+}
+
+.modal-footer .btn-danger {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  border: none;
+  color: var(--text-color-one);
+}
+
+.modal-footer .btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
 }
 
 /* Booking Details */
@@ -1021,6 +1112,43 @@
 
 .detail-row:last-child {
   border-bottom: none;
+}
+
+/* Enhanced Modal Body Content */
+.modal-body p {
+  margin-bottom: 0.75rem;
+  font-family: var(--font-poppins);
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+.modal-body strong {
+  color: var(--title-color);
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* Booking Info Sections */
+.booking-info,
+.requester-info,
+.original-booking-info,
+.booking-details {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid var(--theme-color);
+}
+
+.booking-info h6,
+.requester-info h6,
+.original-booking-info h6,
+.booking-details h6 {
+  color: var(--title-color);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
 }
 
 .detail-row .label {
@@ -1348,7 +1476,7 @@
 }
 
 .accepting-member .member-icon {
-  background: linear-gradient(135deg, #28a745, #1e7e34);
+  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
 }
 
 .member-title h6 {
@@ -1356,12 +1484,14 @@
   color: var(--title-color);
   font-weight: 600;
   font-size: 1.1rem;
+  font-family: var(--font-sans);
 }
 
 .member-subtitle {
   color: var(--text-color);
   font-size: 0.85rem;
   opacity: 0.8;
+  font-family: var(--font-poppins);
 }
 
 .member-card-content {
@@ -1405,12 +1535,14 @@
   letter-spacing: 0.5px;
   font-weight: 500;
   margin-bottom: 0.25rem;
+  font-family: var(--font-poppins);
 }
 
 .info-value {
   font-size: 0.9rem;
   color: var(--title-color);
   font-weight: 600;
+  font-family: var(--font-poppins);
 }
 
 /* Request Status Card */
@@ -1424,10 +1556,11 @@
 
 .status-header {
   background: linear-gradient(135deg, #2196f3, #1976d2);
-  color: white;
+  color: var(--text-color-one);
   padding: 1rem 1.25rem;
   font-weight: 600;
   font-size: 1rem;
+  font-family: var(--font-sans);
 }
 
 .status-content {
@@ -1439,7 +1572,7 @@
   flex-direction: column;
   text-align: center;
   padding: 0.75rem;
-  background: white;
+  background: var(--text-color-one);
   border-radius: 8px;
   border: 1px solid rgba(33, 150, 243, 0.2);
 }
@@ -1452,12 +1585,14 @@
   letter-spacing: 0.5px;
   font-weight: 500;
   margin-bottom: 0.5rem;
+  font-family: var(--font-poppins);
 }
 
 .status-value {
   font-size: 0.95rem;
   color: var(--title-color);
   font-weight: 600;
+  font-family: var(--font-poppins);
 }
 
 /* Status text without background */
@@ -1474,8 +1609,47 @@
   display: inline !important;
 }
 
-/* Responsive Design for Member Cards */
+/* Responsive Design for Member Cards and Booking Modal */
 @media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    margin: 1rem;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 1rem 1.5rem;
+  }
+  
+  .modal-header h3,
+  .modal-header h5,
+  .modal-header .modal-title {
+    font-size: 1.25rem;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .booking-info,
+  .requester-info,
+  .original-booking-info,
+  .booking-details {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+    padding: 0.75rem;
+  }
+  
   .member-card-header {
     flex-direction: column;
     text-align: center;
