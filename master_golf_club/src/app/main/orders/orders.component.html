@@ -379,7 +379,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Add More Participants</h5>
-        <button type="button" class="btn-close" (click)="closeParticipantModal()"></button>
+        <button type="button" class="btn-close" (click)="closeParticipantModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body" *ngIf="selectedBookingForParticipants">
         <div class="booking-details mb-3">
@@ -421,7 +423,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Review Join Request</h5>
-        <button type="button" class="btn-close" (click)="closeReviewRequestModal()"></button>
+        <button type="button" class="btn-close" (click)="closeReviewRequestModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body" *ngIf="selectedJoinRequest">
         <div class="requester-info mb-3">
@@ -488,7 +492,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Booking Details</h5>
-        <button type="button" class="btn-close" (click)="closeBookingDetails()"></button>
+        <button type="button" class="btn-close" (click)="closeBookingDetails()">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body" *ngIf="selectedBooking">
         <div class="booking-info">
@@ -784,8 +790,8 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+             </div>
+           </div>
            
            <!-- Show accept/reject buttons for incoming join requests -->
            <div *ngIf="selectedBooking.isIncomingRequest && selectedBooking.status === 'pending_approval'" class="mt-4">
@@ -824,7 +830,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Pending Review Requests</h5>
-        <button type="button" class="btn-close" (click)="closePendingReviewModal()"></button>
+        <button type="button" class="btn-close" (click)="closePendingReviewModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body">
         <div *ngIf="pendingReviewRequests.length === 0" class="text-center py-4">
@@ -884,7 +892,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Review Join Request</h5>
-        <button type="button" class="btn-close" (click)="closeReviewRequestModal()"></button>
+        <button type="button" class="btn-close" (click)="closeReviewRequestModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body" *ngIf="selectedJoinRequest">
         <div class="request-info">
@@ -957,7 +967,9 @@
           <i class="fas fa-question-circle me-2 text-warning"></i>
           Confirm {{confirmationAction === 'approve' ? 'Approval' : 'Rejection'}}
         </h5>
-        <button type="button" class="btn-close" (click)="closeConfirmationModal()"></button>
+        <button type="button" class="btn-close" (click)="closeConfirmationModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body" *ngIf="confirmationRequest">
         <div class="alert alert-info">
