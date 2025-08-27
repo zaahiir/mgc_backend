@@ -640,7 +640,7 @@
           </div>
         </div>
 
-        <div class="detail-item">
+        <!-- <div class="detail-item">
           <span class="label">Status:</span>
           <span class="value" 
                 [class.status-confirmed]="bookingConfirmationData.status === 'Completed'"
@@ -650,7 +650,7 @@
               ({{bookingConfirmationData.pendingCount}} pending)
             </span>
           </span>
-        </div>
+        </div> -->
         
         <!-- Show additional info for join requests or owner bookings -->
         <div class="detail-item" *ngIf="!bookingConfirmationData.slotDetails && bookingConfirmationData.selectedSlots">

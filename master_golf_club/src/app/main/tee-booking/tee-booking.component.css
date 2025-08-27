@@ -1862,33 +1862,36 @@
 
 
 
-/* Booking Confirmation Modal Styles */
+/* Enhanced Booking Confirmation Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(28, 61, 64, 0.85);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(10px);
+  animation: overlayFadeIn 0.4s ease-out;
 }
 
 .modal-content {
-  background: white;
-  border-radius: 15px;
-  width: 70%;
-  height: 70%;
-  max-width: 800px;
-  max-height: 80vh;
+  background: var(--text-color-one);
+  border-radius: 25px;
+  width: 85%;
+  max-width: 900px;
+  max-height: 90vh;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.3s ease-out;
+  box-shadow: 0 30px 60px rgba(28, 61, 64, 0.4), 0 15px 30px rgba(119, 169, 106, 0.2);
+  animation: modalSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
+  border: 3px solid rgba(119, 169, 106, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
 @keyframes modalSlideIn {
@@ -1906,32 +1909,50 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 25px;
-  border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
+  padding: 30px 35px;
+  border-bottom: 2px solid rgba(119, 169, 106, 0.1);
+  background: linear-gradient(135deg, var(--theme-color) 0%, var(--secondary-color) 100%);
   color: var(--text-color-one);
-  border-radius: 15px 15px 0 0;
+  border-radius: 25px 25px 0 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  position: relative;
+  z-index: 2;
 }
 
 .modal-close {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   color: var(--text-color-one);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   cursor: pointer;
-  padding: 5px;
+  padding: 10px;
   border-radius: 50%;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: rotate(90deg) scale(1.1);
 }
 
 .modal-body {
@@ -2356,68 +2377,136 @@
 
 
 
-/* Slot Modal Styles */
+/* Enhanced Slot Modal Styles */
 .slot-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(28, 61, 64, 0.8);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
+  animation: overlayFadeIn 0.3s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
 }
 
 .slot-modal-content {
-  background: white;
-  border-radius: 15px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
+  background: var(--text-color-one);
+  border-radius: 20px;
+  max-width: 700px;
+  width: 95%;
+  max-height: 95vh;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.3s ease-out;
+  box-shadow: 0 25px 50px rgba(28, 61, 64, 0.4), 0 10px 20px rgba(119, 169, 106, 0.2);
+  animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(119, 169, 106, 0.1);
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .slot-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 25px;
-  border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
-  color: white;
-  border-radius: 15px 15px 0 0;
+  padding: 25px 30px;
+  border-bottom: 2px solid rgba(119, 169, 106, 0.1);
+  background: linear-gradient(135deg, var(--theme-color) 0%, var(--secondary-color) 100%);
+  color: var(--text-color-one);
+  border-radius: 20px 20px 0 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.slot-modal-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(180deg); }
 }
 
 .slot-modal-title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slot-modal-title::before {
+  content: '⛳';
+  font-size: 1.4rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-5px); }
+  60% { transform: translateY(-3px); }
 }
 
 .slot-modal-close {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-color-one);
+  font-size: 1.4rem;
   cursor: pointer;
-  padding: 5px;
+  padding: 8px;
   border-radius: 50%;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .slot-modal-close:hover {
   background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: rotate(90deg) scale(1.1);
 }
 
 .slot-modal-body {
-  padding: 30px 25px;
-  max-height: 60vh;
+  padding: 35px 30px;
+  max-height: 65vh;
   overflow-y: auto;
+  background: linear-gradient(135deg, #fefefe 0%, #f8fffe 100%);
 }
 
 
@@ -2428,47 +2517,78 @@
 
 .slot-modal-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 25px;
-  padding-top: 20px;
-  border-top: 1px solid #e0e0e0;
+  gap: 15px;
+  margin-top: 30px;
+  padding: 25px 30px;
+  border-top: 2px solid rgba(119, 169, 106, 0.1);
+  background: linear-gradient(135deg, #f8fffe 0%, #f5f9f5 100%);
+  border-radius: 0 0 20px 20px;
 }
 
 .slot-modal-btn {
   flex: 1;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 15px 25px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 1rem;
+  font-family: var(--font-poppins);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.slot-modal-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.slot-modal-btn:hover::before {
+  left: 100%;
 }
 
 .slot-modal-btn.secondary {
-  background: #6c757d;
-  color: white;
+  background: linear-gradient(135deg, var(--secondary-color) 0%, #1a3a37 100%);
+  color: var(--text-color-one);
+  border-color: var(--secondary-color);
+  box-shadow: 0 4px 15px rgba(28, 61, 64, 0.3);
 }
 
 .slot-modal-btn.secondary:hover {
-  background: #5a6268;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #1a3a37 0%, var(--secondary-color) 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(28, 61, 64, 0.4);
 }
 
 .slot-modal-btn.primary {
-  background: var(--theme-color);
-  color: white;
+  background: linear-gradient(135deg, var(--theme-color) 0%, #6fa65d 100%);
+  color: var(--text-color-one);
+  border-color: var(--theme-color);
+  box-shadow: 0 4px 15px rgba(119, 169, 106, 0.3);
 }
 
 .slot-modal-btn.primary:hover:not(:disabled) {
-  background: #6fa65d;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #6fa65d 0%, var(--theme-color) 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(119, 169, 106, 0.4);
 }
 
 .slot-modal-btn.primary:disabled {
-  background: #ccc;
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  color: #6c757d;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
+  border-color: #dee2e6;
 }
 
 @media (max-width: 768px) {
@@ -2861,42 +2981,83 @@
   border-bottom: none;
 }
 
-/* Slot Information Row Styles */
+/* Enhanced Slot Information Row Styles */
 .slot-info-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
-  padding: 16px;
-  background: var(--text-color-one);
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+  padding: 25px;
+  background: linear-gradient(135deg, var(--text-color-one) 0%, #f8fffe 100%);
+  border-radius: 15px;
+  border: 2px solid rgba(119, 169, 106, 0.1);
+  box-shadow: 0 8px 25px rgba(119, 169, 106, 0.08);
 }
 
 .slot-info-item {
   display: flex;
   flex-direction: column;
-  min-width: 120px;
-  flex: 1;
+  position: relative;
+  padding: 15px;
+  background: var(--text-color-one);
+  border-radius: 12px;
+  border: 1px solid rgba(119, 169, 106, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.slot-info-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
+  transition: width 0.3s ease;
+}
+
+.slot-info-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(119, 169, 106, 0.15);
+  border-color: rgba(119, 169, 106, 0.3);
+}
+
+.slot-info-item:hover::before {
+  width: 6px;
 }
 
 .slot-info-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-color);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--theme-color);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  font-family: var(--font-poppins);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot-info-label::before {
+  content: '●';
+  color: var(--theme-color);
+  font-size: 8px;
 }
 
 .slot-info-value {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--secondary-color);
-  padding: 8px 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border-left: 3px solid var(--theme-color);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+  padding: 12px 15px;
+  background: linear-gradient(135deg, #f8fffe 0%, #f5f9f5 100%);
+  border-radius: 8px;
+  border: 1px solid rgba(119, 169, 106, 0.1);
+  font-family: var(--font-sans);
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .slot-info-value.course-name {
