@@ -415,7 +415,9 @@
   [visible]="showDetailsModal" 
   (visibleChange)="showDetailsModal = $event"
   size="lg"
-  scrollable="true">
+  scrollable="true"
+  [keyboard]="true"
+  [backdrop]="true">
   <c-modal-header>
     <h4 cModalTitle>
       {{ selectedBookingDetails?.type === 'REQUEST' ? 'Join Request Details' : 'Booking Details' }}
@@ -442,12 +444,12 @@
         <h6 class="text-primary mb-3">Member Information</h6>
         <div class="row">
           <div class="col-md-6">
-            <p><strong>Name:</strong> {{ selectedBookingDetails.member.name }}</p>
-            <p><strong>Membership ID:</strong> {{ selectedBookingDetails.member.id }}</p>
+            <p><strong>Name:</strong> {{ selectedBookingDetails.member?.name || 'N/A' }}</p>
+            <p><strong>Membership ID:</strong> {{ selectedBookingDetails.member?.id || 'N/A' }}</p>
           </div>
           <div class="col-md-6">
-            <p><strong>Email:</strong> {{ selectedBookingDetails.member.email || 'N/A' }}</p>
-            <p><strong>Phone:</strong> {{ selectedBookingDetails.member.phone || 'N/A' }}</p>
+            <p><strong>Email:</strong> {{ selectedBookingDetails.member?.email || 'N/A' }}</p>
+            <p><strong>Phone:</strong> {{ selectedBookingDetails.member?.phone || 'N/A' }}</p>
           </div>
         </div>
       </div>
@@ -459,14 +461,26 @@
         </h6>
         <div class="row">
           <div class="col-md-6">
-            <p><strong>{{ selectedBookingDetails.type === 'REQUEST' ? 'Requested Date:' : 'Booked Date:' }}</strong> {{ selectedBookingDetails.bookedDate }}</p>
-            <p><strong>Course:</strong> {{ selectedBookingDetails.course.name }}</p>
-            <p><strong>Tee:</strong> {{ selectedBookingDetails.tee.name }}</p>
+            <p><strong>{{ selectedBookingDetails.type === 'REQUEST' ? 'Requested Date:' : 'Booked Date:' }}</strong> {{ selectedBookingDetails.bookedDate || 'N/A' }}</p>
+            <p><strong>Course:</strong> {{ selectedBookingDetails.course?.name || 'N/A' }}</p>
+            <p><strong>Tee:</strong> {{ selectedBookingDetails.tee?.name || 'N/A' }}</p>
           </div>
           <div class="col-md-6">
-            <p><strong>Slot Date:</strong> {{ selectedBookingDetails.slotDate }}</p>
-            <p><strong>Slot Time:</strong> {{ selectedBookingDetails.slotTime }}</p>
+            <p><strong>Slot Date:</strong> {{ selectedBookingDetails.slotDate || 'N/A' }}</p>
+            <p><strong>Slot Time:</strong> {{ selectedBookingDetails.slotTime || 'N/A' }}</p>
             <p><strong>Participants:</strong> {{ formatParticipants(selectedBookingDetails) }}</p>
+          </div>
+        </div>
+        
+        <!-- Debug Information -->
+        <div class="row mt-3" *ngIf="selectedBookingDetails.details">
+          <div class="col-12">
+            <details>
+              <summary class="text-muted" style="cursor: pointer;">Debug: Raw API Data</summary>
+              <div class="bg-light p-2 rounded mt-2" style="font-size: 0.75em; max-height: 300px; overflow-y: auto;">
+                <pre>{{ selectedBookingDetails.details | json }}</pre>
+              </div>
+            </details>
           </div>
         </div>
       </div>

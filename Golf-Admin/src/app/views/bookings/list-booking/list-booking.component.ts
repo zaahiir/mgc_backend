@@ -393,7 +393,14 @@ export class ListBookingComponent implements OnInit, OnDestroy {
   }
 
   async viewDetails(booking: BookingDetail) {
-    this.selectedBookingDetails = booking.details;
+    console.log('Viewing details for booking:', booking);
+    console.log('Member data:', booking.member);
+    console.log('Course data:', booking.course);
+    console.log('Tee data:', booking.tee);
+    console.log('Raw details:', booking.details);
+    
+    // Use the formatted booking data, not the raw details
+    this.selectedBookingDetails = booking;
     this.showDetailsModal = true;
   }
 
@@ -545,25 +552,32 @@ export class ListBookingComponent implements OnInit, OnDestroy {
 
   // Format booking data for table display
   private formatBookingForTable(booking: any, type: 'BOOKING' | 'REQUEST'): BookingDetail {
+    console.log('Formatting booking:', booking); // Debug log
+    
     return {
       id: booking.id,
       booking_id: booking.booking_id,
       type: type,
       member: {
-        name: booking.memberFullName || booking.memberName,
-        id: booking.memberGolfClubId,
-        email: booking.member?.email
+        name: booking.memberFullName || booking.memberName || 
+              (booking.member ? `${booking.member.firstName || ''} ${booking.member.lastName || ''}`.trim() : '') || 'N/A',
+        id: booking.memberGolfClubId || 
+            (booking.member ? booking.member.golfClubId : '') || 'N/A',
+        email: booking.member?.email || 'N/A',
+        phone: booking.member?.phone || booking.member?.phoneNumber || 'N/A'
       },
       bookedDate: this.formatDate(booking.createdAt || booking.formattedDate),
       course: {
-        name: booking.courseName,
-        id: booking.course
+        name: booking.courseName || 
+              (booking.course ? booking.course.courseName : '') || 'N/A',
+        id: booking.course?.id || booking.course
       },
       tee: {
-        name: booking.teeInfo || booking.teeName || `${booking.tee} Holes`,
-        id: booking.tee
+        name: booking.teeInfo || booking.teeName || 
+              (booking.tee ? `${booking.tee.holeNumber} Holes` : '') || 'N/A',
+        id: booking.tee?.id || booking.tee
       },
-      slotDate: this.formatDate(booking.slotDate || booking.bookingDate),
+      slotDate: this.formatDate(booking.slot_date || booking.slotDate || booking.bookingDate),
       slotTime: this.formatTime(booking.booking_time || booking.bookingTime),
       participants: booking.participants || booking.totalParticipants || 0,
       status: booking.status?.toUpperCase() || 'CONFIRMED',
@@ -573,26 +587,33 @@ export class ListBookingComponent implements OnInit, OnDestroy {
 
   // Format join request data for table display
   private formatJoinRequestForTable(request: any, type: 'REQUEST'): BookingDetail {
+    console.log('Formatting join request:', request); // Debug log
+    
     return {
       id: request.id,
       booking_id: request.request_id || request.requestId,
       type: type,
       member: {
-        name: request.requesterName || request.memberFullName,
-        id: request.requesterMemberId || request.memberGolfClubId,
-        email: request.member?.email
+        name: request.requesterName || request.memberFullName || 
+              (request.member ? `${request.member.firstName || ''} ${request.member.lastName || ''}`.trim() : '') || 'N/A',
+        id: request.requesterMemberId || request.memberGolfClubId || 
+            (request.member ? request.member.golfClubId : '') || 'N/A',
+        email: request.member?.email || 'N/A',
+        phone: request.member?.phone || request.member?.phoneNumber || 'N/A'
       },
       bookedDate: this.formatDate(request.createdAt || request.requestDate),
       course: {
-        name: request.courseName,
-        id: request.course
+        name: request.courseName || 
+              (request.original_booking?.course ? request.original_booking.course.courseName : '') || 'N/A',
+        id: request.course || request.original_booking?.course?.id
       },
       tee: {
-        name: request.tee || `${request.teeId} Holes`,
-        id: request.teeId
+        name: request.tee || 
+              (request.original_booking?.tee ? `${request.original_booking.tee.holeNumber} Holes` : '') || 'N/A',
+        id: request.teeId || request.original_booking?.tee?.id
       },
-      slotDate: this.formatDate(request.slotDate),
-      slotTime: this.formatTime(request.slotTime),
+      slotDate: this.formatDate(request.slotDate || request.original_booking?.slot_date),
+      slotTime: this.formatTime(request.slotTime || request.original_booking?.booking_time),
       participants: request.participants || request.requestedParticipants || 0,
       status: request.status?.toUpperCase() || 'PENDING_APPROVAL',
       details: request
