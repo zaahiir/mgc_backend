@@ -685,7 +685,45 @@
 .participants {
   font-weight: 600;
   color: var(--title-color);
+  background: none !important;
 }
+
+/* Remove background from participant badges in table */
+.table td span[class*="participant"],
+.table td span.badge:not([class*="status"]) {
+  background: none !important;
+  color: var(--text-color) !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-weight: 600;
+  border-radius: 0 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+/* Ensure participant column text has no background */
+.table tbody tr td:nth-child(7) span {
+  background: transparent !important;
+  color: var(--text-color) !important;
+  font-weight: 600;
+}
+
+/* Remove background from status in booking-info specifically */
+.booking-info span[class*="status"] {
+  background: none !important;
+  color: var(--text-color) !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-weight: 600 !important;
+  border-radius: 0 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  display: inline !important;
+}
+
+/* Keep other modal badges with their original styling - only remove from booking-info status */
 
 .available-spots {
   display: block;
@@ -694,37 +732,75 @@
   margin-top: 0.25rem;
 }
 
-/* Status Badges */
+/* Enhanced Status Badges */
 .status-badge {
   display: inline-block;
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
+  padding: 0.6rem 1rem;
+  border-radius: 25px;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  font-family: var(--font-poppins);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+}
+
+.status-badge:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .status-confirmed {
-  background-color: #4CAF50;
-  color: white;
+  background: linear-gradient(135deg, var(--theme-color), #4CAF50);
+  color: var(--text-color-one);
+  border: 1px solid var(--theme-color);
 }
 
 .status-approved {
-  background-color: #2196F3;
-  color: white;
+  background: linear-gradient(135deg, #2196F3, var(--theme-color));
+  color: var(--text-color-one);
+  border: 1px solid #2196F3;
 }
 
 .status-pending {
-  background-color: #FF9800;
-  color: white;
+  background: linear-gradient(135deg, #FF9800, var(--secondary-color));
+  color: var(--text-color-one);
+  border: 1px solid #FF9800;
 }
 
+/* Request-related status colors */
+.status-request,
+.status-pending-request,
+.status-join-request {
+  background: linear-gradient(135deg, #9C27B0, var(--secondary-color));
+  color: var(--text-color-one);
+  border: 1px solid #9C27B0;
+}
 
+.status-pending-approval {
+  background: linear-gradient(135deg, #FF5722, var(--secondary-color));
+  color: var(--text-color-one);
+  border: 1px solid #FF5722;
+}
+
+.status-rejected {
+  background: linear-gradient(135deg, #F44336, var(--secondary-color));
+  color: var(--text-color-one);
+  border: 1px solid #F44336;
+}
+
+.status-cancelled {
+  background: linear-gradient(135deg, var(--secondary-color), #9E9E9E);
+  color: var(--text-color-one);
+  border: 1px solid var(--secondary-color);
+}
 
 .status-default {
-  background-color: #9E9E9E;
-  color: white;
+  background: linear-gradient(135deg, var(--secondary-color), #9E9E9E);
+  color: var(--text-color-one);
+  border: 1px solid var(--secondary-color);
 }
 
 /* Action Buttons */

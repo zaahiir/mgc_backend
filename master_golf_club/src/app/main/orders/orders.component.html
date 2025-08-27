@@ -263,9 +263,9 @@
                       Request
                     </span>
                   </td>
-                  <td>{{booking.formattedDate}}</td>
+                  <td>{{formatDate(booking.createdAt || booking.bookingDate || booking.formattedDate)}}</td>
                   <td>{{booking.courseName}}</td>
-                  <td>{{booking.teeInfo}}</td>
+                  <td>{{booking.teeName || booking.teeInfo}}</td>
                   <td>{{formatDate(booking.slotDate || booking.slot_date || booking.bookingDate)}}</td>
                   <td>{{booking.booking_time}}</td>
                   <td>
@@ -384,7 +384,7 @@
       <div class="modal-body" *ngIf="selectedBookingForParticipants">
         <div class="booking-details mb-3">
           <p><strong>Course:</strong> {{selectedBookingForParticipants.courseName}}</p>
-          <p><strong>Tee:</strong> {{selectedBookingForParticipants.teeInfo}}</p>
+          <p><strong>Tee:</strong> {{selectedBookingForParticipants.teeName || selectedBookingForParticipants.teeInfo}}</p>
           <p><strong>Date:</strong> {{formatDate(selectedBookingForParticipants.slot_date || selectedBookingForParticipants.slotDate || selectedBookingForParticipants.bookingDate)}}</p>
           <p><strong>Time:</strong> {{selectedBookingForParticipants.booking_time}}</p>
           <p><strong>Current:</strong> {{selectedBookingForParticipants.participants}} participants</p>
@@ -428,7 +428,7 @@
           <h6>Requester Information:</h6>
           <p><strong>Name:</strong> {{selectedJoinRequest.requesterName}}</p>
           <p><strong>Email:</strong> {{selectedJoinRequest.requesterEmail}}</p>
-          <p><strong>Request Date:</strong> {{selectedJoinRequest.formattedDate}}</p>
+          <p><strong>Request Date:</strong> {{formatDate(selectedJoinRequest.createdAt || selectedJoinRequest.requestDate || selectedJoinRequest.formattedDate)}}</p>
           <p><strong>Request ID:</strong> {{selectedJoinRequest.request_id || selectedJoinRequest.booking_id}}</p>
         </div>
         
@@ -442,7 +442,7 @@
         <div class="booking-details mb-3">
           <h6>Booking Details:</h6>
           <p><strong>Course:</strong> {{selectedJoinRequest.courseName}}</p>
-          <p><strong>Tee:</strong> {{selectedJoinRequest.teeInfo}}</p>
+          <p><strong>Tee:</strong> {{selectedJoinRequest.teeName || selectedJoinRequest.teeInfo}}</p>
           <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slot_date || selectedJoinRequest.slotDate || selectedJoinRequest.bookingDate)}}</p>
           <p><strong>Time:</strong> {{selectedJoinRequest.booking_time}}</p>
           <p><strong>Current Participants:</strong> {{getOriginalBookingParticipants(selectedJoinRequest)}} (Original Booking)</p>
@@ -498,9 +498,9 @@
               {{getStatusDisplayText(selectedBooking)}}
             </span>
           </p>
-          <p><strong>Booked Date:</strong> {{selectedBooking.formattedDate}}</p>
+          <p><strong>Booked Date:</strong> {{formatDate(selectedBooking.createdAt || selectedBooking.bookingDate || selectedBooking.formattedDate)}}</p>
           <p><strong>Course:</strong> {{selectedBooking.courseName}}</p>
-          <p><strong>Tee:</strong> {{selectedBooking.teeInfo}}</p>
+          <p><strong>Tee:</strong> {{selectedBooking.teeName || selectedBooking.teeInfo}}</p>
           <p><strong>Slot Date:</strong> {{formatDate(selectedBooking.slot_date || selectedBooking.slotDate || selectedBooking.bookingDate)}}</p>
           <p><strong>Slot Time:</strong> {{selectedBooking.booking_time}}</p>
           <p><strong>Participants:</strong> {{getParticipantDisplayText(selectedBooking)}}</p>
@@ -543,7 +543,7 @@
                     <div class="col-md-6" *ngIf="participant.approved_at">
                       <small class="text-muted">
                         <i class="fas fa-check-circle me-1 text-success"></i>
-                        Approved: {{participant.approved_at | date:'medium'}}
+                        Approved: {{formatDate(participant.approved_at)}}
                       </small>
                     </div>
                     <div class="col-md-6" *ngIf="participant.join_request_id">
@@ -600,7 +600,7 @@
              <div class="alert alert-info">
                <p><strong>Requester:</strong> {{selectedBooking.requesterName || 'Unknown Member'}}</p>
                <p><strong>Requested Participants:</strong> {{selectedBooking.participants}} participant{{selectedBooking.participants > 1 ? 's' : ''}}</p>
-               <p><strong>Request Date:</strong> {{selectedBooking.formattedDate}}</p>
+               <p><strong>Request Date:</strong> {{formatDate(selectedBooking.createdAt || selectedBooking.requestDate || selectedBooking.formattedDate)}}</p>
                <p><strong>Request ID:</strong> {{selectedBooking.request_id || selectedBooking.booking_id}}</p>
              </div>
            </div>
@@ -656,13 +656,13 @@
                 <h6 class="mb-2">{{request.memberName}} wants to join your slot</h6>
                 <div class="request-details">
                   <p><strong>Course:</strong> {{request.courseName}}</p>
-                  <p><strong>Tee:</strong> {{request.teeHoles}} Holes</p>
-                  <p><strong>Date:</strong> {{request.slotDate}}</p>
+                  <p><strong>Tee:</strong> {{request.teeName || request.teeInfo || request.teeHoles}}</p>
+                  <p><strong>Date:</strong> {{formatDate(request.slotDate)}}</p>
                   <p><strong>Time:</strong> {{request.bookingTime}}</p>
                   <p><strong>Requested Participants:</strong> {{request.participants}}</p>
                   <p><strong>Your Current Participants:</strong> {{request.originalBookingParticipants}}</p>
                   <p><strong>Available Spots:</strong> {{request.availableSpots}}</p>
-                  <p><strong>Request Date:</strong> {{request.createdAt | date:'short'}}</p>
+                  <p><strong>Request Date:</strong> {{formatDate(request.createdAt)}}</p>
                 </div>
               </div>
               <div class="col-md-4 text-end">
@@ -718,7 +718,7 @@
             <div class="col-md-6">
               <h6>Booking Details:</h6>
               <p><strong>Course:</strong> {{selectedJoinRequest.courseName}}</p>
-              <p><strong>Tee:</strong> {{selectedJoinRequest.tee}}</p>
+              <p><strong>Tee:</strong> {{selectedJoinRequest.teeName || selectedJoinRequest.teeInfo || selectedJoinRequest.tee}}</p>
               <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slotDate || selectedJoinRequest.slot_date || selectedJoinRequest.bookingDate)}}</p>
               <p><strong>Time:</strong> {{selectedJoinRequest.slotTime}}</p>
             </div>

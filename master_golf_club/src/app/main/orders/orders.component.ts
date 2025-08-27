@@ -187,9 +187,9 @@ export class OrdersComponent implements OnInit {
   private formatDateForUK(date: Date): string {
     return date.toLocaleDateString('en-GB', { 
       timeZone: this.ukTimezone,
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
+      day: 'numeric', 
+      month: 'short', 
+      year: '2-digit' 
     });
   }
   
@@ -1258,7 +1258,7 @@ export class OrdersComponent implements OnInit {
     };
   }
 
-  // Format date for display
+  // Format date for display - consistent "27 Aug 25" format
   formatDate(dateString: string): string {
     if (!dateString) return 'N/A';
     
@@ -1267,7 +1267,7 @@ export class OrdersComponent implements OnInit {
       if (isNaN(date.getTime())) return 'N/A';
       
       return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
+        day: 'numeric',
         month: 'short',
         year: '2-digit'
       });
@@ -1798,7 +1798,7 @@ export class OrdersComponent implements OnInit {
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
+        day: 'numeric',
         month: 'short',
         year: '2-digit'
       });
