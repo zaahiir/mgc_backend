@@ -512,6 +512,8 @@ class BookingSerializer(serializers.ModelSerializer):
     memberName = serializers.CharField(source='member.firstName', read_only=True)
     memberFullName = serializers.SerializerMethodField(read_only=True)
     memberGolfClubId = serializers.SerializerMethodField(read_only=True)
+    memberEmail = serializers.CharField(source='member.email', read_only=True)
+    memberPhone = serializers.CharField(source='member.phoneNumber', read_only=True)
     courseName = serializers.CharField(source='course.courseName', read_only=True)
     teeInfo = serializers.SerializerMethodField(read_only=True)
 
@@ -549,9 +551,9 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookingModel
         fields = [
-            'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'memberGolfClubId', 'course', 'courseName',
-            'tee', 'slot_date', 'booking_time', 'teeInfo', 'teeName', 'slotDate', 'bookingTime', 'formattedDate', 'endTime',
-            'participants', 'status', 'notes', 'createdAt',
+            'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'memberGolfClubId', 'memberEmail', 'memberPhone', 
+            'course', 'courseName', 'tee', 'slot_date', 'booking_time', 'teeInfo', 'teeName', 'slotDate', 'bookingTime', 
+            'formattedDate', 'endTime', 'participants', 'status', 'notes', 'createdAt',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
             'joinRequests', 'originalBookingInfo', 'allParticipantsInfo', 'is_join_request', 'original_booking',
             'isMultiSlotBooking', 'totalParticipants',
@@ -820,6 +822,8 @@ class JoinRequestSerializer(serializers.ModelSerializer):
     requesterId = serializers.IntegerField(source='member.id', read_only=True)
     requesterName = serializers.SerializerMethodField(read_only=True)
     requesterMemberId = serializers.SerializerMethodField(read_only=True)
+    requesterEmail = serializers.CharField(source='member.email', read_only=True)
+    requesterPhone = serializers.CharField(source='member.phoneNumber', read_only=True)
     requestDate = serializers.SerializerMethodField(read_only=True)
     requestedParticipants = serializers.IntegerField(source='participants', read_only=True)
     courseName = serializers.SerializerMethodField(read_only=True)
@@ -839,7 +843,7 @@ class JoinRequestSerializer(serializers.ModelSerializer):
         model = JoinRequestModel
         fields = [
             'id', 'requestId', 'originalBookingId', 'requesterId', 'requesterName', 
-            'requesterMemberId', 'requestDate', 'requestedParticipants', 'status',
+            'requesterMemberId', 'requesterEmail', 'requesterPhone', 'requestDate', 'requestedParticipants', 'status',
             'courseName', 'tee', 'slotDate', 'slotTime', 'originalBookerId', 
             'originalBookerName', 'currentSlotStatus', 'totalParticipantsIfApproved',
             'remainingSlotsIfApproved', 'otherPendingRequests', 'notes', 'createdAt'

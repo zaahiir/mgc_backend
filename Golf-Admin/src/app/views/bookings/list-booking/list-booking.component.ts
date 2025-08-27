@@ -393,12 +393,6 @@ export class ListBookingComponent implements OnInit, OnDestroy {
   }
 
   async viewDetails(booking: BookingDetail) {
-    console.log('Viewing details for booking:', booking);
-    console.log('Member data:', booking.member);
-    console.log('Course data:', booking.course);
-    console.log('Tee data:', booking.tee);
-    console.log('Raw details:', booking.details);
-    
     // Use the formatted booking data, not the raw details
     this.selectedBookingDetails = booking;
     this.showDetailsModal = true;
@@ -552,7 +546,6 @@ export class ListBookingComponent implements OnInit, OnDestroy {
 
   // Format booking data for table display
   private formatBookingForTable(booking: any, type: 'BOOKING' | 'REQUEST'): BookingDetail {
-    console.log('Formatting booking:', booking); // Debug log
     
     return {
       id: booking.id,
@@ -563,8 +556,8 @@ export class ListBookingComponent implements OnInit, OnDestroy {
               (booking.member ? `${booking.member.firstName || ''} ${booking.member.lastName || ''}`.trim() : '') || 'N/A',
         id: booking.memberGolfClubId || 
             (booking.member ? booking.member.golfClubId : '') || 'N/A',
-        email: booking.member?.email || 'N/A',
-        phone: booking.member?.phone || booking.member?.phoneNumber || 'N/A'
+        email: booking.memberEmail || booking.member?.email || 'N/A',
+        phone: booking.memberPhone || booking.member?.phone || booking.member?.phoneNumber || 'N/A'
       },
       bookedDate: this.formatDate(booking.createdAt || booking.formattedDate),
       course: {
@@ -587,7 +580,6 @@ export class ListBookingComponent implements OnInit, OnDestroy {
 
   // Format join request data for table display
   private formatJoinRequestForTable(request: any, type: 'REQUEST'): BookingDetail {
-    console.log('Formatting join request:', request); // Debug log
     
     return {
       id: request.id,
@@ -598,8 +590,8 @@ export class ListBookingComponent implements OnInit, OnDestroy {
               (request.member ? `${request.member.firstName || ''} ${request.member.lastName || ''}`.trim() : '') || 'N/A',
         id: request.requesterMemberId || request.memberGolfClubId || 
             (request.member ? request.member.golfClubId : '') || 'N/A',
-        email: request.member?.email || 'N/A',
-        phone: request.member?.phone || request.member?.phoneNumber || 'N/A'
+        email: request.requesterEmail || request.member?.email || 'N/A',
+        phone: request.requesterPhone || request.member?.phone || request.member?.phoneNumber || 'N/A'
       },
       bookedDate: this.formatDate(request.createdAt || request.requestDate),
       course: {

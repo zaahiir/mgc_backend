@@ -76,9 +76,9 @@ export const navItems: INavData[] = [
     url: '/faq',
     iconComponent: { name: 'cil-credit-card' }
   },
-  {
-    name: 'Report',
-    url: '/base/popovers',
-    iconComponent: { name: 'cil-description' }
-  }
+  // {
+  //   name: 'Report',
+  //   url: '/base/popovers',
+  //   iconComponent: { name: 'cil-description' }
+  // }
 ];
