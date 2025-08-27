@@ -550,7 +550,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
             'tee', 'slot_date', 'booking_time', 'teeInfo', 'teeName', 'slotDate', 'bookingTime', 'formattedDate', 'endTime',
-            'participants', 'status', 'notes',
+            'participants', 'status', 'notes', 'createdAt',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
             'joinRequests', 'originalBookingInfo', 'allParticipantsInfo', 'is_join_request', 'original_booking',
             'isMultiSlotBooking', 'totalParticipants',
@@ -587,10 +587,9 @@ class BookingSerializer(serializers.ModelSerializer):
                 return "Tee not specified"
     
     def get_formattedDate(self, obj):
-        # Return date in DD/Month/YYYY format for orders component
-        if obj.slot_date:
-            return obj.slot_date.strftime('%d/%B/%Y')
-        elif obj.createdAt:
+        # Return booking creation date in DD/Month/YYYY format for orders component
+        # This represents when the booking was made, not the slot date
+        if obj.createdAt:
             return obj.createdAt.strftime('%d/%B/%Y')
         else:
             return "Date not specified"

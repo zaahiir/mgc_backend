@@ -263,7 +263,7 @@
                       Request
                     </span>
                   </td>
-                  <td>{{formatDate(booking.createdAt || booking.bookingDate || booking.formattedDate)}}</td>
+                  <td>{{formatDate(booking.createdAt)}}</td>
                   <td>{{booking.courseName}}</td>
                   <td>{{booking.teeName || booking.teeInfo}}</td>
                   <td>{{formatDate(booking.slotDate || booking.slot_date || booking.bookingDate)}}</td>
@@ -498,7 +498,7 @@
               {{getStatusDisplayText(selectedBooking)}}
             </span>
           </p>
-          <p><strong>Booked Date:</strong> {{formatDate(selectedBooking.createdAt || selectedBooking.bookingDate || selectedBooking.formattedDate)}}</p>
+          <p><strong>Booked Date:</strong> {{formatDate(selectedBooking.createdAt)}}</p>
           <p><strong>Course:</strong> {{selectedBooking.courseName}}</p>
           <p><strong>Tee:</strong> {{selectedBooking.teeName || selectedBooking.teeInfo}}</p>
           <p><strong>Slot Date:</strong> {{formatDate(selectedBooking.slot_date || selectedBooking.slotDate || selectedBooking.bookingDate)}}</p>
