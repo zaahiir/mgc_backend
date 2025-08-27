@@ -4856,65 +4856,85 @@ class OrdersViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def statistics(self, request):
-        """Get order statistics for the authenticated member"""
+        """Get enhanced order statistics for the authenticated member (8 counters)"""
         try:
             member = MemberModel.objects.get(email=request.user.email)
             
-            # Get all bookings for this member
-            all_bookings = BookingModel.objects.filter(
+            # Get all bookings for this member (own bookings)
+            own_bookings = BookingModel.objects.filter(
                 member=member,
+                is_join_request=False,
                 hideStatus=0
             ).prefetch_related('tee__course')
             
-            # Get own confirmed bookings
-            own_confirmed = all_bookings.filter(
-                status='confirmed',
-                is_join_request=False
-            )
-            
-            # Get approved join requests
-            approved_requests = all_bookings.filter(
-                status='approved',
-                is_join_request=True
-            )
-            
-            # Get pending join requests (outgoing)
-            pending_requests = all_bookings.filter(
-                status='pending_approval',
-                is_join_request=True
-            )
-            
-            # Get incoming join requests that need review
-            incoming_requests = BookingModel.objects.filter(
-                original_booking__member=member,
-                is_join_request=True,
-                status='pending_approval',
+            # Get sent join requests (user's requests to join others' bookings)
+            sent_requests = JoinRequestModel.objects.filter(
+                member=member,
                 hideStatus=0
             )
             
-            # Calculate statistics
-            total_bookings = all_bookings.count()
-            confirmed = own_confirmed.count() + approved_requests.count()
-            pending_requests_count = pending_requests.count()
-            requests_accepted = approved_requests.count()
-            actions_required = incoming_requests.count()
+            # Get received join requests (requests to join user's bookings)
+            received_requests = JoinRequestModel.objects.filter(
+                original_booking__member=member,
+                hideStatus=0
+            )
+            
+            # Calculate 8 statistics counters
+            # 1. Total Bookings (own + approved sent requests + approved received requests)
+            confirmed_own = own_bookings.filter(status__in=['confirmed', 'completed']).count()
+            approved_sent = sent_requests.filter(status='approved').count()
+            approved_received = received_requests.filter(status='approved').count()
+            total_bookings = confirmed_own + approved_sent + approved_received
+            
+            # 2. Confirmed (same as total for now)
+            confirmed = total_bookings
+            
+            # 3. Pending Sent Requests
+            pending_sent_requests = sent_requests.filter(status='pending_approval').count()
+            
+            # 4. Pending Received Requests
+            pending_received_requests = received_requests.filter(status='pending_approval').count()
+            
+            # 5. Sent Requests Accepted
+            sent_requests_accepted = approved_sent
+            
+            # 6. Received Requests Accepted
+            received_requests_accepted = approved_received
+            
+            # 7. Rejected Received Requests
+            rejected_received_requests = received_requests.filter(status='rejected').count()
+            
+            # 8. Rejected Sent Requests
+            rejected_sent_requests = sent_requests.filter(status='rejected').count()
             
             return Response({
                 'code': 1,
-                'message': 'Order statistics retrieved successfully',
+                'message': 'Enhanced order statistics retrieved successfully',
                 'data': {
-                    'total': total_bookings,
+                    'total_bookings': total_bookings,
                     'confirmed': confirmed,
-                    'pendingRequests': pending_requests_count,
-                    'requestsAccepted': requests_accepted,
-                    'acceptRejectActions': actions_required
+                    'pending_sent_requests': pending_sent_requests,
+                    'pending_received_requests': pending_received_requests,
+                    'sent_requests_accepted': sent_requests_accepted,
+                    'received_requests_accepted': received_requests_accepted,
+                    'rejected_received_requests': rejected_received_requests,
+                    'rejected_sent_requests': rejected_sent_requests,
+                    # Additional breakdown for filtering
+                    'own_bookings_count': own_bookings.count(),
+                    'sent_requests_count': sent_requests.count(),
+                    'received_requests_count': received_requests.count(),
+                    # Legacy fields for backward compatibility
+                    'total': total_bookings,
+                    'pendingRequests': pending_sent_requests,
+                    'requestsAccepted': sent_requests_accepted,
+                    'acceptRejectActions': pending_received_requests
                 }
             })
             
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving order statistics: {str(e)}'
+                'message': f'Error retrieving enhanced order statistics: {str(e)}'
             }, status=500)
 
     @action(detail=False, methods=['GET'])
@@ -4956,6 +4976,57 @@ class OrdersViewSet(viewsets.ModelViewSet):
             return Response({
                 'code': 0,
                 'message': f'Error filtering orders: {str(e)}'
+            }, status=500)
+
+    @action(detail=False, methods=['GET'])
+    def enhanced_orders(self, request):
+        """Get enhanced orders data with all bookings and join requests"""
+        try:
+            member = MemberModel.objects.get(email=request.user.email)
+            
+            # Get own bookings
+            own_bookings = BookingModel.objects.filter(
+                member=member,
+                is_join_request=False,
+                hideStatus=0
+            ).prefetch_related('tee__course', 'join_requests').order_by('-createdAt')
+            
+            # Get sent join requests
+            sent_requests = JoinRequestModel.objects.filter(
+                member=member,
+                hideStatus=0
+            ).select_related('original_booking__course', 'original_booking__tee', 'original_booking__member').order_by('-createdAt')
+            
+            # Get received join requests
+            received_requests = JoinRequestModel.objects.filter(
+                original_booking__member=member,
+                hideStatus=0
+            ).select_related('member', 'original_booking__course', 'original_booking__tee').order_by('-createdAt')
+            
+            # Serialize the data
+            own_bookings_data = BookingSerializer(own_bookings, many=True, context={'request': request}).data
+            sent_requests_data = JoinRequestSerializer(sent_requests, many=True, context={'request': request}).data
+            received_requests_data = JoinRequestSerializer(received_requests, many=True, context={'request': request}).data
+            
+            return Response({
+                'code': 1,
+                'message': 'Enhanced orders data retrieved successfully',
+                'data': {
+                    'own_bookings': own_bookings_data,
+                    'sent_requests': sent_requests_data,
+                    'received_requests': received_requests_data
+                }
+            })
+            
+        except MemberModel.DoesNotExist:
+            return Response({
+                'code': 0,
+                'message': 'Member not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving enhanced orders: {str(e)}'
             }, status=500)
 
     @action(detail=False, methods=['GET'])

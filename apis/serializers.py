@@ -805,16 +805,16 @@ class JoinRequestSerializer(serializers.ModelSerializer):
     requestId = serializers.CharField(source='request_id', read_only=True)
     originalBookingId = serializers.CharField(source='original_booking.booking_id', read_only=True)
     requesterId = serializers.IntegerField(source='member.id', read_only=True)
-    requesterName = serializers.CharField(source='requester_name', read_only=True)
-    requesterMemberId = serializers.CharField(source='requester_member_id', read_only=True)
-    requestDate = serializers.DateTimeField(source='request_date', read_only=True)
+    requesterName = serializers.SerializerMethodField(read_only=True)
+    requesterMemberId = serializers.SerializerMethodField(read_only=True)
+    requestDate = serializers.SerializerMethodField(read_only=True)
     requestedParticipants = serializers.IntegerField(source='participants', read_only=True)
-    courseName = serializers.CharField(source='course_name', read_only=True)
-    tee = serializers.CharField(source='tee_info', read_only=True)
-    slotDate = serializers.DateField(source='slot_date', read_only=True)
-    slotTime = serializers.TimeField(source='slot_time', read_only=True)
-    originalBookerId = serializers.IntegerField(source='original_booker_id', read_only=True)
-    originalBookerName = serializers.CharField(source='original_booker_name', read_only=True)
+    courseName = serializers.SerializerMethodField(read_only=True)
+    tee = serializers.SerializerMethodField(read_only=True)
+    slotDate = serializers.SerializerMethodField(read_only=True)
+    slotTime = serializers.SerializerMethodField(read_only=True)
+    originalBookerId = serializers.SerializerMethodField(read_only=True)
+    originalBookerName = serializers.SerializerMethodField(read_only=True)
     
     # Enhanced fields for request management
     currentSlotStatus = serializers.SerializerMethodField(read_only=True)
@@ -875,6 +875,71 @@ class JoinRequestSerializer(serializers.ModelSerializer):
         except (TypeError, ValueError, AttributeError):
             return 4
     
+    def get_requesterName(self, obj):
+        """Get requester full name"""
+        try:
+            return f"{obj.member.firstName} {obj.member.lastName}"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Member"
+    
+    def get_requesterMemberId(self, obj):
+        """Get requester member ID"""
+        try:
+            return obj.member.golfClubId or f"MEM{obj.member.id:06d}"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown ID"
+    
+    def get_requestDate(self, obj):
+        """Get formatted request date"""
+        try:
+            return obj.createdAt
+        except (TypeError, ValueError, AttributeError):
+            return None
+    
+    def get_courseName(self, obj):
+        """Get course name"""
+        try:
+            return obj.original_booking.course.courseName
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Course"
+    
+    def get_tee(self, obj):
+        """Get tee information"""
+        try:
+            tee = obj.original_booking.tee
+            return f"{tee.holeNumber} Holes" if tee else "Unknown Tee"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Tee"
+    
+    def get_slotDate(self, obj):
+        """Get slot date"""
+        try:
+            return obj.original_booking.slot_date
+        except (TypeError, ValueError, AttributeError):
+            return None
+    
+    def get_slotTime(self, obj):
+        """Get slot time"""
+        try:
+            return obj.original_booking.booking_time
+        except (TypeError, ValueError, AttributeError):
+            return None
+    
+    def get_originalBookerId(self, obj):
+        """Get original booker ID"""
+        try:
+            return obj.original_booking.member.id
+        except (TypeError, ValueError, AttributeError):
+            return None
+    
+    def get_originalBookerName(self, obj):
+        """Get original booker name"""
+        try:
+            member = obj.original_booking.member
+            return f"{member.firstName} {member.lastName}"
+        except (TypeError, ValueError, AttributeError):
+            return "Unknown Member"
+
     def get_otherPendingRequests(self, obj):
         """Get other pending requests for the same slot"""
         try:
@@ -887,9 +952,9 @@ class JoinRequestSerializer(serializers.ModelSerializer):
             
             return [{
                 'requestId': req.request_id,
-                'requesterName': req.requester_name,
+                'requesterName': f"{req.member.firstName} {req.member.lastName}",
                 'requestedParticipants': req.participants,
-                'requestDate': req.request_date
+                'requestDate': req.createdAt
             } for req in other_pending]
         except (TypeError, ValueError, AttributeError):
             return []

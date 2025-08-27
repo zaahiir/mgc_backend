@@ -15,83 +15,96 @@
   <div class="container">
     <div class="row">
       <div class="col-12">
-        <!-- Booking Statistics Dashboard -->
-        <div class="stats-dashboard">
+        <!-- Enhanced Statistics Dashboard (8 Cards) -->
+        <div class="enhanced-stats-dashboard" *ngIf="!isLoading">
           <div class="row">
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="stat-card">
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+              <div class="stat-card total">
                 <div class="stat-icon">
                   <fa-icon [icon]="calendarIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
-                  <h3>{{getBookingStatistics().totalBookings}}</h3>
-                  <p>Total Bookings</p>
+                  <h3>{{enhancedStatistics.total_bookings}}</h3>
+                  <p>📅 TOTAL BOOKINGS</p>
                 </div>
               </div>
             </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
               <div class="stat-card confirmed">
                 <div class="stat-icon">
                   <fa-icon [icon]="checkCircleIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
-                  <h3>{{getBookingStatistics().confirmed}}</h3>
-                  <p>Confirmed</p>
+                  <h3>{{enhancedStatistics.confirmed}}</h3>
+                  <p>✅ CONFIRMED</p>
                 </div>
               </div>
             </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="stat-card pending">
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+              <div class="stat-card pending-sent">
+                <div class="stat-icon">
+                  <fa-icon [icon]="spinnerIcon"></fa-icon>
+                </div>
+                <div class="stat-content">
+                  <h3>{{enhancedStatistics.pending_sent_requests}}</h3>
+                  <p>📤 PENDING SENT REQ.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+              <div class="stat-card pending-received">
                 <div class="stat-icon">
                   <fa-icon [icon]="exclamationTriangleIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
-                  <h3>{{getBookingStatistics().pendingRequests}}</h3>
-                  <p>Pending Requests</p>
+                  <h3>{{enhancedStatistics.pending_received_requests}}</h3>
+                  <p>📥 PENDING REC. REQ.</p>
                 </div>
               </div>
             </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="stat-card approved">
-                <div class="stat-icon">
-                  <fa-icon [icon]="usersIcon"></fa-icon>
-                </div>
-                <div class="stat-content">
-                  <h3>{{getBookingStatistics().requestsAccepted}}</h3>
-                  <p>Requests Accepted</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="stat-card actions">
-                <div class="stat-icon">
-                  <fa-icon [icon]="infoIcon"></fa-icon>
-                </div>
-                <div class="stat-content">
-                  <h3>{{getBookingStatistics().acceptRejectActions}}</h3>
-                  <p>Accept/Reject Actions</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="stat-card accept-requests">
+          </div>
+          <div class="row">
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+              <div class="stat-card sent-accepted">
                 <div class="stat-icon">
                   <fa-icon [icon]="checkIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
-                  <h3>{{getReceivedRequestsCount()}}</h3>
-                  <p>Received Requests</p>
+                  <h3>{{enhancedStatistics.sent_requests_accepted}}</h3>
+                  <p>✅ SENT REQ. ACCPT.</p>
                 </div>
               </div>
             </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="stat-card reject-requests">
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+              <div class="stat-card received-accepted">
+                <div class="stat-icon">
+                  <fa-icon [icon]="usersIcon"></fa-icon>
+                </div>
+                <div class="stat-content">
+                  <h3>{{enhancedStatistics.received_requests_accepted}}</h3>
+                  <p>✅ RECEIVED REQ. ACCPT.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+              <div class="stat-card rejected-received">
                 <div class="stat-icon">
                   <fa-icon [icon]="banIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
-                  <h3>{{getRejectedRequestsCount()}}</h3>
-                  <p>Rejected Requests</p>
+                  <h3>{{enhancedStatistics.rejected_received_requests}}</h3>
+                  <p>❌ REJECTED REC. REQ.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+              <div class="stat-card rejected-sent">
+                <div class="stat-icon">
+                  <fa-icon [icon]="timesIcon"></fa-icon>
+                </div>
+                <div class="stat-content">
+                  <h3>{{enhancedStatistics.rejected_sent_requests}}</h3>
+                  <p>❌ REJECTED SENT REQ.</p>
                 </div>
               </div>
             </div>
@@ -233,26 +246,53 @@
                     </span>
                   </td>
                   <td>
-                    <span [class]="getStatusBadgeClass(booking)">
-                      {{getStatusDisplayText(booking)}}
+                    <span [class]="getEnhancedStatusBadgeClass(booking)">
+                      {{getEnhancedStatusDisplayText(booking)}}
                     </span>
                   </td>
                   <td>
-                                         <div class="btn-group" role="group">
-                       <!-- Show the standard action button for all bookings -->
-                       <button 
-                         class="btn btn-sm"
-                         [class]="getActionButton(booking).color === 'green' ? 'btn-success' : 
-                                  getActionButton(booking).color === 'purple' ? 'btn-warning' : 
-                                  getActionButton(booking).color === 'blue' ? 'btn-primary' : 'btn-secondary'"
-                         (click)="handleActionButtonClick(booking)"
-                         [disabled]="!getActionButton(booking).enabled">
-                         <fa-icon [icon]="getActionButton(booking).action === 'addParticipants' ? plusIcon : 
-                                        getActionButton(booking).action === 'reviewRequest' ? infoIcon : eyeIcon"
-                                  class="me-1"></fa-icon>
-                         {{getActionButton(booking).text}}
-                       </button>
-                     </div>
+                    <div class="btn-group" role="group">
+                      <!-- Enhanced Action Buttons -->
+                      <ng-container *ngIf="booking.displayType === 'received_request' && booking.statusType === 'RECEIVE REQUEST PENDING'">
+                        <!-- Accept/Reject buttons for pending received requests -->
+                        <button 
+                          class="btn btn-sm btn-success me-1"
+                          (click)="approveJoinRequest(booking)"
+                          title="Accept Request">
+                          <fa-icon [icon]="checkIcon" class="me-1"></fa-icon>
+                          Accept
+                        </button>
+                        <button 
+                          class="btn btn-sm btn-danger"
+                          (click)="rejectJoinRequest(booking)"
+                          title="Reject Request">
+                          <fa-icon [icon]="banIcon" class="me-1"></fa-icon>
+                          Reject
+                        </button>
+                      </ng-container>
+                      
+                      <ng-container *ngIf="booking.displayType === 'own_booking' && booking.canAcceptMoreParticipants">
+                        <!-- Add Participants button for own bookings -->
+                        <button 
+                          class="btn btn-sm btn-primary"
+                          (click)="showAddParticipantsModal(booking)"
+                          title="Add Participants">
+                          <fa-icon [icon]="plusIcon" class="me-1"></fa-icon>
+                          + Add Participants
+                        </button>
+                      </ng-container>
+                      
+                      <ng-container *ngIf="!(booking.displayType === 'received_request' && booking.statusType === 'RECEIVE REQUEST PENDING') && !(booking.displayType === 'own_booking' && booking.canAcceptMoreParticipants)">
+                        <!-- View Details button for all other cases -->
+                        <button 
+                          class="btn btn-sm btn-secondary"
+                          (click)="viewBookingDetails(booking)"
+                          title="View Details">
+                          <fa-icon [icon]="eyeIcon" class="me-1"></fa-icon>
+                          View Details
+                        </button>
+                      </ng-container>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -320,7 +360,7 @@
 </div>
 
 <!-- Review Join Request Modal -->
-<div class="modal fade" [class.show]="showReviewRequestModal" [style.display]="showReviewRequestModal ? 'block' : 'none'">
+<div class="modal fade" [class.show]="showJoinRequestModal" [style.display]="showJoinRequestModal ? 'block' : 'none'">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -549,5 +589,74 @@
   </div>
 </div>
 
+<!-- Enhanced Join Request Review Modal -->
+<div class="modal fade" [class.show]="showJoinRequestModal" [style.display]="showJoinRequestModal ? 'block' : 'none'">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Review Join Request</h5>
+        <button type="button" class="btn-close" (click)="closeReviewRequestModal()"></button>
+      </div>
+      <div class="modal-body" *ngIf="selectedJoinRequest">
+        <div class="request-info">
+          <h6>Request ID: {{selectedJoinRequest.requestId}}</h6>
+          
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <h6>Requester Information:</h6>
+              <p><strong>Name:</strong> {{selectedJoinRequest.requesterName}}</p>
+              <p><strong>Member ID:</strong> {{selectedJoinRequest.requesterMemberId}}</p>
+              <p><strong>Request Date:</strong> {{formatDate(selectedJoinRequest.requestDate)}}</p>
+            </div>
+            <div class="col-md-6">
+              <h6>Booking Details:</h6>
+              <p><strong>Course:</strong> {{selectedJoinRequest.courseName}}</p>
+              <p><strong>Tee:</strong> {{selectedJoinRequest.tee}}</p>
+              <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slotDate)}}</p>
+              <p><strong>Time:</strong> {{selectedJoinRequest.slotTime}}</p>
+            </div>
+          </div>
+          
+          <div class="slot-status mt-4" *ngIf="selectedJoinRequest.currentSlotStatus">
+            <h6>Current Slot Status:</h6>
+            <div class="row">
+              <div class="col-md-6">
+                <p><strong>Your Participants:</strong> {{selectedJoinRequest.currentSlotStatus.currentParticipants}}</p>
+                <p><strong>Requested Participants:</strong> {{selectedJoinRequest.requestedParticipants}}</p>
+              </div>
+              <div class="col-md-6">
+                <p><strong>Total if Approved:</strong> {{selectedJoinRequest.totalParticipantsIfApproved}}/4 participants</p>
+                <p><strong>Remaining Slots:</strong> {{selectedJoinRequest.remainingSlotsIfApproved}}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="other-requests mt-4" *ngIf="selectedJoinRequest.otherPendingRequests && selectedJoinRequest.otherPendingRequests.length > 0">
+            <h6>⚠️ Other Pending Requests: {{selectedJoinRequest.otherPendingRequests.length}}</h6>
+            <div class="other-requests-list">
+              <div *ngFor="let otherRequest of selectedJoinRequest.otherPendingRequests" class="other-request-item p-2 border rounded mb-2">
+                <small>
+                  <strong>{{otherRequest.requesterName}}</strong> - {{otherRequest.requestedParticipants}} participant(s) 
+                  ({{formatDate(otherRequest.requestDate)}})
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" (click)="handleReviewRequest('reject')">
+          <fa-icon [icon]="banIcon" class="me-1"></fa-icon>
+          Reject
+        </button>
+        <button type="button" class="btn btn-success" (click)="handleReviewRequest('approve')">
+          <fa-icon [icon]="checkIcon" class="me-1"></fa-icon>
+          Approve
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Backdrop -->
-<div class="modal-backdrop fade show" *ngIf="showParticipantModal || showReviewRequestModal || showBookingDetails || showPendingReviewModal"></div>
+<div class="modal-backdrop fade show" *ngIf="showParticipantModal || showJoinRequestModal || showBookingDetails || showPendingReviewModal || showJoinRequestModal"></div>

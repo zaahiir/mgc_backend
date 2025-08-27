@@ -277,35 +277,7 @@ export class CollectionService {
     return axios.post(url, bookingData, config);
   }
 
-  approveJoinRequest(bookingId: number, joinRequestId: number) {
-    const url = `${this.apiUrl}booking/${bookingId}/approve_join_request/`;
-    const config: any = {};
-    
-    // Add authorization headers if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    }
-    
-    return axios.post(url, { join_request_id: joinRequestId }, config);
-  }
 
-  rejectJoinRequest(bookingId: number, joinRequestId: number) {
-    const url = `${this.apiUrl}booking/${bookingId}/reject_join_request/`;
-    const config: any = {};
-    
-    // Add authorization headers if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    }
-    
-    return axios.post(url, { join_request_id: joinRequestId }, config);
-  }
 
 
 
@@ -540,24 +512,7 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
-  // Review join request (approve/reject) - updated to use join request ID as pk
-  reviewJoinRequest(originalBookingId: number, joinRequestId: number, action: 'approve' | 'reject') {
-    const url = `${this.apiUrl}booking/${joinRequestId}/review_join_request/`;
-    const config: any = {};
-    
-    // Add authorization headers if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    }
-    
-    // Backend now gets original_booking from the join request, so we don't need to pass it
-    return axios.post(url, { 
-      action: action
-    }, config);
-  }
+
 
   // Check slot availability and existing requests
   checkSlotAvailability(course: number, tee: number, slotDate: string, bookingTime: string) {
@@ -651,9 +606,18 @@ export class CollectionService {
     });
   }
 
-  // Enhanced order statistics with join request counts
+  // Enhanced order statistics with join request counts (8 counters)
   getEnhancedOrderStatistics() {
     return axios.get<any>(`${this.apiUrl}orders/statistics/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  // Get enhanced orders data with all bookings and join requests
+  getEnhancedOrdersData() {
+    return axios.get<any>(`${this.apiUrl}orders/enhanced_orders/`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
       }
@@ -663,6 +627,38 @@ export class CollectionService {
   // Get pending review requests with enhanced data
   getPendingReviewRequestsEnhanced() {
     return axios.get<any>(`${this.apiUrl}orders/pending_review/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  // Approve join request
+  approveJoinRequest(requestId: number) {
+    return axios.post<any>(`${this.apiUrl}joinRequest/${requestId}/approve/`, {}, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  // Reject join request
+  rejectJoinRequest(requestId: number, notes?: string) {
+    return axios.post<any>(`${this.apiUrl}joinRequest/${requestId}/reject/`, {
+      notes: notes || ''
+    }, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
+  }
+
+  // Review join request (approve/reject)
+  reviewJoinRequest(requestId: number, action: 'approve' | 'reject', notes?: string) {
+    const endpoint = action === 'approve' ? 'approve' : 'reject';
+    return axios.post<any>(`${this.apiUrl}joinRequest/${requestId}/${endpoint}/`, {
+      notes: notes || ''
+    }, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
       }

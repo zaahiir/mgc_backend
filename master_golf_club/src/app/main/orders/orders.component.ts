@@ -68,6 +68,8 @@ interface Booking {
   isOwnBooking?: boolean;
   canAddParticipants?: boolean;
   isIncomingRequest?: boolean;
+  displayType?: 'own_booking' | 'sent_request' | 'received_request';
+  statusType?: string;
   requesterName?: string;
   requesterEmail?: string;
   // Participant information for merged bookings
@@ -143,6 +145,26 @@ interface JoinRequest {
   slotTime?: string;
 }
 
+interface EnhancedStatistics {
+  total_bookings: number;
+  confirmed: number;
+  pending_sent_requests: number;
+  pending_received_requests: number;
+  sent_requests_accepted: number;
+  received_requests_accepted: number;
+  rejected_received_requests: number;
+  rejected_sent_requests: number;
+  own_bookings_count: number;
+  sent_requests_count: number;
+  received_requests_count: number;
+}
+
+interface EnhancedOrdersData {
+  own_bookings: Booking[];
+  sent_requests: JoinRequest[];
+  received_requests: JoinRequest[];
+}
+
 @Component({
   selector: 'app-orders',
   standalone: true,
@@ -198,7 +220,6 @@ export class OrdersComponent implements OnInit {
   requestedParticipants = 1;
   
   // New modal states
-  showReviewRequestModal = false;
   selectedJoinRequestForReview: Booking | null = null;
   reviewAction: 'approve' | 'reject' = 'approve';
   
@@ -206,14 +227,35 @@ export class OrdersComponent implements OnInit {
   pendingReviewRequests: any[] = [];
   showPendingReviewModal = false;
 
+  // Enhanced statistics (8 counters)
+  enhancedStatistics: EnhancedStatistics = {
+    total_bookings: 0,
+    confirmed: 0,
+    pending_sent_requests: 0,
+    pending_received_requests: 0,
+    sent_requests_accepted: 0,
+    received_requests_accepted: 0,
+    rejected_received_requests: 0,
+    rejected_sent_requests: 0,
+    own_bookings_count: 0,
+    sent_requests_count: 0,
+    received_requests_count: 0
+  };
+
+  // Enhanced orders data
+  enhancedOrdersData: EnhancedOrdersData = {
+    own_bookings: [],
+    sent_requests: [],
+    received_requests: []
+  };
+
   // Filter state
   selectedStatusFilter: string = 'all';
   statusFilters = [
     { value: 'all', label: 'All Bookings', count: 0 },
-    { value: 'confirmed', label: 'Confirmed', count: 0 },
-    { value: 'pending_approval', label: 'Pending Requests', count: 0 },
-    { value: 'approved', label: 'Requests Accepted', count: 0 },
-
+    { value: 'own_bookings', label: 'Own Bookings', count: 0 },
+    { value: 'sent_requests', label: 'Sent Requests', count: 0 },
+    { value: 'received_requests', label: 'Received Requests', count: 0 }
   ];
 
   // Icons
@@ -233,7 +275,6 @@ export class OrdersComponent implements OnInit {
   incomingJoinRequests: JoinRequest[] = [];
   outgoingJoinRequests: JoinRequest[] = [];
   joinRequestStatistics: any;
-  enhancedStatistics: any;
   showJoinRequestModal = false;
   selectedJoinRequest: JoinRequest | null = null;
   joinRequestAction: 'approve' | 'reject' = 'approve';
@@ -245,15 +286,9 @@ export class OrdersComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.loadBookings();
+    this.loadEnhancedData();
     this.loadNotifications();
     this.loadUnreadCount();
-    this.loadOrderStatistics();
-    this.loadPendingReviewRequests();
-    this.loadIncomingJoinRequests();
-    this.loadOutgoingJoinRequests();
-    this.loadJoinRequestStatistics();
-    this.loadEnhancedOrderStatistics();
     
     // Check if redirected from notification
     this.checkNotificationRedirect();
@@ -272,6 +307,290 @@ export class OrdersComponent implements OnInit {
         });
       }
     });
+  }
+
+  // Load enhanced data (statistics + orders)
+  loadEnhancedData() {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    // Load statistics and orders data in parallel
+    Promise.all([
+      this.collectionService.getEnhancedOrderStatistics(),
+      this.collectionService.getEnhancedOrdersData()
+    ]).then(([statsResponse, ordersResponse]) => {
+      if (statsResponse.data.code === 1) {
+        this.enhancedStatistics = statsResponse.data.data;
+        this.updateFilterCounts();
+      }
+
+      if (ordersResponse.data.code === 1) {
+        this.enhancedOrdersData = ordersResponse.data.data;
+        this.processEnhancedOrdersData();
+      }
+
+      this.isLoading = false;
+    }).catch(error => {
+      console.error('Error loading enhanced data:', error);
+      this.errorMessage = 'Failed to load orders data. Please try again.';
+      this.isLoading = false;
+    });
+  }
+
+  // Process enhanced orders data for display
+  processEnhancedOrdersData() {
+    // Convert all data to unified booking format for table display
+    this.bookings = [];
+
+    // Add own bookings
+    this.enhancedOrdersData.own_bookings.forEach(booking => {
+      this.bookings.push({
+        ...booking,
+        isOwnBooking: true,
+        displayType: 'own_booking',
+        statusType: this.getBookingStatusType(booking)
+      });
+    });
+
+    // Add sent requests
+    this.enhancedOrdersData.sent_requests.forEach(request => {
+      this.bookings.push({
+        ...this.convertJoinRequestToBooking(request),
+        isOwnBooking: false,
+        displayType: 'sent_request',
+        statusType: this.getSentRequestStatusType(request)
+      });
+    });
+
+    // Add received requests
+    this.enhancedOrdersData.received_requests.forEach(request => {
+      this.bookings.push({
+        ...this.convertJoinRequestToBooking(request),
+        isOwnBooking: false,
+        displayType: 'received_request',
+        statusType: this.getReceivedRequestStatusType(request)
+      });
+    });
+
+    // Sort by creation date (newest first)
+    this.bookings.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+  }
+
+  // Convert join request to booking format for unified display
+  convertJoinRequestToBooking(request: JoinRequest): Booking {
+    return {
+      id: request.id,
+      booking_id: request.requestId || '',
+      request_id: request.requestId,
+      memberName: request.requesterName || '',
+      memberFullName: request.requesterName || '',
+      courseName: request.courseName || '',
+      teeInfo: request.tee || '',
+      bookingDate: this.formatDate(request.requestDate || ''),
+      formattedDate: this.formatDate(request.requestDate || ''),
+      slotDate: request.slotDate,
+      booking_time: request.slotTime,
+      participants: request.requestedParticipants || 0,
+      status: request.status || '',
+      is_join_request: true,
+      createdAt: request.requestDate,
+      originalBookingId: request.originalBookingId ? (typeof request.originalBookingId === 'string' ? parseInt(request.originalBookingId) : request.originalBookingId) : undefined,
+      // Additional properties for enhanced display
+      originalBookerName: request.originalBookerName,
+      currentSlotStatus: request.currentSlotStatus,
+      totalParticipantsIfApproved: request.totalParticipantsIfApproved
+    } as Booking;
+  }
+
+  // Update filter counts based on enhanced statistics
+  updateFilterCounts() {
+    this.statusFilters = [
+      { 
+        value: 'all', 
+        label: 'All Bookings', 
+        count: this.enhancedStatistics.total_bookings + 
+               this.enhancedStatistics.pending_sent_requests + 
+               this.enhancedStatistics.pending_received_requests 
+      },
+      { 
+        value: 'own_bookings', 
+        label: 'Own Bookings', 
+        count: this.enhancedStatistics.own_bookings_count 
+      },
+      { 
+        value: 'sent_requests', 
+        label: 'Sent Requests', 
+        count: this.enhancedStatistics.sent_requests_count 
+      },
+      { 
+        value: 'received_requests', 
+        label: 'Received Requests', 
+        count: this.enhancedStatistics.received_requests_count 
+      }
+    ];
+  }
+
+  // Get status type for own bookings
+  getBookingStatusType(booking: Booking): string {
+    if (booking.status === 'confirmed' || booking.status === 'completed') {
+      return 'CONFIRMED';
+    }
+    return 'PENDING';
+  }
+
+  // Get status type for sent requests
+  getSentRequestStatusType(request: JoinRequest): string {
+    switch (request.status) {
+      case 'pending_approval':
+        return 'SENT REQUEST PENDING';
+      case 'approved':
+        return 'SENT REQUEST ACCEPTED';
+      case 'rejected':
+        return 'REJECTED SENT';
+      default:
+        return 'UNKNOWN';
+    }
+  }
+
+  // Get status type for received requests
+  getReceivedRequestStatusType(request: JoinRequest): string {
+    switch (request.status) {
+      case 'pending_approval':
+        return 'RECEIVE REQUEST PENDING';
+      case 'approved':
+        return 'RECEIVE REQUEST ACCEPTED';
+      case 'rejected':
+        return 'REJECTED RECEIVED';
+      default:
+        return 'UNKNOWN';
+    }
+  }
+
+  // Handle approve join request
+  async approveJoinRequest(request: JoinRequest) {
+    try {
+      const response = await this.collectionService.approveJoinRequest(request.id);
+      if (response.data.code === 1) {
+        // Refresh data after successful approval
+        this.loadEnhancedData();
+        // Show success message
+        alert(`Join request from ${request.requesterName} has been approved successfully!`);
+      } else {
+        alert('Failed to approve join request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error approving join request:', error);
+      alert('Error approving join request. Please try again.');
+    }
+  }
+
+  // Handle reject join request
+  async rejectJoinRequest(request: JoinRequest, notes?: string) {
+    try {
+      const response = await this.collectionService.rejectJoinRequest(request.id, notes);
+      if (response.data.code === 1) {
+        // Refresh data after successful rejection
+        this.loadEnhancedData();
+        // Show success message
+        alert(`Join request from ${request.requesterName} has been rejected.`);
+      } else {
+        alert('Failed to reject join request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error rejecting join request:', error);
+      alert('Error rejecting join request. Please try again.');
+    }
+  }
+
+  // Show review request modal
+  showReviewRequestModal(request: JoinRequest) {
+    this.selectedJoinRequest = request;
+    this.showJoinRequestModal = true;
+  }
+
+  // Close review request modal
+  closeReviewRequestModal() {
+    this.selectedJoinRequest = null;
+    this.showJoinRequestModal = false;
+  }
+
+  // Handle review request action
+  async handleReviewRequest(action: 'approve' | 'reject') {
+    if (!this.selectedJoinRequest) return;
+
+    if (action === 'approve') {
+      await this.approveJoinRequest(this.selectedJoinRequest);
+    } else {
+      await this.rejectJoinRequest(this.selectedJoinRequest);
+    }
+
+    this.closeReviewRequestModal();
+  }
+
+  // Enhanced status display methods
+  getEnhancedStatusDisplayText(booking: Booking): string {
+    if (booking.statusType) {
+      return booking.statusType;
+    }
+    
+    // Fallback to existing logic
+    return this.getStatusDisplayText(booking);
+  }
+
+  getEnhancedStatusBadgeClass(booking: Booking): string {
+    const statusType = booking.statusType || '';
+    
+    switch (statusType) {
+      case 'CONFIRMED':
+        return 'badge bg-success';
+      case 'RECEIVE REQUEST PENDING':
+        return 'badge bg-warning';
+      case 'RECEIVE REQUEST ACCEPTED':
+        return 'badge bg-light-success';
+      case 'SENT REQUEST PENDING':
+        return 'badge bg-info';
+      case 'SENT REQUEST ACCEPTED':
+        return 'badge bg-primary';
+      case 'REJECTED RECEIVED':
+        return 'badge bg-danger';
+      case 'REJECTED SENT':
+        return 'badge bg-dark';
+      default:
+        return 'badge bg-secondary';
+    }
+  }
+
+  // Enhanced action methods
+  showAddParticipantsModal(booking: Booking) {
+    this.selectedBookingForParticipants = booking;
+    this.showParticipantModal = true;
+  }
+
+  viewBookingDetails(booking: Booking) {
+    this.selectedBooking = booking;
+    this.showBookingDetails = true;
+  }
+
+  // Enhanced filtering
+  getFilteredBookings(): Booking[] {
+    if (!this.bookings) return [];
+
+    switch (this.selectedStatusFilter) {
+      case 'own_bookings':
+        return this.bookings.filter(b => b.displayType === 'own_booking');
+      case 'sent_requests':
+        return this.bookings.filter(b => b.displayType === 'sent_request');
+      case 'received_requests':
+        return this.bookings.filter(b => b.displayType === 'received_request');
+      case 'all':
+      default:
+        return this.bookings;
+    }
+  }
+
+  // Refresh data method
+  refreshData() {
+    this.loadEnhancedData();
   }
 
   async loadOrderStatistics() {
@@ -393,7 +712,7 @@ export class OrdersComponent implements OnInit {
         
         // Convert incoming join requests to booking format and add to bookings array
         for (const joinRequest of this.incomingJoinRequests) {
-          const joinRequestBooking = this.convertJoinRequestToBooking(joinRequest, 'incoming');
+          const joinRequestBooking = this.convertJoinRequestToBooking(joinRequest);
           this.bookings.push(joinRequestBooking);
         }
       }
@@ -406,7 +725,7 @@ export class OrdersComponent implements OnInit {
         
         // Convert outgoing join requests to booking format and add to bookings array
         for (const joinRequest of this.outgoingJoinRequests) {
-          const joinRequestBooking = this.convertJoinRequestToBooking(joinRequest, 'outgoing');
+          const joinRequestBooking = this.convertJoinRequestToBooking(joinRequest);
           this.bookings.push(joinRequestBooking);
         }
       }
@@ -415,49 +734,7 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-  // Convert join request to booking format for display
-  private convertJoinRequestToBooking(joinRequest: any, type: 'incoming' | 'outgoing'): Booking {
-    const originalBooking = joinRequest.original_booking;
-    
-    return {
-      id: joinRequest.id,
-      booking_id: joinRequest.request_id || `RQ${joinRequest.id}`,
-      request_id: joinRequest.request_id,
-      memberName: joinRequest.member?.firstName + ' ' + joinRequest.member?.lastName || 'Unknown Member',
-      memberFullName: joinRequest.member?.firstName + ' ' + joinRequest.member?.lastName || 'Unknown Member',
-      courseName: originalBooking?.course?.courseName || 'Unknown Course',
-      course: originalBooking?.course?.id,
-      tee: originalBooking?.tee?.id,
-      teeInfo: originalBooking?.tee ? `${originalBooking.tee.holeNumber} Holes` : 'Unknown Tee',
-      teeName: originalBooking?.tee ? `${originalBooking.tee.holeNumber} Holes` : 'Unknown Tee',
-      bookingDate: joinRequest.createdAt || new Date().toISOString(),
-      slotDate: originalBooking?.slot_date,
-      booking_time: originalBooking?.booking_time,
-      participants: joinRequest.participants,
-      status: joinRequest.status,
-      is_join_request: true,
-      original_booking: originalBooking?.id,
-      originalBookingId: originalBooking?.id,
-      originalBookingInfo: {
-        memberName: originalBooking?.member?.firstName + ' ' + originalBooking?.member?.lastName,
-        participants: originalBooking?.participants
-      },
-      isIncomingRequest: type === 'incoming',
-      requesterName: joinRequest.member?.firstName + ' ' + joinRequest.member?.lastName,
-      requesterEmail: joinRequest.member?.email,
-      formattedDate: this.formatDate(joinRequest.createdAt),
-      createdAt: joinRequest.createdAt,
-      // Additional properties for join requests
-      slotStatus: 'pending_approval',
-      availableSpots: 0,
-      slotParticipantCount: joinRequest.participants,
-      canJoinSlot: false,
-      isSlotFull: false,
-      canAcceptMoreParticipants: false,
-      isOwnBooking: false,
-      canAddParticipants: false
-    };
-  }
+
 
   private processSlotBooking(booking: any, slot: any, index: number): Booking {
     const slotBooking = {
@@ -803,13 +1080,7 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-  // Filter bookings by status
-  getFilteredBookings(): Booking[] {
-    if (this.selectedStatusFilter === 'all') {
-      return this.bookings;
-    }
-    return this.bookings.filter(booking => booking.status === this.selectedStatusFilter);
-  }
+
 
   // Get booking statistics
   getBookingStatistics() {
@@ -883,19 +1154,7 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-     // View booking details
-   viewBookingDetails(booking: Booking) {
-     this.selectedBooking = booking;
-     this.showBookingDetails = true;
-     
-           // Log basic information for debugging
-      console.log('Viewing details for booking:', booking);
-      console.log('Is incoming request:', booking.isIncomingRequest);
-      console.log('Is join request:', booking.is_join_request);
-      console.log('Status:', booking.status);
-      console.log('Original booking:', booking.original_booking);
-      console.log('Is own booking:', booking.isOwnBooking);
-   }
+
 
   // Close booking details
   closeBookingDetails() {
@@ -995,13 +1254,10 @@ export class OrdersComponent implements OnInit {
     
     this.selectedJoinRequest = joinRequest;
     this.reviewAction = 'approve';
-    this.showReviewRequestModal = true;
+    this.showJoinRequestModal = true;
   }
 
-  closeReviewRequestModal() {
-    this.showReviewRequestModal = false;
-    this.selectedJoinRequest = null;
-  }
+
 
   // Pending review modal methods
   openPendingReviewModal() {
@@ -1041,7 +1297,6 @@ export class OrdersComponent implements OnInit {
       
       // Call API to review join request
       const response = await this.collectionService.reviewJoinRequest(
-        bookingId,
         this.selectedJoinRequest.id,
         this.reviewAction
       );
@@ -1260,18 +1515,7 @@ export class OrdersComponent implements OnInit {
     this.selectedStatusFilter = filterValue;
   }
 
-  // Refresh data
-  async refreshData() {
-    await Promise.all([
-      this.loadBookings(), // This now includes join requests
-      this.loadNotifications(),
-      this.loadUnreadCount(),
-      this.loadOrderStatistics(),
-      this.loadPendingReviewRequests(),
-      this.loadJoinRequestStatistics(),
-      this.loadEnhancedOrderStatistics()
-    ]);
-  }
+
 
   // Statistics methods for dashboard
   getTotalBookings(): number {
@@ -1377,66 +1621,9 @@ export class OrdersComponent implements OnInit {
     this.joinRequestAction = action;
   }
 
-  // Approve join request
-  async approveJoinRequest(joinRequest: JoinRequest) {
-    try {
-      const response = await this.collectionService.approveJoinRequest(
-        joinRequest.originalBookingId, 
-        joinRequest.id
-      );
-      if (response && response.data && response.data.code === 1) {
-        console.log('Join request approved successfully:', response.data);
-        
-        // Update local state
-        const index = this.incomingJoinRequests.findIndex(req => req.id === joinRequest.id);
-        if (index !== -1) {
-          this.incomingJoinRequests[index].status = 'approved';
-        }
-        
-        // Refresh data
-        await this.refreshData();
-        
-        // Close modal
-        this.closeJoinRequestModal();
-        
-        // Show success message
-        // You can implement a toast/notification service here
-        console.log('Join request approved successfully');
-      }
-    } catch (error) {
-      console.error('Error approving join request:', error);
-    }
-  }
 
-  // Reject join request
-  async rejectJoinRequest(joinRequest: JoinRequest) {
-    try {
-      const response = await this.collectionService.rejectJoinRequest(
-        joinRequest.originalBookingId, 
-        joinRequest.id
-      );
-      if (response && response.data && response.data.code === 1) {
-        console.log('Join request rejected successfully:', response.data);
-        
-        // Update local state
-        const index = this.incomingJoinRequests.findIndex(req => req.id === joinRequest.id);
-        if (index !== -1) {
-          this.incomingJoinRequests[index].status = 'rejected';
-        }
-        
-        // Refresh data
-        await this.refreshData();
-        
-        // Close modal
-        this.closeJoinRequestModal();
-        
-        // Show success message
-        console.log('Join request rejected successfully');
-      }
-    } catch (error) {
-      console.error('Error rejecting join request:', error);
-    }
-  }
+
+
 
   // Handle join request action
   async handleJoinRequestAction() {
