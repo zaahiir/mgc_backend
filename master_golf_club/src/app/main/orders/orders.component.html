@@ -18,93 +18,91 @@
         <!-- Enhanced Statistics Dashboard (8 Cards) -->
         <div class="enhanced-stats-dashboard" *ngIf="!isLoading">
           <div class="row">
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card total">
                 <div class="stat-icon">
                   <fa-icon [icon]="calendarIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.total_bookings}}</h3>
-                  <p>📅 TOTAL BOOKINGS</p>
+                  <p>TOTAL BOOKINGS</p>
                 </div>
               </div>
             </div>
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card confirmed">
                 <div class="stat-icon">
                   <fa-icon [icon]="checkCircleIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.confirmed}}</h3>
-                  <p>✅ CONFIRMED</p>
+                  <p>CONFIRMED</p>
                 </div>
               </div>
             </div>
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card pending-sent">
                 <div class="stat-icon">
                   <fa-icon [icon]="spinnerIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.pending_sent_requests}}</h3>
-                  <p>📤 PENDING SENT REQ.</p>
+                  <p>PENDING SENT REQ.</p>
                 </div>
               </div>
             </div>
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card pending-received">
                 <div class="stat-icon">
                   <fa-icon [icon]="exclamationTriangleIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.pending_received_requests}}</h3>
-                  <p>📥 PENDING REC. REQ.</p>
+                  <p>PENDING REC. REQ.</p>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="row">
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card sent-accepted">
                 <div class="stat-icon">
                   <fa-icon [icon]="checkIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.sent_requests_accepted}}</h3>
-                  <p>✅ SENT REQ. ACCPT.</p>
+                  <p>SENT REQ. ACCPT.</p>
                 </div>
               </div>
             </div>
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card received-accepted">
                 <div class="stat-icon">
                   <fa-icon [icon]="usersIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.received_requests_accepted}}</h3>
-                  <p>✅ RECEIVED REQ. ACCPT.</p>
+                  <p>RECEIVED REQ. ACCPT.</p>
                 </div>
               </div>
             </div>
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card rejected-received">
                 <div class="stat-icon">
                   <fa-icon [icon]="banIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.rejected_received_requests}}</h3>
-                  <p>❌ REJECTED REC. REQ.</p>
+                  <p>REJECTED REC. REQ.</p>
                 </div>
               </div>
             </div>
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+            <div class="col-xl-1-5 col-lg-3 col-md-6 col-sm-6 mb-3">
               <div class="stat-card rejected-sent">
                 <div class="stat-icon">
                   <fa-icon [icon]="timesIcon"></fa-icon>
                 </div>
                 <div class="stat-content">
                   <h3>{{enhancedStatistics.rejected_sent_requests}}</h3>
-                  <p>❌ REJECTED SENT REQ.</p>
+                  <p>REJECTED SENT REQ.</p>
                 </div>
               </div>
             </div>
