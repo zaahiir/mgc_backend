@@ -840,16 +840,19 @@ class JoinRequestModel(models.Model):
 class NotificationModel(models.Model):
     """Model for managing booking notifications"""
     NOTIFICATION_TYPES = [
-        ('join_request', 'Join Request'),
-        ('join_approved', 'Join Approved'),
-        ('join_rejected', 'Join Rejected'),
+        ('join_request_received', 'Join Request Received'),
+        ('join_request_approved', 'Join Request Approved'),
+        ('join_request_rejected', 'Join Request Rejected'),
+        ('join_request', 'Join Request'),  # Legacy support
+        ('join_approved', 'Join Approved'),  # Legacy support
+        ('join_rejected', 'Join Rejected'),  # Legacy support
         ('booking_confirmed', 'Booking Confirmed'),
     ]
     
     id = models.AutoField(primary_key=True)
     recipient = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="notifications")
     sender = models.ForeignKey(MemberModel, on_delete=models.CASCADE, related_name="sent_notifications", null=True, blank=True)
-    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    notification_type = models.CharField(max_length=25, choices=NOTIFICATION_TYPES)
     title = models.CharField(max_length=255)
     message = models.TextField()
     related_booking = models.ForeignKey(BookingModel, on_delete=models.CASCADE, related_name="notifications", null=True, blank=True)
@@ -881,28 +884,32 @@ class NotificationModel(models.Model):
         """Create a join request notification"""
         time_str = booking.booking_time.strftime('%H:%M') if booking.booking_time else "Time not specified"
         date_str = booking.slot_date.strftime('%B %d, %Y') if booking.slot_date else "Date not specified"
+        course_name = booking.course.courseName if booking.course else "Unknown Course"
+        tee_name = f"Tee {booking.tee.holeNumber}" if booking.tee else "Unknown Tee"
         
         return cls.objects.create(
             recipient=recipient,
             sender=sender,
-            notification_type='join_request',
-            title='Join Request',
-            message=f"{sender.firstName} {sender.lastName} wants to join your tee slot at {time_str} on {date_str}. Approve or Reject.",
+            notification_type='join_request_received',
+            title='New Join Request',
+            message=f"{sender.firstName} {sender.lastName} wants to join your tee slot at {course_name} - {tee_name} on {date_str} at {time_str}",
             related_booking=booking
         )
 
     @classmethod
     def create_join_response_notification(cls, recipient, sender, booking, is_approved, reason=None):
         """Create a join response notification"""
-        notification_type = 'join_approved' if is_approved else 'join_rejected'
+        notification_type = 'join_request_approved' if is_approved else 'join_request_rejected'
         title = 'Join Request Approved' if is_approved else 'Join Request Rejected'
         time_str = booking.booking_time.strftime('%H:%M') if booking.booking_time else "Time not specified"
         date_str = booking.slot_date.strftime('%B %d, %Y') if booking.slot_date else "Date not specified"
+        course_name = booking.course.courseName if booking.course else "Unknown Course"
+        tee_name = f"Tee {booking.tee.holeNumber}" if booking.tee else "Unknown Tee"
         
         if reason:
-            message = f"Your join request for {time_str} on {date_str} has been {'approved' if is_approved else 'rejected'}. Reason: {reason}"
+            message = f"Your join request for {course_name} - {tee_name} on {date_str} at {time_str} has been {'approved' if is_approved else 'rejected'}. Reason: {reason}"
         else:
-            message = f"Your join request for {time_str} on {date_str} has been {'approved' if is_approved else 'rejected'}."
+            message = f"Your join request for {course_name} - {tee_name} on {date_str} at {time_str} has been {'approved' if is_approved else 'rejected'}."
         
         return cls.objects.create(
             recipient=recipient,

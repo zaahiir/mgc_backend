@@ -297,6 +297,21 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
+  getHeaderNotifications() {
+    const url = `${this.apiUrl}notification/header/`;
+    const config: any = {};
+    
+    // Add authorization headers if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = {
+        'Authorization': `Bearer ${token}`
+      };
+    }
+    
+    return axios.get(url, config);
+  }
+
   getUnreadNotificationCount() {
     const url = `${this.apiUrl}notification/unread_count/`;
     const config: any = {};
@@ -443,21 +458,7 @@ export class CollectionService {
     return axios.get(url, config);
   }
 
-  // Get notifications for header
-  getHeaderNotifications() {
-    const url = `${this.apiUrl}notification/header/`;
-    const config: any = {};
-    
-    // Add authorization headers if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers = {
-        'Authorization': `Bearer ${token}`
-      };
-    }
-    
-    return axios.get(url, config);
-  }
+
 
   // Create join request for partially available slot
   createJoinRequest(joinRequestData: { course: number; tee: number; slotDate: string; bookingTime: string; participants: number; originalSlotParticipants: number; }) {

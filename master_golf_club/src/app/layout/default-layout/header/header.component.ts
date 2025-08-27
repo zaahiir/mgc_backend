@@ -43,8 +43,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     // Load notifications if logged in
     if (this.isLoggedIn) {
-      this.loadUnreadNotificationCount();
-      this.loadNotifications();
+      this.loadNotifications(); // This now loads both notifications and count
     }
 
     // Only run DOM manipulation code in the browser
@@ -81,60 +80,90 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   async loadNotifications() {
     try {
-      const response = await this.collectionService.getNotifications();
+      const response = await this.collectionService.getHeaderNotifications();
       console.log('Header notifications response:', response);
       
-      if (response && response.data) {
-        // Check if response.data is an array (direct API response)
-        if (Array.isArray(response.data)) {
-          console.log('Raw notifications data from API (array format):', response.data);
-          this.notifications = response.data;
-        } 
-        // Check if response.data has the expected code/data structure
-        else if (response.data.code === 1) {
-          console.log('Raw notifications data from API (code/data format):', response.data.data);
-          this.notifications = response.data.data;
-        } else {
-          console.error('Failed to load notifications:', response);
-        }
+      if (response && response.data && response.data.code === 1) {
+        // Only load unread notifications for header display
+        this.notifications = response.data.data.notifications || [];
+        this.unreadNotifications = response.data.data.unread_count || 0;
+        console.log('Loaded unread notifications:', this.notifications);
       } else {
-        console.error('Invalid notifications response:', response);
+        console.error('Failed to load notifications:', response);
+        this.notifications = [];
+        this.unreadNotifications = 0;
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
+      this.notifications = [];
+      this.unreadNotifications = 0;
     }
   }
 
   async markNotificationAsRead(notificationId: number) {
     try {
       await this.collectionService.markNotificationAsRead(notificationId);
-      this.loadUnreadNotificationCount();
-      this.loadNotifications();
+      // Reload notifications to get updated count and list
+      await this.loadNotifications();
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
   }
 
-  handleNotificationClick(notification: any) {
-    // Mark notification as read
-    this.markNotificationAsRead(notification.id);
-    
-    // Close notification dropdown
-    this.showNotificationDropdown = false;
-    
-    // Navigate to orders page with notification ID
-    if (notification.related_booking) {
-      this.router.navigate(['/orders'], { 
-        queryParams: { notification: notification.id } 
-      });
-    } else {
-      // If no related booking, just go to orders page
+  async handleNotificationClick(notification: any) {
+    try {
+      // Mark specific notification as read
+      await this.collectionService.markNotificationAsRead(notification.id);
+      
+      // Remove from notification list immediately for better UX
+      this.notifications = this.notifications.filter(n => n.id !== notification.id);
+      
+      // Update notification badge count
+      this.unreadNotifications = Math.max(0, this.unreadNotifications - 1);
+      
+      // Close notification dropdown
+      this.showNotificationDropdown = false;
+      
+      // Redirect to /orders
+      this.router.navigate(['/orders']);
+      
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+      // Fallback: still navigate to orders even if marking as read fails
+      this.showNotificationDropdown = false;
       this.router.navigate(['/orders']);
     }
   }
 
-  toggleNotificationDropdown() {
+  async markAllAsRead() {
+    try {
+      // Mark all notifications as read
+      await this.collectionService.markAllNotificationsAsRead();
+      
+      // Clear notification dropdown immediately for better UX
+      this.notifications = [];
+      
+      // Reset badge count to 0
+      this.unreadNotifications = 0;
+      
+      // Close the dropdown
+      this.showNotificationDropdown = false;
+      
+      // Reload notifications to ensure consistency (should be empty now)
+      await this.loadNotifications();
+      
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  }
+
+  async toggleNotificationDropdown() {
     this.showNotificationDropdown = !this.showNotificationDropdown;
+    
+    // Refresh notifications when opening dropdown to ensure latest data
+    if (this.showNotificationDropdown && this.isLoggedIn) {
+      await this.loadNotifications();
+    }
   }
 
   toggleUserDropdown(): void {

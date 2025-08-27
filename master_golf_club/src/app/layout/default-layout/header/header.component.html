@@ -86,8 +86,19 @@
           <!-- Notification dropdown menu -->
           <ul class="dropdown-menu notification-menu" [class.show]="showNotificationDropdown">
             <li class="dropdown-header">
-              <span>Notifications</span>
-              <span class="unread-count" *ngIf="unreadNotifications > 0">{{unreadNotifications}} unread</span>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <span>Notifications</span>
+                  <span class="unread-count" *ngIf="unreadNotifications > 0">{{unreadNotifications}} unread</span>
+                </div>
+                <button 
+                  *ngIf="notifications.length > 0 && unreadNotifications > 0"
+                  class="btn btn-sm btn-outline-primary mark-all-read-btn"
+                  (click)="markAllAsRead(); $event.stopPropagation()"
+                  title="Mark All as Read">
+                  Mark All Read
+                </button>
+              </div>
             </li>
             <li *ngFor="let notification of notifications" 
                 class="notification-item"
