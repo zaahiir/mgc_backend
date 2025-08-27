@@ -286,10 +286,10 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     setTimeout(() => {
-      // Initialize with current date (2025)
-      const now = new Date();
-      this.currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      this.selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      // Initialize with current UK date
+      const ukNow = this.getCurrentUKTime();
+      this.currentDate = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+      this.selectedDate = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
       
       this.loadCourseData();
       this.generateCalendar();
@@ -437,13 +437,13 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
 
   // Date management
   setMinimumDate(): void {
-    // Use current date directly for minimum date
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Use UK time for minimum date
+    const ukNow = this.getCurrentUKTime();
+    const ukToday = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
     
-    if (this.selectedDate < today) {
-      this.selectedDate = new Date(today);
-      console.log('Minimum date set to today:', this.selectedDate.toDateString());
+    if (this.selectedDate < ukToday) {
+      this.selectedDate = new Date(ukToday);
+      console.log('Minimum date set to UK today:', this.selectedDate.toDateString());
     }
   }
 
@@ -534,45 +534,45 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
   }
 
   isToday(date: Date): boolean {
-    // Use current date directly for comparison
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    today.setHours(0, 0, 0, 0);
+    // Use UK time for comparison
+    const ukNow = this.getCurrentUKTime();
+    const ukToday = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    ukToday.setHours(0, 0, 0, 0);
     
     const checkDate = new Date(date);
     checkDate.setHours(0, 0, 0, 0);
     
-    return checkDate.getTime() === today.getTime();
+    return checkDate.getTime() === ukToday.getTime();
   }
 
   isSelectedDateToday(): boolean {
     if (!this.selectedDate) return false;
     
-    // Use the same reliable date comparison logic as filterTimeSlotsForDate
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    today.setHours(0, 0, 0, 0);
+    // Use UK time for consistent date comparison with filterTimeSlotsForDate
+    const ukNow = this.getCurrentUKTime();
+    const ukToday = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    ukToday.setHours(0, 0, 0, 0);
     
     const selectedDate = new Date(this.selectedDate);
     selectedDate.setHours(0, 0, 0, 0);
     
-    return selectedDate.getTime() === today.getTime();
+    return selectedDate.getTime() === ukToday.getTime();
   }
 
   isDayAvailable(date: Date): boolean {
-    // Use current date directly for calendar availability
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    today.setHours(0, 0, 0, 0);
+    // Use UK time for calendar availability
+    const ukNow = this.getCurrentUKTime();
+    const ukToday = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    ukToday.setHours(0, 0, 0, 0);
     
     const checkDate = new Date(date);
     checkDate.setHours(0, 0, 0, 0);
     
     // Only allow next 7 days from today (including today)
-    const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + 6);
+    const maxDate = new Date(ukToday);
+    maxDate.setDate(ukToday.getDate() + 6);
     
-    const isAvailable = checkDate >= today && checkDate <= maxDate;
+    const isAvailable = checkDate >= ukToday && checkDate <= maxDate;
     
     return isAvailable;
   }
@@ -681,24 +681,24 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       return [];
     }
     
-    // Use current date directly for comparison
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    today.setHours(0, 0, 0, 0);
+    // Use UK time for comparison
+    const ukNow = this.getCurrentUKTime();
+    const ukToday = new Date(ukNow.getFullYear(), ukNow.getMonth(), ukNow.getDate());
+    ukToday.setHours(0, 0, 0, 0);
     
     const selectedDate = new Date(this.selectedDate);
     selectedDate.setHours(0, 0, 0, 0);
     
     // Compare dates using time values (more reliable than toDateString)
-    const isToday = selectedDate.getTime() === today.getTime();
+    const isToday = selectedDate.getTime() === ukToday.getTime();
     
     if (!isToday) {
       // For all future dates, show all slots (no filtering)
       return slots;
     }
     
-    // Only for today, filter out slots that have already passed
-    const currentTime = now.getHours() * 60 + now.getMinutes();
+    // Only for today, filter out slots that have already passed using UK time
+    const ukCurrentTime = ukNow.getHours() * 60 + ukNow.getMinutes();
     
     const filteredSlots = slots.filter((slot: any) => {
       if (!slot || !slot.time) {
@@ -710,7 +710,7 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       
       // Round up to next 8-minute slot
       const slotDuration = 8;
-      const roundedCurrentTime = Math.ceil(currentTime / slotDuration) * slotDuration;
+      const roundedCurrentTime = Math.ceil(ukCurrentTime / slotDuration) * slotDuration;
       
       const isAvailable = slotTimeInMinutes >= roundedCurrentTime;
       
