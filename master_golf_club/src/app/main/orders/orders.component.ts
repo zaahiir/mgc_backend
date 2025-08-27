@@ -6,7 +6,8 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { CollectionService } from '../common-service/collection/collection.service';
 import { 
   faCalendarAlt, faSpinner, faExclamationTriangle, faTimes,
-  faCheckCircle, faUsers, faInfoCircle, faEye, faPlus, faCheck, faBan
+  faCheckCircle, faUsers, faInfoCircle, faEye, faPlus, faCheck, faBan,
+  faCalendarCheck, faHandshake
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Booking {
@@ -249,6 +250,13 @@ export class OrdersComponent implements OnInit {
     received_requests: []
   };
 
+  // Toggle and pagination properties
+  showBookingsOnly: boolean = true; // Toggle between bookings and requests
+  currentPage: number = 1;
+  itemsPerPage: number = 10;
+  totalPages: number = 1;
+  Math = Math; // Make Math available in template
+
   // Filter state
   selectedStatusFilter: string = 'all';
   statusFilters = [
@@ -270,6 +278,8 @@ export class OrdersComponent implements OnInit {
   plusIcon = faPlus;
   checkIcon = faCheck;
   banIcon = faBan;
+  calendarCheckIcon = faCalendarCheck;
+  handshakeIcon = faHandshake;
 
   // Enhanced Join Request Management
   incomingJoinRequests: JoinRequest[] = [];
@@ -571,21 +581,103 @@ export class OrdersComponent implements OnInit {
     this.showBookingDetails = true;
   }
 
-  // Enhanced filtering
+  // Enhanced filtering with toggle and pagination
   getFilteredBookings(): Booking[] {
     if (!this.bookings) return [];
 
+    let filtered = this.bookings;
+    
+    // Apply toggle filter first
+    if (this.showBookingsOnly) {
+      filtered = filtered.filter(booking => !booking.is_join_request);
+    } else {
+      filtered = filtered.filter(booking => booking.is_join_request);
+    }
+    
+    // Apply status filter
     switch (this.selectedStatusFilter) {
       case 'own_bookings':
-        return this.bookings.filter(b => b.displayType === 'own_booking');
+        return filtered.filter(b => b.displayType === 'own_booking');
       case 'sent_requests':
-        return this.bookings.filter(b => b.displayType === 'sent_request');
+        return filtered.filter(b => b.displayType === 'sent_request');
       case 'received_requests':
-        return this.bookings.filter(b => b.displayType === 'received_request');
+        return filtered.filter(b => b.displayType === 'received_request');
       case 'all':
       default:
-        return this.bookings;
+        return filtered;
     }
+  }
+
+  // Pagination methods
+  getPaginatedBookings(): Booking[] {
+    const filtered = this.getFilteredBookings();
+    this.updatePagination(filtered.length);
+    
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  }
+
+  updatePagination(totalItems: number) {
+    this.totalPages = Math.ceil(totalItems / this.itemsPerPage);
+    if (this.currentPage > this.totalPages && this.totalPages > 0) {
+      this.currentPage = this.totalPages;
+    }
+  }
+
+  goToPage(page: number) {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+    }
+  }
+
+  previousPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+    }
+  }
+
+  getPageNumbers(): number[] {
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(this.totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }
+
+  // Toggle methods
+  toggleBookingRequestView() {
+    this.showBookingsOnly = !this.showBookingsOnly;
+    this.currentPage = 1; // Reset to first page when toggling
+  }
+
+  setViewType(showBookings: boolean) {
+    this.showBookingsOnly = showBookings;
+    this.currentPage = 1; // Reset to first page when switching
+  }
+
+  getBookingsCount(): number {
+    if (!this.bookings) return 0;
+    return this.bookings.filter(booking => !booking.is_join_request).length;
+  }
+
+  getRequestsCount(): number {
+    if (!this.bookings) return 0;
+    return this.bookings.filter(booking => booking.is_join_request).length;
   }
 
   // Refresh data method

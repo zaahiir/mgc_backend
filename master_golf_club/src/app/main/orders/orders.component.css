@@ -1,7 +1,237 @@
 /* Orders Component Styles */
+:root {
+  --theme-color-rgb: 40, 167, 69; /* Default green theme color RGB values */
+}
+
 .orders-container {
   min-height: 100vh;
   background-color: #f8f9fa;
+}
+
+/* Optimized Toggle Section */
+.view-toggle-section {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.toggle-info h6 {
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.toggle-info small {
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.optimized-toggle-container {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-options {
+  display: flex;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.toggle-option {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #6c757d;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.toggle-option:hover {
+  color: var(--theme-color);
+  background: rgba(var(--theme-color-rgb), 0.1);
+}
+
+.toggle-option.active {
+  background: var(--theme-color);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.toggle-option .count {
+  background: rgba(255,255,255,0.2);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 8px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.toggle-option.active .count {
+  background: rgba(255,255,255,0.3);
+  color: white;
+}
+
+.toggle-option:not(.active) .count {
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+.toggle-option i {
+  font-size: 0.85rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .view-toggle-section .d-flex {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  
+  .toggle-info {
+    text-align: center;
+    margin-bottom: 15px;
+  }
+  
+  .optimized-toggle-container {
+    justify-content: center;
+  }
+  
+  .toggle-option {
+    min-width: 120px;
+    padding: 10px 16px;
+  }
+}
+
+/* Pagination Styles */
+.pagination-controls {
+  margin-top: 20px;
+  padding: 15px 0;
+  border-top: 1px solid #dee2e6;
+}
+
+.pagination-info {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.pagination .page-link {
+  color: var(--theme-color);
+  border-color: #dee2e6;
+  padding: 8px 12px;
+}
+
+.pagination .page-link:hover {
+  color: white;
+  background-color: var(--theme-color);
+  border-color: var(--theme-color);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--theme-color);
+  border-color: var(--theme-color);
+  color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+  color: #6c757d;
+  background-color: #fff;
+  border-color: #dee2e6;
+}
+
+/* Enhanced Participant Details Styles */
+.participant-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.participant-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-color: var(--theme-color);
+}
+
+.participant-info h6 {
+  color: #333;
+  font-weight: 600;
+}
+
+.participant-info .fas {
+  color: var(--theme-color);
+}
+
+.participant-count .badge {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.joined-member-details small {
+  font-size: 0.8rem;
+}
+
+.joined-member-details .fas {
+  font-size: 0.75rem;
+}
+
+.original-booker-details small {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.booking-summary {
+  background-color: #f8f9fa !important;
+  border: 1px solid #e9ecef;
+}
+
+.booking-summary strong {
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.booking-summary .badge {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+/* Badge color variations */
+.badge-primary {
+  background-color: var(--theme-color);
+  color: white;
+}
+
+.badge-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.badge-info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.badge-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
 }
 
 /* Page Header */

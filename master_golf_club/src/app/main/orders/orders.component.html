@@ -207,6 +207,36 @@
           </div>
         </div>
 
+        <!-- View Type Toggle - Separate Section -->
+        <div class="view-toggle-section">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="toggle-info">
+              <h6 class="mb-1">View Type</h6>
+              <small class="text-muted">Switch between your bookings and join requests</small>
+            </div>
+            <div class="optimized-toggle-container">
+              <div class="toggle-options">
+                <button 
+                  class="toggle-option" 
+                  [class.active]="showBookingsOnly"
+                  (click)="setViewType(true)">
+                  <i class="fas fa-calendar-check me-2"></i>
+                  My Bookings
+                  <span class="count">{{getBookingsCount()}}</span>
+                </button>
+                <button 
+                  class="toggle-option" 
+                  [class.active]="!showBookingsOnly"
+                  (click)="setViewType(false)">
+                  <i class="fas fa-handshake me-2"></i>
+                  Join Requests
+                  <span class="count">{{getRequestsCount()}}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Bookings Table -->
         <div class="bookings-table" *ngIf="!isEmptyState() && !isLoading">
           <div class="table-responsive">
@@ -225,7 +255,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let booking of getFilteredBookings()" [class]="getStatusClass(booking.status)">
+                <tr *ngFor="let booking of getPaginatedBookings()" [class]="getStatusClass(booking.status)">
                   <td>
                     <strong>{{booking.is_join_request ? (booking.request_id || booking.booking_id) : booking.booking_id}}</strong>
                     <span *ngIf="booking.hasMultipleSlots" class="badge badge-info ms-1">
@@ -297,6 +327,34 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Pagination Controls -->
+          <div class="pagination-controls d-flex justify-content-between align-items-center mt-3" *ngIf="totalPages > 1">
+            <div class="pagination-info">
+              <span>Showing {{((currentPage - 1) * itemsPerPage) + 1}} to {{Math.min(currentPage * itemsPerPage, getFilteredBookings().length)}} of {{getFilteredBookings().length}} entries</span>
+            </div>
+            <nav aria-label="Page navigation">
+              <ul class="pagination mb-0">
+                <li class="page-item" [class.disabled]="currentPage === 1">
+                  <button class="page-link" (click)="previousPage()" [disabled]="currentPage === 1">
+                    Previous
+                  </button>
+                </li>
+                <li class="page-item" 
+                    *ngFor="let page of getPageNumbers()" 
+                    [class.active]="page === currentPage">
+                  <button class="page-link" (click)="goToPage(page)">
+                    {{page}}
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="currentPage === totalPages">
+                  <button class="page-link" (click)="nextPage()" [disabled]="currentPage === totalPages">
+                    Next
+                  </button>
+                </li>
+              </ul>
+            </nav>
           </div>
         </div>
 
@@ -450,23 +508,82 @@
           <p><strong>Participants:</strong> {{getParticipantDisplayText(selectedBooking)}}</p>
           
           <!-- Show detailed participant information for merged bookings -->
-          <div *ngIf="selectedBooking.allParticipantsInfo && selectedBooking.allParticipantsInfo.length > 1" class="mt-3">
-            <h6>All Participants:</h6>
+          <div *ngIf="selectedBooking.allParticipantsInfo && selectedBooking.allParticipantsInfo.length > 0" class="mt-4">
+            <h6 class="mb-3">
+              <i class="fas fa-users me-2"></i>
+              {{selectedBooking.allParticipantsInfo.length > 1 ? 'All Participants' : 'Participant Details'}}
+            </h6>
             <div class="participants-list">
-              <div *ngFor="let participant of selectedBooking.allParticipantsInfo" class="participant-item p-2 border rounded mb-2">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <strong>{{participant.member_name}}</strong>
-                    <span class="badge" [class]="participant.is_original_booker ? 'badge-primary' : 'badge-success'">
-                      {{participant.is_original_booker ? 'Original Booker' : 'Joined'}}
+              <div *ngFor="let participant of selectedBooking.allParticipantsInfo; let i = index" 
+                   class="participant-card mb-3 p-3 border rounded shadow-sm">
+                
+                <!-- Participant Header -->
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div class="participant-info">
+                    <h6 class="mb-1">
+                      <i class="fas fa-user me-2"></i>
+                      {{participant.member_name}}
+                    </h6>
+                    <span class="badge me-2" 
+                          [class]="participant.is_original_booker ? 'badge-primary' : 'badge-success'">
+                      {{participant.is_original_booker ? 'Original Booker' : 'Joined Member'}}
+                    </span>
+                    <span class="badge badge-info">
+                      Member ID: {{participant.member_id}}
                     </span>
                   </div>
-                  <div class="text-muted">
-                    {{participant.participants}} participant{{participant.participants > 1 ? 's' : ''}}
+                  <div class="participant-count">
+                    <span class="badge badge-secondary fs-6">
+                      {{participant.participants}} participant{{participant.participants > 1 ? 's' : ''}}
+                    </span>
                   </div>
                 </div>
-                <div *ngIf="!participant.is_original_booker && participant.approved_at" class="small text-muted mt-1">
-                  Approved: {{participant.approved_at | date:'short'}}
+
+                <!-- Additional Details for Joined Members -->
+                <div *ngIf="!participant.is_original_booker" class="joined-member-details mt-2">
+                  <div class="row">
+                    <div class="col-md-6" *ngIf="participant.approved_at">
+                      <small class="text-muted">
+                        <i class="fas fa-check-circle me-1 text-success"></i>
+                        Approved: {{participant.approved_at | date:'medium'}}
+                      </small>
+                    </div>
+                    <div class="col-md-6" *ngIf="participant.join_request_id">
+                      <small class="text-muted">
+                        <i class="fas fa-link me-1"></i>
+                        Request ID: {{participant.join_request_id}}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Original Booker Details -->
+                <div *ngIf="participant.is_original_booker" class="original-booker-details mt-2">
+                  <small class="text-muted">
+                    <i class="fas fa-crown me-1 text-warning"></i>
+                    Booking Owner - Created this booking
+                  </small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Booking Summary -->
+            <div class="booking-summary mt-3 p-3 bg-light rounded">
+              <div class="row">
+                <div class="col-md-4">
+                  <strong>Total Participants:</strong>
+                  <span class="ms-2">{{selectedBooking.participants}}</span>
+                </div>
+                <div class="col-md-4" *ngIf="selectedBooking.maxParticipants">
+                  <strong>Max Capacity:</strong>
+                  <span class="ms-2">{{selectedBooking.maxParticipants}}</span>
+                </div>
+                <div class="col-md-4" *ngIf="selectedBooking.availableSpots !== undefined">
+                  <strong>Available Spots:</strong>
+                  <span class="ms-2 badge" 
+                        [class]="selectedBooking.availableSpots > 0 ? 'badge-success' : 'badge-warning'">
+                    {{selectedBooking.availableSpots}}
+                  </span>
                 </div>
               </div>
             </div>
