@@ -490,7 +490,12 @@ export class CollectionService {
   // Create join request for partially available slot
   createJoinRequest(joinRequestData: { course: number; tee: number; slotDate: string; bookingTime: string; participants: number; originalSlotParticipants: number; }) {
     const url = `${this.apiUrl}booking/create_join_request/`;
-    const config: any = {};
+    const config: any = {
+      validateStatus: function (status: number) {
+        // Don't throw error for 400 status (duplicate request)
+        return status >= 200 && status < 500;
+      }
+    };
     
     // Add authorization headers if available
     const token = localStorage.getItem('access_token');

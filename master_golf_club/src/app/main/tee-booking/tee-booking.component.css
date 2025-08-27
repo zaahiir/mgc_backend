@@ -2156,6 +2156,18 @@
   font-weight: bold;
 }
 
+.status-existing {
+  color: #f39c12;
+  font-weight: bold;
+}
+
+.existing-request-info {
+  color: #f39c12;
+  font-style: italic;
+  margin-top: 4px;
+  display: block;
+}
+
 /* Multi-select controls */
 .multi-select-controls {
   display: flex !important;

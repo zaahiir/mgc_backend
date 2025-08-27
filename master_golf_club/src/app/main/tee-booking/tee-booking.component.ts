@@ -112,6 +112,8 @@ interface BookingConfirmationData {
     teeId?: number;
     status?: string;
     isJoinRequest?: boolean;
+    isExistingRequest?: boolean;
+    existingStatus?: string;
     originalSlotParticipants?: number;
   }>;
   courseName?: string;
@@ -137,6 +139,8 @@ interface BookingConfirmationData {
       courseName: string;
     };
     isJoinRequest?: boolean;
+    isExistingRequest?: boolean;
+    existingStatus?: string;
     originalSlotParticipants?: number;
   }>;
   individualBookingIds?: string[];
@@ -307,6 +311,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
       
       // Setup navigation event handlers
       this.setupNavigationHandlers();
+      
+      // Load existing join requests to prevent duplicates
+      // this.loadExistingJoinRequests(); // Method doesn't exist
     }, 100);
   }
 
@@ -1310,25 +1317,30 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             const response = await this.collectionService.createJoinRequest(joinRequestData);
             
             if (response && response.data && response.data.code === 1) {
-              joinRequests.push({
-                ...response,
-                slotType: 'join_request',
-                slot: slot
-              });
-            } else {
-              // Handle specific error cases with better user feedback
-              let errorMessage = response?.data?.message || 'Failed to create join request';
-              let errorDetails = '';
-              
-              if (response?.data?.data?.existingRequestId) {
-                errorMessage = 'You already have a request for this slot';
-                errorDetails = `Request ID: ${response.data.data.existingRequestId}, Status: ${response.data.data.existingStatus}, Participants: ${response.data.data.existingParticipants}`;
+              // Check if this is an existing request response
+              if (response.data.data?.type === 'existing_request') {
+                // Handle existing request as a special type of join request
+                joinRequests.push({
+                  ...response,
+                  slotType: 'existing_request',
+                  slot: slot,
+                  existingRequestData: response.data.data
+                });
+              } else {
+                // Normal join request
+                joinRequests.push({
+                  ...response,
+                  slotType: 'join_request',
+                  slot: slot
+                });
               }
+            } else {
+              // Handle actual errors
+              let errorMessage = response?.data?.message || 'Failed to create join request';
               
               failedBookings.push({
                 slot,
                 error: errorMessage,
-                errorDetails: errorDetails,
                 slotType: 'join_request'
               });
             }
@@ -1399,6 +1411,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
             courseName: string;
           };
           isJoinRequest?: boolean;
+          isExistingRequest?: boolean;
+          existingStatus?: string;
           originalSlotParticipants?: number;
         }> = [];
         
@@ -1448,28 +1462,54 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
           }
         });
         
-        // Add join requests
+        // Add join requests (including existing requests)
         joinRequests.forEach((response, index) => {
-          const slot = partiallyAvailableSlots[index];
+          const slot = response.slot; // Use slot from response instead of index
           const requestData = response.data.data;
-          slotBookings.push({
-            id: requestData.requestId || requestData.id,
-            booking_id: requestData.requestId || requestData.id,
-            slot_date: slot.slot_date,
-            booking_time: slot.time,
-            participants: slot.participants,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-            formatted_created_date: this.formatDateForDisplayUK(new Date()),
-            tee: {
-              holeNumber: slot.tee.holeNumber
-            },
-            course: {
-              courseName: this.course.name
-            },
-            isJoinRequest: true,
-            originalSlotParticipants: slot.currentParticipants || 0
-          });
+          
+          // Handle existing requests differently
+          if (response.slotType === 'existing_request') {
+            slotBookings.push({
+              id: requestData.existingRequestId,
+              booking_id: requestData.existingRequestId,
+              slot_date: requestData.slotDate || slot.slot_date,
+              booking_time: requestData.bookingTime || slot.time,
+              participants: requestData.existingParticipants || slot.participants,
+              status: 'existing_request',
+              created_at: new Date().toISOString(),
+              formatted_created_date: this.formatDateForDisplayUK(new Date()),
+              tee: {
+                holeNumber: slot.tee.holeNumber
+              },
+              course: {
+                courseName: requestData.courseName || this.course.name
+              },
+              isJoinRequest: true,
+              isExistingRequest: true,
+              existingStatus: requestData.existingStatus,
+              originalSlotParticipants: slot.currentParticipants || 0
+            });
+          } else {
+            // Handle new join requests
+            slotBookings.push({
+              id: requestData.requestId || requestData.id,
+              booking_id: requestData.requestId || requestData.id,
+              slot_date: slot.slot_date,
+              booking_time: slot.time,
+              participants: slot.participants,
+              status: 'pending',
+              created_at: new Date().toISOString(),
+              formatted_created_date: this.formatDateForDisplayUK(new Date()),
+              tee: {
+                holeNumber: slot.tee.holeNumber
+              },
+              course: {
+                courseName: this.course.name
+              },
+              isJoinRequest: true,
+              originalSlotParticipants: slot.currentParticipants || 0
+            });
+          }
         });
         
         // Determine if this is a multi-slot booking
@@ -1561,8 +1601,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         };
       } else if (pendingCount > 0 && confirmedCount === 0 && addParticipantsCount === 0) {
         return {
-          title: 'Your tee time has been Requested!',
-          subtitle: `${pendingCount} request${pendingCount > 1 ? 's' : ''} created`,
+          title: 'Your tee time requests have been processed!',
+          subtitle: `${pendingCount} request${pendingCount > 1 ? 's' : ''} processed`,
           type: 'multi_request'
         };
       } else if (addParticipantsCount > 0 && confirmedCount === 0 && pendingCount === 0) {
@@ -1588,8 +1628,8 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         };
       } else if (pendingCount > 0 && confirmedCount === 0 && addParticipantsCount === 0) {
         return {
-          title: 'Your tee time has been Requested!',
-          subtitle: `${pendingCount} request${pendingCount > 1 ? 's' : ''} created`,
+          title: 'Your tee time request has been processed!',
+          subtitle: `${pendingCount} request${pendingCount > 1 ? 's' : ''} processed`,
           type: 'single_partial_request'
         };
       } else if (addParticipantsCount > 0 && confirmedCount === 0 && pendingCount === 0) {
@@ -1622,17 +1662,23 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
     participants: number;
     isJoinRequest: boolean;
     isAddParticipants: boolean;
+    isExistingRequest?: boolean;
+    existingStatus?: string;
   }> {
     return selectedSlots.map((slot, index) => {
       const booking = slotBookings[index];
       const isJoinRequest = slot.isJoinRequest || false;
       const isAddParticipants = slot.isOwnBooking || false;
+      const isExistingRequest = booking?.isExistingRequest || false;
       
       // Determine status and status text
       let status: string;
       let statusText: string;
       
-      if (isJoinRequest) {
+      if (isExistingRequest) {
+        status = 'existing_request';
+        statusText = `Already Requested (${booking.existingStatus})`;
+      } else if (isJoinRequest) {
         status = 'pending';
         statusText = 'Pending';
       } else if (isAddParticipants) {
@@ -1652,7 +1698,9 @@ export class TeeBookingComponent implements OnInit, OnDestroy {
         statusText: statusText,
         participants: slot.participants,
         isJoinRequest,
-        isAddParticipants
+        isAddParticipants,
+        isExistingRequest,
+        existingStatus: booking?.existingStatus
       };
     });
   }

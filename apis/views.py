@@ -3004,15 +3004,22 @@ class BookingViewSet(viewsets.ModelViewSet):
             ).first()
             
             if existing_request:
+                # Return success response with existing request info for confirmation modal
                 return Response({
-                    'code': 0,
+                    'code': 1,
                     'message': 'You already have a request for this slot',
                     'data': {
+                        'type': 'existing_request',
                         'existingRequestId': existing_request.request_id,
                         'existingStatus': existing_request.status,
-                        'existingParticipants': existing_request.participants
+                        'existingParticipants': existing_request.participants,
+                        'originalBookingId': original_booking.booking_id,
+                        'slotDate': original_booking.slot_date.strftime('%Y-%m-%d') if original_booking.slot_date else None,
+                        'bookingTime': original_booking.booking_time.strftime('%H:%M') if original_booking.booking_time else None,
+                        'courseName': original_booking.course.courseName if original_booking.course else None,
+                        'teeInfo': f"{original_booking.tee.holeNumber} Holes" if original_booking.tee else None
                     }
-                }, status=400)
+                })
             
             # Create the join request using the new JoinRequestModel
             from apis.models import JoinRequestModel

@@ -599,6 +599,18 @@
                   <span class="slot-time">{{slot.time}}</span>
                   <span class="slot-date">{{slot.date}}</span>
                   <span class="slot-participants">{{slot.participants}}p</span>
+                  <span class="slot-status" 
+                        [class.status-confirmed]="slot.status === 'confirmed'"
+                        [class.status-pending]="slot.status === 'pending'"
+                        [class.status-existing]="slot.status === 'existing_request'"
+                        [class.status-completed]="slot.status === 'completed'">
+                    {{slot.statusText}}
+                  </span>
+                </div>
+                <div class="slot-additional-info" *ngIf="slot.isExistingRequest">
+                  <small class="existing-request-info">
+                    You already have a {{slot.existingStatus}} request for this slot.
+                  </small>
                 </div>
               </div>
             </div>
