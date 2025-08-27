@@ -594,16 +594,197 @@
            
 
            
-           <!-- Show requester information for incoming join requests -->
-           <div *ngIf="selectedBooking.isIncomingRequest && selectedBooking.status === 'pending_approval'" class="mt-4">
-             <h6>Join Request Information:</h6>
-             <div class="alert alert-info">
-               <p><strong>Requester:</strong> {{selectedBooking.requesterName || 'Unknown Member'}}</p>
-               <p><strong>Requested Participants:</strong> {{selectedBooking.participants}} participant{{selectedBooking.participants > 1 ? 's' : ''}}</p>
-               <p><strong>Request Date:</strong> {{formatDate(selectedBooking.createdAt || selectedBooking.requestDate || selectedBooking.formattedDate)}}</p>
-               <p><strong>Request ID:</strong> {{selectedBooking.request_id || selectedBooking.booking_id}}</p>
-             </div>
-           </div>
+                     <!-- Enhanced Member Details for Request Records -->
+          <div *ngIf="selectedBooking.is_join_request || selectedBooking.isIncomingRequest" class="mt-4">
+            <h6 class="mb-3">
+              <i class="fas fa-users me-2"></i>
+              Member Information
+            </h6>
+            
+            <!-- Request Member Details -->
+            <div class="member-details-card request-member mb-3">
+              <div class="member-card-header">
+                <div class="member-icon">
+                  <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="member-title">
+                  <h6 class="mb-1">Request Member</h6>
+                  <span class="member-subtitle">Member who requested to join</span>
+                </div>
+              </div>
+              <div class="member-card-content">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-user"></i>
+                      <div class="info-content">
+                        <span class="info-label">Name</span>
+                        <span class="info-value">{{selectedBooking.requesterName || selectedBooking.memberName || selectedBooking.memberFullName || 'Unknown Member'}}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-id-card"></i>
+                      <div class="info-content">
+                        <span class="info-label">Member ID</span>
+                        <span class="info-value">{{selectedBooking.requesterMemberId || selectedBooking.member || 'N/A'}}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-calendar-alt"></i>
+                      <div class="info-content">
+                        <span class="info-label">Request Date</span>
+                        <span class="info-value">{{formatDate(selectedBooking.createdAt || selectedBooking.requestDate || selectedBooking.formattedDate)}}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-users"></i>
+                      <div class="info-content">
+                        <span class="info-label">Requested Participants</span>
+                        <span class="info-value">{{selectedBooking.participants}} participant{{selectedBooking.participants > 1 ? 's' : ''}}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row" *ngIf="selectedBooking.requesterEmail">
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-envelope"></i>
+                      <div class="info-content">
+                        <span class="info-label">Email</span>
+                        <span class="info-value">{{selectedBooking.requesterEmail}}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-hashtag"></i>
+                      <div class="info-content">
+                        <span class="info-label">Request ID</span>
+                        <span class="info-value">{{selectedBooking.request_id || selectedBooking.booking_id}}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Accepting Member Details (Original Booker) -->
+            <div class="member-details-card accepting-member mb-3" *ngIf="selectedBooking.originalBookerName || selectedBooking.originalBookerId">
+              <div class="member-card-header">
+                <div class="member-icon">
+                  <i class="fas fa-user-check"></i>
+                </div>
+                <div class="member-title">
+                  <h6 class="mb-1">Accepting Member</h6>
+                  <span class="member-subtitle">Original booker who can accept/reject</span>
+                </div>
+              </div>
+              <div class="member-card-content">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-user"></i>
+                      <div class="info-content">
+                        <span class="info-label">Name</span>
+                        <span class="info-value">{{selectedBooking.originalBookerName || 'Original Booker'}}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-id-card"></i>
+                      <div class="info-content">
+                        <span class="info-label">Member ID</span>
+                        <span class="info-value">{{selectedBooking.originalBookerId || 'N/A'}}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-crown"></i>
+                      <div class="info-content">
+                        <span class="info-label">Role</span>
+                        <span class="info-value">Original Booking Owner</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6" *ngIf="selectedBooking.approvedBy || selectedBooking.approvedAt">
+                    <div class="member-info-item">
+                      <i class="fas fa-check-circle"></i>
+                      <div class="info-content">
+                        <span class="info-label">Action Date</span>
+                        <span class="info-value">{{formatDate(selectedBooking.approvedAt)}}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row" *ngIf="selectedBooking.originalBookingId">
+                  <div class="col-md-6">
+                    <div class="member-info-item">
+                      <i class="fas fa-link"></i>
+                      <div class="info-content">
+                        <span class="info-label">Original Booking ID</span>
+                        <span class="info-value">{{selectedBooking.originalBookingId}}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6" *ngIf="selectedBooking.currentSlotStatus">
+                    <div class="member-info-item">
+                      <i class="fas fa-info-circle"></i>
+                      <div class="info-content">
+                        <span class="info-label">Current Participants</span>
+                        <span class="info-value">{{selectedBooking.currentSlotStatus.currentParticipants}} / {{selectedBooking.currentSlotStatus.maxParticipants}}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Request Status Information -->
+            <div class="request-status-card">
+              <div class="status-header">
+                <i class="fas fa-info-circle me-2"></i>
+                Request Status Information
+              </div>
+              <div class="status-content">
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="status-item">
+                      <span class="status-label">Current Status</span>
+                      <span class="status-value" [class]="getStatusBadgeClass(selectedBooking)">
+                        {{getStatusDisplayText(selectedBooking)}}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="col-md-4" *ngIf="selectedBooking.totalParticipantsIfApproved">
+                    <div class="status-item">
+                      <span class="status-label">Total If Approved</span>
+                      <span class="status-value">{{selectedBooking.totalParticipantsIfApproved}} participants</span>
+                    </div>
+                  </div>
+                  <div class="col-md-4" *ngIf="selectedBooking.currentSlotStatus">
+                    <div class="status-item">
+                      <span class="status-label">Available Spots</span>
+                      <span class="status-value" [class]="selectedBooking.currentSlotStatus.availableSlots > 0 ? 'text-success' : 'text-warning'">
+                        {{selectedBooking.currentSlotStatus.availableSlots}} remaining
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
            
            <!-- Show accept/reject buttons for incoming join requests -->
            <div *ngIf="selectedBooking.isIncomingRequest && selectedBooking.status === 'pending_approval'" class="mt-4">

@@ -1310,3 +1310,180 @@
 .booking-details {
   border-left-color: #4CAF50;
 }
+
+/* Enhanced Member Details Cards */
+.member-details-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.member-details-card:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.member-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-bottom: 1px solid #e9ecef;
+}
+
+.member-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+.request-member .member-icon {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.accepting-member .member-icon {
+  background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.member-title h6 {
+  margin: 0;
+  color: var(--title-color);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.member-subtitle {
+  color: var(--text-color);
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.member-card-content {
+  padding: 1.25rem;
+}
+
+.member-info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid var(--theme-color);
+}
+
+.member-info-item:last-child {
+  margin-bottom: 0;
+}
+
+.member-info-item i {
+  color: var(--secondary-color);
+  font-size: 1rem;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: var(--text-color);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.info-value {
+  font-size: 0.9rem;
+  color: var(--title-color);
+  font-weight: 600;
+}
+
+/* Request Status Card */
+.request-status-card {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  border-radius: 12px;
+  border: 2px solid #2196f3;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.status-header {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: white;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.status-content {
+  padding: 1.25rem;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid rgba(33, 150, 243, 0.2);
+}
+
+.status-label {
+  font-size: 0.75rem;
+  color: var(--text-color);
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.status-value {
+  font-size: 0.95rem;
+  color: var(--title-color);
+  font-weight: 600;
+}
+
+/* Responsive Design for Member Cards */
+@media (max-width: 768px) {
+  .member-card-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  
+  .member-info-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .info-content {
+    align-items: center;
+  }
+  
+  .status-content .row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
