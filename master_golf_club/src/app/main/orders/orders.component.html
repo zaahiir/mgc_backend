@@ -212,7 +212,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <div class="toggle-info">
               <h6 class="mb-1">View Type</h6>
-              <small class="text-muted">Switch between your bookings and join requests</small>
+              <small class="text-muted">Switch between completed bookings and pending requests</small>
             </div>
             <div class="optimized-toggle-container">
               <div class="toggle-options">
@@ -228,8 +228,8 @@
                   class="toggle-option" 
                   [class.active]="!showBookingsOnly"
                   (click)="setViewType(false)">
-                  <i class="fas fa-handshake me-2"></i>
-                  Join Requests
+                  <i class="fas fa-clock me-2"></i>
+                  Pending Requests
                   <span class="count">{{getRequestsCount()}}</span>
                 </button>
               </div>

@@ -7,7 +7,7 @@ import { CollectionService } from '../common-service/collection/collection.servi
 import { 
   faCalendarAlt, faSpinner, faExclamationTriangle, faTimes,
   faCheckCircle, faUsers, faInfoCircle, faEye, faPlus, faCheck, faBan,
-  faCalendarCheck, faHandshake
+  faCalendarCheck, faHandshake, faClock
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Booking {
@@ -280,6 +280,7 @@ export class OrdersComponent implements OnInit {
   banIcon = faBan;
   calendarCheckIcon = faCalendarCheck;
   handshakeIcon = faHandshake;
+  clockIcon = faClock;
 
   // Enhanced Join Request Management
   incomingJoinRequests: JoinRequest[] = [];
@@ -589,9 +590,16 @@ export class OrdersComponent implements OnInit {
     
     // Apply toggle filter first
     if (this.showBookingsOnly) {
-      filtered = filtered.filter(booking => !booking.is_join_request);
+      // My Bookings: Show original bookings + accepted/rejected join requests
+      filtered = filtered.filter(booking => 
+        !booking.is_join_request || 
+        (booking.is_join_request && (booking.status === 'approved' || booking.status === 'rejected'))
+      );
     } else {
-      filtered = filtered.filter(booking => booking.is_join_request);
+      // Join Requests: Show only pending join requests
+      filtered = filtered.filter(booking => 
+        booking.is_join_request && booking.status === 'pending'
+      );
     }
     
     // Apply status filter
@@ -672,12 +680,19 @@ export class OrdersComponent implements OnInit {
 
   getBookingsCount(): number {
     if (!this.bookings) return 0;
-    return this.bookings.filter(booking => !booking.is_join_request).length;
+    // Count original bookings + accepted/rejected join requests
+    return this.bookings.filter(booking => 
+      !booking.is_join_request || 
+      (booking.is_join_request && (booking.status === 'approved' || booking.status === 'rejected'))
+    ).length;
   }
 
   getRequestsCount(): number {
     if (!this.bookings) return 0;
-    return this.bookings.filter(booking => booking.is_join_request).length;
+    // Count only pending join requests
+    return this.bookings.filter(booking => 
+      booking.is_join_request && booking.status === 'pending'
+    ).length;
   }
 
   // Refresh data method
