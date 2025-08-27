@@ -460,29 +460,21 @@
   width: 6px;
 }
 
-.stat-card.confirmed::before {
-  background: linear-gradient(135deg, var(--theme-color), #4CAF50);
-}
-
+.stat-card.confirmed::before,
 .stat-card.pending::before,
 .stat-card.pending-sent::before,
-.stat-card.pending-received::before {
-  background: linear-gradient(135deg, #FF9800, var(--secondary-color));
-}
-
+.stat-card.pending-received::before,
 .stat-card.approved::before,
 .stat-card.sent-accepted::before,
-.stat-card.received-accepted::before {
-  background: linear-gradient(135deg, #2196F3, var(--theme-color));
-}
-
-.stat-card.total::before {
-  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
-}
-
+.stat-card.received-accepted::before,
+.stat-card.total::before,
 .stat-card.rejected-received::before,
-.stat-card.rejected-sent::before {
-  background: linear-gradient(135deg, #F44336, var(--secondary-color));
+.stat-card.rejected-sent::before,
+.stat-card.incoming-pending::before,
+.stat-card.incoming-approved::before,
+.stat-card.outgoing-pending::before,
+.stat-card.outgoing-approved::before {
+  background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));
 }
 
 
@@ -508,34 +500,22 @@
   box-shadow: 0 8px 25px rgba(119, 169, 106, 0.3);
 }
 
-.stat-card.confirmed .stat-icon {
-  color: #4CAF50;
-  background: rgba(76, 175, 80, 0.1);
-}
-
+.stat-card.confirmed .stat-icon,
 .stat-card.pending .stat-icon,
 .stat-card.pending-sent .stat-icon,
-.stat-card.pending-received .stat-icon {
-  color: #FF9800;
-  background: rgba(255, 152, 0, 0.1);
-}
-
+.stat-card.pending-received .stat-icon,
 .stat-card.approved .stat-icon,
 .stat-card.sent-accepted .stat-icon,
-.stat-card.received-accepted .stat-icon {
-  color: #2196F3;
-  background: rgba(33, 150, 243, 0.1);
-}
-
-.stat-card.total .stat-icon {
+.stat-card.received-accepted .stat-icon,
+.stat-card.total .stat-icon,
+.stat-card.rejected-received .stat-icon,
+.stat-card.rejected-sent .stat-icon,
+.stat-card.incoming-pending .stat-icon,
+.stat-card.incoming-approved .stat-icon,
+.stat-card.outgoing-pending .stat-icon,
+.stat-card.outgoing-approved .stat-icon {
   color: var(--theme-color);
   background: rgba(119, 169, 106, 0.1);
-}
-
-.stat-card.rejected-received .stat-icon,
-.stat-card.rejected-sent .stat-icon {
-  color: #F44336;
-  background: rgba(244, 67, 54, 0.1);
 }
 
 
@@ -1474,6 +1454,20 @@
   font-size: 0.95rem;
   color: var(--title-color);
   font-weight: 600;
+}
+
+/* Status text without background */
+.status-text {
+  background: none !important;
+  color: var(--text-color) !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-weight: 600 !important;
+  border-radius: 0 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  display: inline !important;
 }
 
 /* Responsive Design for Member Cards */

@@ -511,6 +511,7 @@ class TeeSerializer(serializers.ModelSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     memberName = serializers.CharField(source='member.firstName', read_only=True)
     memberFullName = serializers.SerializerMethodField(read_only=True)
+    memberGolfClubId = serializers.SerializerMethodField(read_only=True)
     courseName = serializers.CharField(source='course.courseName', read_only=True)
     teeInfo = serializers.SerializerMethodField(read_only=True)
 
@@ -548,7 +549,7 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookingModel
         fields = [
-            'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'course', 'courseName',
+            'id', 'booking_id', 'member', 'memberName', 'memberFullName', 'memberGolfClubId', 'course', 'courseName',
             'tee', 'slot_date', 'booking_time', 'teeInfo', 'teeName', 'slotDate', 'bookingTime', 'formattedDate', 'endTime',
             'participants', 'status', 'notes', 'createdAt',
             'slotStatus', 'availableSpots', 'slotParticipantCount', 'canJoinSlot',
@@ -572,6 +573,19 @@ class BookingSerializer(serializers.ModelSerializer):
             return f"{obj.member.firstName} {obj.member.lastName}"
         except (TypeError, ValueError, AttributeError):
             return "Unknown Member"
+    
+    def get_memberGolfClubId(self, obj):
+        """Get member golf club ID"""
+        try:
+            if obj.member:
+                # First try golfClubId, then create a formatted ID from member ID
+                if obj.member.golfClubId and obj.member.golfClubId.strip():
+                    return obj.member.golfClubId
+                else:
+                    return f"MGC{obj.member.id:06d}"
+            return None
+        except (TypeError, ValueError, AttributeError):
+            return None
     
     def get_teeInfo(self, obj):
         """Get tee info with better null handling"""
@@ -884,7 +898,13 @@ class JoinRequestSerializer(serializers.ModelSerializer):
     def get_requesterMemberId(self, obj):
         """Get requester member ID"""
         try:
-            return obj.member.golfClubId or f"MEM{obj.member.id:06d}"
+            if obj.member:
+                # First try golfClubId, then create a formatted ID from member ID
+                if obj.member.golfClubId and obj.member.golfClubId.strip():
+                    return obj.member.golfClubId
+                else:
+                    return f"MGC{obj.member.id:06d}"
+            return "Unknown ID"
         except (TypeError, ValueError, AttributeError):
             return "Unknown ID"
     
@@ -925,9 +945,16 @@ class JoinRequestSerializer(serializers.ModelSerializer):
             return None
     
     def get_originalBookerId(self, obj):
-        """Get original booker ID"""
+        """Get original booker golf club ID"""
         try:
-            return obj.original_booking.member.id
+            member = obj.original_booking.member
+            if member:
+                # First try golfClubId, then create a formatted ID from member ID
+                if member.golfClubId and member.golfClubId.strip():
+                    return member.golfClubId
+                else:
+                    return f"MGC{member.id:06d}"
+            return None
         except (TypeError, ValueError, AttributeError):
             return None
     

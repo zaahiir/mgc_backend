@@ -493,9 +493,9 @@
       <div class="modal-body" *ngIf="selectedBooking">
         <div class="booking-info">
           <p><strong>Booking ID:</strong> {{selectedBooking.booking_id}}</p>
-          <p><strong>Member ID:</strong> {{selectedBooking.member || selectedBooking.requesterMemberId || 'N/A'}}</p>
+          <p><strong>Member ID:</strong> {{selectedBooking.memberGolfClubId || selectedBooking.requesterMemberId || 'N/A'}}</p>
           <p><strong>Status:</strong> 
-            <span [class]="getStatusBadgeClass(selectedBooking)">
+            <span class="status-text">
               {{getStatusDisplayText(selectedBooking)}}
             </span>
           </p>
@@ -629,7 +629,7 @@
                       <i class="fas fa-id-card"></i>
                       <div class="info-content">
                         <span class="info-label">Member ID</span>
-                        <span class="info-value">{{selectedBooking.requesterMemberId || selectedBooking.member || 'N/A'}}</span>
+                        <span class="info-value">{{selectedBooking.requesterMemberId || selectedBooking.memberGolfClubId || 'N/A'}}</span>
                       </div>
                     </div>
                   </div>
@@ -704,7 +704,7 @@
                       <i class="fas fa-id-card"></i>
                       <div class="info-content">
                         <span class="info-label">Member ID</span>
-                        <span class="info-value">{{selectedBooking.originalBookerId || 'N/A'}}</span>
+                        <span class="info-value">{{selectedBooking.originalBookerId || selectedBooking.memberGolfClubId || 'N/A'}}</span>
                       </div>
                     </div>
                   </div>
