@@ -290,6 +290,11 @@ export class OrdersComponent implements OnInit {
   selectedJoinRequest: JoinRequest | null = null;
   joinRequestAction: 'approve' | 'reject' = 'approve';
 
+  // Confirmation modal properties
+  showConfirmationModal: boolean = false;
+  confirmationAction: 'approve' | 'reject' = 'approve';
+  confirmationRequest: JoinRequest | null = null;
+
   constructor(
     private collectionService: CollectionService,
     private router: Router,
@@ -358,29 +363,31 @@ export class OrdersComponent implements OnInit {
       this.bookings.push({
         ...booking,
         isOwnBooking: true,
-        displayType: 'own_booking',
+        displayType: 'own_booking' as 'own_booking',
         statusType: this.getBookingStatusType(booking)
       });
     });
 
     // Add sent requests
     this.enhancedOrdersData.sent_requests.forEach(request => {
-      this.bookings.push({
+      const convertedBooking = {
         ...this.convertJoinRequestToBooking(request),
         isOwnBooking: false,
-        displayType: 'sent_request',
+        displayType: 'sent_request' as 'sent_request',
         statusType: this.getSentRequestStatusType(request)
-      });
+      };
+      this.bookings.push(convertedBooking);
     });
 
     // Add received requests
     this.enhancedOrdersData.received_requests.forEach(request => {
-      this.bookings.push({
+      const convertedBooking = {
         ...this.convertJoinRequestToBooking(request),
         isOwnBooking: false,
-        displayType: 'received_request',
+        displayType: 'received_request' as 'received_request',
         statusType: this.getReceivedRequestStatusType(request)
-      });
+      };
+      this.bookings.push(convertedBooking);
     });
 
     // Sort by creation date (newest first)
@@ -598,22 +605,28 @@ export class OrdersComponent implements OnInit {
     } else {
       // Join Requests: Show only pending join requests
       filtered = filtered.filter(booking => 
-        booking.is_join_request && booking.status === 'pending'
+        booking.is_join_request && booking.status === 'pending_approval'
       );
     }
     
     // Apply status filter
     switch (this.selectedStatusFilter) {
       case 'own_bookings':
-        return filtered.filter(b => b.displayType === 'own_booking');
+        filtered = filtered.filter(b => b.displayType === 'own_booking');
+        break;
       case 'sent_requests':
-        return filtered.filter(b => b.displayType === 'sent_request');
+        filtered = filtered.filter(b => b.displayType === 'sent_request');
+        break;
       case 'received_requests':
-        return filtered.filter(b => b.displayType === 'received_request');
+        filtered = filtered.filter(b => b.displayType === 'received_request');
+        break;
       case 'all':
       default:
-        return filtered;
+        // Keep all filtered results
+        break;
     }
+    
+    return filtered;
   }
 
   // Pagination methods
@@ -691,13 +704,50 @@ export class OrdersComponent implements OnInit {
     if (!this.bookings) return 0;
     // Count only pending join requests
     return this.bookings.filter(booking => 
-      booking.is_join_request && booking.status === 'pending'
+      booking.is_join_request && booking.status === 'pending_approval'
     ).length;
   }
 
   // Refresh data method
   refreshData() {
     this.loadEnhancedData();
+  }
+
+  // Confirmation modal methods
+  showConfirmationForApproval(request: JoinRequest) {
+    this.confirmationRequest = request;
+    this.confirmationAction = 'approve';
+    this.showConfirmationModal = true;
+  }
+
+  showConfirmationForRejection(request: JoinRequest) {
+    this.confirmationRequest = request;
+    this.confirmationAction = 'reject';
+    this.showConfirmationModal = true;
+  }
+
+  closeConfirmationModal() {
+    this.showConfirmationModal = false;
+    this.confirmationRequest = null;
+  }
+
+  async confirmAction() {
+    if (!this.confirmationRequest) return;
+
+    try {
+      if (this.confirmationAction === 'approve') {
+        await this.collectionService.approveJoinRequest(this.confirmationRequest.id);
+      } else {
+        await this.collectionService.rejectJoinRequest(this.confirmationRequest.id);
+      }
+      
+      // Close modal and refresh data
+      this.closeConfirmationModal();
+      this.refreshData();
+      
+    } catch (error) {
+      console.error(`Error ${this.confirmationAction}ing join request:`, error);
+    }
   }
 
   async loadOrderStatistics() {

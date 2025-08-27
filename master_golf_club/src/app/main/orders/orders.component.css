@@ -284,6 +284,51 @@
   color: #212529;
 }
 
+/* Confirmation Modal Styles */
+.confirmation-message {
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  margin: 15px 0;
+}
+
+.confirmation-message p {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.confirmation-message .text-success {
+  font-weight: 500;
+  padding: 10px;
+  background-color: rgba(40, 167, 69, 0.1);
+  border-radius: 6px;
+  border-left: 4px solid #28a745;
+}
+
+.confirmation-message .text-danger {
+  font-weight: 500;
+  padding: 10px;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-radius: 6px;
+  border-left: 4px solid #dc3545;
+}
+
+.modal-dialog-centered {
+  display: flex;
+  align-items: center;
+  min-height: calc(100% - 1rem);
+}
+
+.alert-info {
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+}
+
+.modal-header .text-warning {
+  color: #ffc107 !important;
+}
+
 /* Page Header */
 .page-header {
   background: linear-gradient(135deg, var(--theme-color), var(--secondary-color));

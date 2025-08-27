@@ -266,7 +266,7 @@
                   <td>{{booking.formattedDate}}</td>
                   <td>{{booking.courseName}}</td>
                   <td>{{booking.teeInfo}}</td>
-                  <td>{{formatDate(booking.slotDate)}}</td>
+                  <td>{{formatDate(booking.slotDate || booking.slot_date || booking.bookingDate)}}</td>
                   <td>{{booking.booking_time}}</td>
                   <td>
                     <span [class]="getStatusBadgeClass(booking)">
@@ -285,14 +285,14 @@
                         <!-- Accept/Reject buttons for pending received requests -->
                         <button 
                           class="btn btn-sm btn-success me-1"
-                          (click)="approveJoinRequest(booking)"
+                          (click)="showConfirmationForApproval(booking)"
                           title="Accept Request">
                           <fa-icon [icon]="checkIcon" class="me-1"></fa-icon>
                           Accept
                         </button>
                         <button 
                           class="btn btn-sm btn-danger"
-                          (click)="rejectJoinRequest(booking)"
+                          (click)="showConfirmationForRejection(booking)"
                           title="Reject Request">
                           <fa-icon [icon]="banIcon" class="me-1"></fa-icon>
                           Reject
@@ -305,8 +305,8 @@
                           class="btn btn-sm btn-primary"
                           (click)="showAddParticipantsModal(booking)"
                           title="Add Participants">
-                          <fa-icon [icon]="plusIcon" class="me-1"></fa-icon>
-                          + Add Participants
+                          <fa-icon class="me-1"></fa-icon>
+                          Add Participants
                         </button>
                       </ng-container>
                       
@@ -385,7 +385,7 @@
         <div class="booking-details mb-3">
           <p><strong>Course:</strong> {{selectedBookingForParticipants.courseName}}</p>
           <p><strong>Tee:</strong> {{selectedBookingForParticipants.teeInfo}}</p>
-          <p><strong>Date:</strong> {{formatDate(selectedBookingForParticipants.slot_date)}}</p>
+          <p><strong>Date:</strong> {{formatDate(selectedBookingForParticipants.slot_date || selectedBookingForParticipants.slotDate || selectedBookingForParticipants.bookingDate)}}</p>
           <p><strong>Time:</strong> {{selectedBookingForParticipants.booking_time}}</p>
           <p><strong>Current:</strong> {{selectedBookingForParticipants.participants}} participants</p>
           <p><strong>Available:</strong> {{4 - selectedBookingForParticipants.participants}} spots remaining</p>
@@ -407,7 +407,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeParticipantModal()">Cancel</button>
         <button type="button" class="btn btn-success" (click)="confirmAddParticipants()">
-          <fa-icon [icon]="plusIcon" class="me-1"></fa-icon>
+          <fa-icon class="me-1"></fa-icon>
           Add Participants
         </button>
       </div>
@@ -443,7 +443,7 @@
           <h6>Booking Details:</h6>
           <p><strong>Course:</strong> {{selectedJoinRequest.courseName}}</p>
           <p><strong>Tee:</strong> {{selectedJoinRequest.teeInfo}}</p>
-          <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slot_date)}}</p>
+          <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slot_date || selectedJoinRequest.slotDate || selectedJoinRequest.bookingDate)}}</p>
           <p><strong>Time:</strong> {{selectedJoinRequest.booking_time}}</p>
           <p><strong>Current Participants:</strong> {{getOriginalBookingParticipants(selectedJoinRequest)}} (Original Booking)</p>
           <p><strong>Requested Participants:</strong> {{selectedJoinRequest.participants}}</p>
@@ -501,7 +501,7 @@
           <p><strong>Booked Date:</strong> {{selectedBooking.formattedDate}}</p>
           <p><strong>Course:</strong> {{selectedBooking.courseName}}</p>
           <p><strong>Tee:</strong> {{selectedBooking.teeInfo}}</p>
-          <p><strong>Slot Date:</strong> {{formatDate(selectedBooking.slot_date)}}</p>
+          <p><strong>Slot Date:</strong> {{formatDate(selectedBooking.slot_date || selectedBooking.slotDate || selectedBooking.bookingDate)}}</p>
           <p><strong>Slot Time:</strong> {{selectedBooking.booking_time}}</p>
           <p><strong>Participants:</strong> {{getParticipantDisplayText(selectedBooking)}}</p>
           
@@ -592,15 +592,7 @@
              <p>This is part of a {{selectedBooking.totalSlots}}-slot booking (Slot {{selectedBooking.slotNumber}})</p>
            </div>
            
-           <!-- Debug information (temporary) -->
-           <div class="mt-4 p-3 bg-light border rounded">
-             <h6>Debug Information:</h6>
-             <p><strong>Is Join Request:</strong> {{selectedBooking.is_join_request}}</p>
-             <p><strong>Is Incoming Request:</strong> {{selectedBooking.isIncomingRequest}}</p>
-             <p><strong>Status:</strong> {{selectedBooking.status}}</p>
-             <p><strong>Original Booking:</strong> {{selectedBooking.original_booking}}</p>
-             <p><strong>Is Own Booking:</strong> {{selectedBooking.isOwnBooking}}</p>
-           </div>
+
            
            <!-- Show requester information for incoming join requests -->
            <div *ngIf="selectedBooking.isIncomingRequest && selectedBooking.status === 'pending_approval'" class="mt-4">
@@ -727,7 +719,7 @@
               <h6>Booking Details:</h6>
               <p><strong>Course:</strong> {{selectedJoinRequest.courseName}}</p>
               <p><strong>Tee:</strong> {{selectedJoinRequest.tee}}</p>
-              <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slotDate)}}</p>
+              <p><strong>Date:</strong> {{formatDate(selectedJoinRequest.slotDate || selectedJoinRequest.slot_date || selectedJoinRequest.bookingDate)}}</p>
               <p><strong>Time:</strong> {{selectedJoinRequest.slotTime}}</p>
             </div>
           </div>
@@ -774,4 +766,78 @@
 </div>
 
 <!-- Modal Backdrop -->
-<div class="modal-backdrop fade show" *ngIf="showParticipantModal || showJoinRequestModal || showBookingDetails || showPendingReviewModal || showJoinRequestModal"></div>
+<!-- Confirmation Modal -->
+<div class="modal fade" [class.show]="showConfirmationModal" [style.display]="showConfirmationModal ? 'block' : 'none'">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-question-circle me-2 text-warning"></i>
+          Confirm {{confirmationAction === 'approve' ? 'Approval' : 'Rejection'}}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeConfirmationModal()"></button>
+      </div>
+      <div class="modal-body" *ngIf="confirmationRequest">
+        <div class="alert alert-info">
+          <div class="row">
+            <div class="col-md-6">
+              <strong>Requester:</strong><br>
+              {{confirmationRequest.requesterName || confirmationRequest.memberName || confirmationRequest.memberFullName}}
+              <div *ngIf="confirmationRequest.requesterMemberId" class="mt-1">
+                <small class="text-muted">
+                  <i class="fas fa-id-card me-1"></i>
+                  Member ID: {{confirmationRequest.requesterMemberId}}
+                </small>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <strong>Participants:</strong><br>
+              {{confirmationRequest.requestedParticipants || confirmationRequest.participants}} participant{{(confirmationRequest.requestedParticipants || confirmationRequest.participants) > 1 ? 's' : ''}}
+            </div>
+          </div>
+          <div class="row mt-2">
+            <div class="col-md-6">
+              <strong>Course:</strong><br>
+              {{confirmationRequest.courseName}}
+            </div>
+            <div class="col-md-6">
+              <strong>Date & Time:</strong><br>
+              {{confirmationRequest.slotDate || confirmationRequest.bookingDate}} at {{confirmationRequest.slotTime || confirmationRequest.bookingTime}}
+            </div>
+          </div>
+        </div>
+        
+        <div class="confirmation-message text-center">
+          <p class="mb-3">
+            <strong>
+              Are you sure you want to {{confirmationAction === 'approve' ? 'approve' : 'reject'}} this join request?
+            </strong>
+          </p>
+          <div *ngIf="confirmationAction === 'approve'" class="text-success">
+            <i class="fas fa-check-circle me-2"></i>
+            This will add {{confirmationRequest.requestedParticipants}} participant{{confirmationRequest.requestedParticipants > 1 ? 's' : ''}} to your booking.
+          </div>
+          <div *ngIf="confirmationAction === 'reject'" class="text-danger">
+            <i class="fas fa-times-circle me-2"></i>
+            This request will be permanently rejected.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeConfirmationModal()">
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          class="btn"
+          [class]="confirmationAction === 'approve' ? 'btn-success' : 'btn-danger'"
+          (click)="confirmAction()">
+          <i class="fas" [class]="confirmationAction === 'approve' ? 'fa-check' : 'fa-times'" class="me-2"></i>
+          {{confirmationAction === 'approve' ? 'Approve Request' : 'Reject Request'}}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="showParticipantModal || showJoinRequestModal || showBookingDetails || showPendingReviewModal || showJoinRequestModal || showConfirmationModal"></div>
