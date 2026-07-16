@@ -410,6 +410,38 @@
     </div>
     <!-- ========== End Loading Page ========== -->
 
+    <!-- Fast preloader dismissal: hide as soon as the DOM is ready instead of
+         waiting for every image/font/iframe + the theme's percentage animation. -->
+    <style>
+        .preloader {
+            transition: opacity .4s ease, visibility .4s ease;
+        }
+        .preloader.preloader--hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+    </style>
+    <script>
+        (function () {
+            function hidePreloader() {
+                var p = document.querySelector('.preloader');
+                if (p) { p.classList.add('preloader--hidden'); }
+            }
+            // Hide shortly after the DOM is parsed (content is already usable).
+            if (document.readyState === 'interactive' || document.readyState === 'complete') {
+                setTimeout(hidePreloader, 200);
+            } else {
+                document.addEventListener('DOMContentLoaded', function () {
+                    setTimeout(hidePreloader, 200);
+                });
+            }
+            // Hard safety cap: never keep the loader on screen longer than 1.2s.
+            setTimeout(hidePreloader, 1200);
+            window.addEventListener('load', hidePreloader);
+        })();
+    </script>
+
     <div class="actions">
         <div class="regular slider">
             <div id="evnt" data-slide="1">
