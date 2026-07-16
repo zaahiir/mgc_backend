@@ -29,7 +29,9 @@
     <!-- JavaScript files -->
     <script src="{% static 'js/jquery-3.1.1.min.js' %}"></script>
     <script src="{% static 'js/jBox.all.min.js' %}"></script>
+    <!-- Unused on index: no .validate() call here (validation is bundled in plugins.min.js). Commented out, not deleted.
     <script src="{% static 'js/jquery.validate.js' %}"></script>
+    -->
 
 
     <style>
@@ -389,9 +391,11 @@
     </style>
 
 
-    <!-- Replace local jQuery reference with CDN -->
+    <!-- Unused on index: Bootstrap JS (no data-toggle/modal/collapse/dropdown/carousel used) and its
+         CDN jQuery. Removing these also drops two external requests. Commented out, not deleted.
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    -->
 </head>
 
 <body class="v-light dsn-effect-scroll dsn-ajax">
@@ -1146,7 +1150,9 @@
     <script src="{% static 'js/fullpage.js' %}"></script>
     <script src="{% static 'js/slick.js' %}"></script>
     <script src="{% static 'js/smooth-scrollbar.js' %}"></script>
+    <!-- Unused on index: waypoints not referenced anywhere (page or theme JS). Commented out, not deleted.
     <script src="{% static 'js/jquery.waypoints.js' %}"></script>
+    -->
 
 
     <script>
