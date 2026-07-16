@@ -2317,7 +2317,20 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': 'Join request not found'
                 }, status=404)
-            
+
+            # Enforce the course cut-off: expire instead of approving if the window passed
+            if join_request.is_expired_now():
+                join_request.status = 'expired'
+                join_request.save(update_fields=['status', 'updatedAt'])
+                NotificationModel.create_join_request_expired_notification(
+                    recipient=join_request.member,
+                    booking=original_booking,
+                )
+                return Response({
+                    'code': 0,
+                    'message': 'This request has expired and can no longer be approved.'
+                }, status=400)
+
             # Check if slot can accommodate the join request
             total_participants = original_booking.participants + join_request.participants
             if total_participants > 4:
@@ -2425,219 +2438,128 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def create_multi_slot_booking(self, request):
-        """Create a single booking with multiple slots for different time slots and tees"""
+        """Create one booking per slot for different time slots/tees.
+
+        Enforces the one-slot-per-time rule: two slots that share the same
+        date + time (even on different tees/courses) are rejected, and the
+        BookingSerializer additionally blocks clashes with existing bookings.
+        The whole batch is atomic - if any slot is invalid, nothing is saved.
+        """
+        from datetime import datetime
+        from django.db import transaction
+
         try:
             member = MemberModel.objects.get(email=request.user.email)
-            
-            # Validate request data
+
             slots_data = request.data.get('slots', [])
-            print(f"Received request data: {request.data}")
-            print(f"Slots data: {slots_data}")
-            print(f"Slots data type: {type(slots_data)}")
-            
             if not slots_data or not isinstance(slots_data, list):
                 return Response({
                     'code': 0,
                     'message': 'Slots data is required and must be a list'
                 }, status=400)
-            
-            # Use the first slot's data to create the main booking
-            first_slot = slots_data[0]
-            
-            # Validate required fields for the first slot
-            required_fields = ['course', 'tee', 'participants']
-            for field in required_fields:
-                if field not in first_slot:
-                    return Response({
-                        'code': 0,
-                        'message': f'Missing required field: {field}'
-                    }, status=400)
-            
-            # Create the main booking with the first slot's data
-            from .models import BookingModel
-            
-            # Create main booking data - use slot_date if available, otherwise use bookingDate for backward compatibility
-            slot_date = first_slot.get('slotDate') or first_slot.get('bookingDate')
-            if not slot_date:
-                return Response({
-                    'code': 0,
-                    'message': 'Either slotDate or bookingDate is required'
-                }, status=400)
-            
-            # Get the first slot's booking time for the main booking
-            first_booking_time = first_slot.get('bookingTime')
-            if not first_booking_time:
-                return Response({
-                    'code': 0,
-                    'message': 'bookingTime is required for the first slot'
-                }, status=400)
-            
-            # Convert date string to date object if needed
-            if isinstance(slot_date, str):
-                try:
-                    from datetime import datetime
-                    slot_date = datetime.strptime(slot_date, '%Y-%m-%d').date()
-                except ValueError:
-                    return Response({
-                        'code': 0,
-                        'message': 'Invalid date format. Expected YYYY-MM-DD'
-                    }, status=400)
-            
-            # Convert time string to time object if needed
-            if isinstance(first_booking_time, str):
-                try:
-                    from datetime import datetime
-                    first_booking_time = datetime.strptime(first_booking_time, '%H:%M').time()
-                except ValueError:
-                    return Response({
-                        'code': 0,
-                        'message': 'Invalid time format. Expected HH:MM'
-                    }, status=400)
-            
-            main_booking_data = {
-                'member': member.id,
-                'course': first_slot['course'],
-                'tee': first_slot['tee'],  # Add tee to main booking
-                'slot_date': slot_date,
-                'booking_time': first_booking_time,  # Add booking_time to main booking
-                'participants': first_slot['participants'],
-                'status': 'confirmed'
-            }
-            
-            print(f"Creating main booking with data: {main_booking_data}")
-            print(f"slot_date type: {type(slot_date)}, value: {slot_date}")
-            
-            # Create the main booking
-            main_booking_serializer = self.get_serializer(data=main_booking_data)
-            if not main_booking_serializer.is_valid():
-                print(f"Main booking serializer errors: {main_booking_serializer.errors}")
-                return Response({
-                    'code': 0,
-                    'message': f'Main booking validation error: {main_booking_serializer.errors}'
-                }, status=400)
-            
-            print(f"Main booking serializer is valid, attempting to save...")
-            main_booking = main_booking_serializer.save()
-            
-            print(f"Created main booking: ID={main_booking.id}, booking_id={main_booking.booking_id}")
-            
-            # Create individual bookings for all the requested times/tees
-            created_bookings = []
-            total_participants = 0
-            
+
+            # --- Parse + validate every slot up front (no writes yet) ---
+            parsed_slots = []
+            seen_times = {}  # (date, time) -> slot index, to catch same-time duplicates
             for i, slot_data in enumerate(slots_data):
-                # Validate slot data - support both old and new field names for backward compatibility
-                required_fields = ['course', 'tee', 'participants']
-                for field in required_fields:
+                for field in ['course', 'tee', 'participants']:
                     if field not in slot_data:
                         return Response({
                             'code': 0,
-                            'message': f'Missing required field: {field}'
+                            'message': f'Slot {i + 1}: Missing required field: {field}'
                         }, status=400)
-                
-                # Check for either slotDate/bookingDate and bookingTime
+
                 slot_date = slot_data.get('slotDate') or slot_data.get('bookingDate')
                 booking_time = slot_data.get('bookingTime')
-                
                 if not slot_date or not booking_time:
                     return Response({
                         'code': 0,
-                        'message': f'Slot {i + 1}: Either slotDate/bookingDate and bookingTime are required'
+                        'message': f'Slot {i + 1}: slotDate/bookingDate and bookingTime are required'
                     }, status=400)
-                
-                # Convert date string to date object if needed
+
                 if isinstance(slot_date, str):
                     try:
-                        from datetime import datetime
                         slot_date = datetime.strptime(slot_date, '%Y-%m-%d').date()
                     except ValueError:
                         return Response({
                             'code': 0,
                             'message': f'Slot {i + 1}: Invalid date format. Expected YYYY-MM-DD'
                         }, status=400)
-                
-                # Convert time string to time object if needed
                 if isinstance(booking_time, str):
                     try:
-                        from datetime import datetime
                         booking_time = datetime.strptime(booking_time, '%H:%M').time()
                     except ValueError:
                         return Response({
                             'code': 0,
                             'message': f'Slot {i + 1}: Invalid time format. Expected HH:MM'
                         }, status=400)
-                
+
                 # Validate tee exists
-                try:
-                    TeeModel.objects.get(id=slot_data['tee'])
-                except TeeModel.DoesNotExist:
+                if not TeeModel.objects.filter(id=slot_data['tee']).exists():
                     return Response({
                         'code': 0,
-                        'message': f'Tee with ID {slot_data["tee"]} not found'
+                        'message': f'Slot {i + 1}: Tee with ID {slot_data["tee"]} not found'
                     }, status=400)
-                
-                # Create individual booking for this slot
-                slot_booking_data = {
-                    'member': member.id,
+
+                # One slot per time: reject two selections at the same date + time
+                time_key = (slot_date, booking_time)
+                if time_key in seen_times:
+                    return Response({
+                        'code': 0,
+                        'message': (
+                            f'You selected more than one tee for {slot_date} at '
+                            f'{booking_time.strftime("%H:%M")}. You can only book one tee per time slot.'
+                        )
+                    }, status=400)
+                seen_times[time_key] = i
+
+                parsed_slots.append({
                     'course': slot_data['course'],
                     'tee': slot_data['tee'],
                     'slot_date': slot_date,
                     'booking_time': booking_time,
                     'participants': slot_data['participants'],
-                    'status': 'confirmed',
-                    'group_id': main_booking.booking_id,  # Link to main booking
-                    'hideStatus': 0
-                }
-                
-                print(f"Creating slot booking {i + 1} with data: {slot_booking_data}")
-                print(f"slot_date type: {type(slot_date)}, value: {slot_date}")
-                print(f"booking_time type: {type(booking_time)}, value: {booking_time}")
-                
-                # Create the individual booking
-                slot_booking_serializer = self.get_serializer(data=slot_booking_data)
-                if slot_booking_serializer.is_valid():
-                    print(f"Serializer is valid, attempting to save...")
-                    slot_booking = slot_booking_serializer.save()
-                    created_bookings.append(slot_booking)
-                    total_participants += slot_data['participants']
-                    
-                    print(f"Created slot booking {i + 1}: ID={slot_booking.id}, tee={slot_data['tee']} Holes, time={slot_booking.booking_time}")
-                else:
-                    print(f"Failed to create slot booking {i + 1}: {slot_booking_serializer.errors}")
-                    return Response({
-                        'code': 0,
-                        'message': f'Validation error for slot {i + 1}: {slot_booking_serializer.errors}'
-                    }, status=400)
-            
-            # Update main booking with totals
-            main_booking.participants = total_participants
-            main_booking.save()
-            
-            print(f"About to serialize main booking for response...")
-            print(f"main_booking.slot_date: {main_booking.slot_date}")
-            print(f"main_booking.booking_time: {main_booking.booking_time}")
-            print(f"main_booking.tee: {main_booking.tee}")
-            
-            # Get the updated booking data
-            try:
-                updated_serializer = self.get_serializer(main_booking)
-                booking_data = updated_serializer.data
-                print(f"Successfully serialized main booking data")
-            except Exception as serializer_error:
-                print(f"Error during serialization: {serializer_error}")
-                import traceback
-                print(f"Serialization traceback: {traceback.format_exc()}")
-                raise serializer_error
-            
-            # Prepare individual slot booking details for response
+                })
+
+            # --- Create one booking per slot atomically ---
+            created_bookings = []
+            total_participants = 0
+            with transaction.atomic():
+                for i, slot in enumerate(parsed_slots):
+                    booking_data = {
+                        'member': member.id,
+                        'course': slot['course'],
+                        'tee': slot['tee'],
+                        'slot_date': slot['slot_date'],
+                        'booking_time': slot['booking_time'],
+                        'participants': slot['participants'],
+                        'status': 'confirmed',
+                    }
+                    serializer = self.get_serializer(data=booking_data)
+                    if not serializer.is_valid():
+                        # Surface the first validation error (e.g. overlapping-time clash)
+                        errors = serializer.errors
+                        detail = errors.get('non_field_errors') or errors
+                        raise ValueError(f'Slot {i + 1}: {detail}')
+                    created_bookings.append(serializer.save())
+                    total_participants += slot['participants']
+
+                # Link every booking in the batch to the first one's ID
+                main_booking = created_bookings[0]
+                group_id = main_booking.booking_id
+                for booking in created_bookings:
+                    booking.group_id = group_id
+                    booking.save(update_fields=['group_id'])
+
+            # --- Build response ---
+            booking_data = self.get_serializer(main_booking).data
             slot_booking_details = []
             for slot_booking in created_bookings:
-                slot_serializer = self.get_serializer(slot_booking)
-                slot_details = slot_serializer.data
+                slot_details = self.get_serializer(slot_booking).data
                 slot_details['created_at'] = slot_booking.createdAt.isoformat() if slot_booking.createdAt else None
                 slot_details['formatted_created_date'] = slot_booking.createdAt.strftime('%d-%b-%Y') if slot_booking.createdAt else 'N/A'
                 slot_booking_details.append(slot_details)
-            
+
             return Response({
                 'code': 1,
                 'message': 'Multi-slot booking created successfully',
@@ -2646,11 +2568,17 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'singleBookingId': main_booking.booking_id,
                     'totalSlots': len(created_bookings),
                     'totalParticipants': total_participants,
-                    'slotBookings': slot_booking_details,  # Individual booking details for each slot
-                    'individualBookingIds': [slot.booking_id for slot in created_bookings]  # Individual booking IDs
+                    'slotBookings': slot_booking_details,
+                    'individualBookingIds': [slot.booking_id for slot in created_bookings]
                 }
             })
-            
+
+        except ValueError as ve:
+            # Validation failure raised inside the atomic block (batch rolled back)
+            return Response({
+                'code': 0,
+                'message': str(ve)
+            }, status=400)
         except Exception as e:
             import traceback
             print(f"Error creating multi-slot booking: {str(e)}")
@@ -5137,11 +5065,18 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
             ).select_related('member', 'original_booking', 'original_booking__course', 'original_booking__tee')
         except MemberModel.DoesNotExist:
             return JoinRequestModel.objects.none()
-    
+
+    def list(self, request, *args, **kwargs):
+        """List join requests (sweeps stale ones to 'expired' first)."""
+        JoinRequestModel.expire_stale_requests()
+        return super().list(request, *args, **kwargs)
+
     @action(detail=False, methods=['GET'], url_path='admin/all-requests')
     def admin_all_requests(self, request):
         """Admin endpoint to get all join requests across all members"""
         try:
+            # Expire any requests past their course cut-off before returning
+            JoinRequestModel.expire_stale_requests()
             # Get all join requests without member filtering
             all_requests = JoinRequestModel.objects.filter(
                 hideStatus=0
@@ -5168,8 +5103,9 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
     def incoming_requests(self, request):
         """Get incoming join requests for the current user's bookings"""
         try:
+            JoinRequestModel.expire_stale_requests()
             member = MemberModel.objects.get(email=request.user.email)
-            
+
             # Get join requests for bookings owned by the current user
             incoming_requests = JoinRequestModel.objects.filter(
                 original_booking__member=member,
@@ -5198,8 +5134,9 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
     def outgoing_requests(self, request):
         """Get outgoing join requests made by the current user"""
         try:
+            JoinRequestModel.expire_stale_requests()
             member = MemberModel.objects.get(email=request.user.email)
-            
+
             # Get join requests made by the current user
             outgoing_requests = JoinRequestModel.objects.filter(
                 member=member,
@@ -5243,7 +5180,20 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': 'This request has already been processed'
                 }, status=400)
-            
+
+            # Enforce the course cut-off: expire instead of approving if the window passed
+            if join_request.is_expired_now():
+                join_request.status = 'expired'
+                join_request.save(update_fields=['status', 'updatedAt'])
+                NotificationModel.create_join_request_expired_notification(
+                    recipient=join_request.member,
+                    booking=join_request.original_booking,
+                )
+                return Response({
+                    'code': 0,
+                    'message': 'This request has expired and can no longer be approved.'
+                }, status=400)
+
             # Check if slot can accommodate the request
             original_booking = join_request.original_booking
             total_participants = original_booking.participants + join_request.participants

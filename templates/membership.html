@@ -88,6 +88,41 @@
             padding: 10px;
             box-sizing: border-box;
         }
+        /* Two-column rows for the enquiry form (First/Last name, Email/Phone) */
+        .form-wrap.two-col .form-group {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+        /* Plan feature points on the membership cards */
+        .plan-feature-list {
+            list-style: none;
+            margin: 0 0 10px;
+            padding: 0;
+            text-align: left;
+            display: inline-block;
+        }
+        .plan-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .plan-feature-icon {
+            flex: 0 0 auto;
+            color: #2e4a3a;
+            font-weight: 700;
+        }
+        .plan-feature--excluded {
+            color: #9aa0a6;
+        }
+        .plan-feature--excluded .plan-feature-icon {
+            color: #c0392b;
+        }
+        .plan-feature--excluded .plan-feature-text {
+            text-decoration: line-through;
+        }
         .checkbox-group {
             display: flex;
             justify-content: space-between;
@@ -405,7 +440,20 @@
                                                     {% endif %}
                                                 </span>
                                             </div>
-                                            
+
+                                            {% with feats=membership.visible_features %}
+                                            {% if feats %}
+                                            <ul class="plan-feature-list">
+                                                {% for feature in feats %}
+                                                <li class="plan-feature{% if not feature.isIncluded %} plan-feature--excluded{% endif %}">
+                                                    <span class="plan-feature-icon">{% if feature.isIncluded %}&#10003;{% else %}&#10007;{% endif %}</span>
+                                                    <span class="plan-feature-text">{{ feature.featureName }}</span>
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                            {% endif %}
+                                            {% endwith %}
+
                                             <a href="javascript:void()"  style="margin: 30px auto 30px;"
                                                 class="interest-btn link-vist p-relative mt-20 text-center" 
                                                 data-plan-id="{{ membership.id }}"
@@ -426,15 +474,17 @@
                         </div>
                     </div>
                       
+                      {% comment %} Membership Benefits section hidden (commented out, not deleted) {% endcomment %}
+                      {% comment %}
                       <section class="team tam-classic section-margin p-relative ">
-                          
-                          
+
+
                           <div class="container mb-30 d-flex text-left flex-column align-items-start">
-                          
+
                               <div class="container mb-30 d-flex text-center flex-column align-items-center">
                                   <p class="sub-heading line-shap line-shap-after mb-15">
                                       <span class="line-bg-left">Master Golf Club</span>
-  
+
                                   </p>
                                   <h2 class="section-title">Membership Benefits</h2>
                               </div>
@@ -534,8 +584,9 @@
                               </div>
                           </div>
                       </section>
-                      
-                      
+                      {% endcomment %}
+
+
               </div>     
               
               <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -736,8 +787,8 @@
 
             <div class="messages"></div>
             <div class="input__wrap controls">
-                <!-- First Row -->
-                <div class="form-wrap">
+                <!-- First Row: First name + Last name -->
+                <div class="form-wrap two-col">
                     <div class="form-group">
                         <div class="entry-box">
                             <input type="text" name="memberEnquiryFirstName" id="first_name"
@@ -747,7 +798,7 @@
                         </div>
                         <label class="error"></label>
                     </div>
-                
+
                     <div class="form-group">
                         <div class="entry-box">
                             <input type="text" name="memberEnquiryLastName" id="last_name"
@@ -757,7 +808,10 @@
                         </div>
                         <label class="error"></label>
                     </div>
+                </div>
 
+                <!-- Second Row: Email ID + Phone Number -->
+                <div class="form-wrap two-col">
                     <div class="form-group">
                         <div class="entry-box">
                             <input type="email" name="memberEnquiryEmail" id="email"
@@ -766,10 +820,7 @@
                         </div>
                         <label class="error"></label>
                     </div>
-                </div>
 
-                <!-- Second Row -->
-                <div class="form-wrap">
                     <div class="form-group">
                         <div class="entry-box">
                             <input type="tel" name="memberEnquiryPhoneNumber" id="amobile"
@@ -779,19 +830,17 @@
                         </div>
                         <label class="error"></label>
                     </div>
-
-                    <!-- Empty columns for consistent layout -->
-                    <div class="form-group"></div>
-                    <div class="form-group"></div>
                 </div>
 
                 <!-- Message Row -->
-                <div class="form-wrap">
-                    <div class="entry-box" style="width: 100%;">
-                        <textarea name="memberEnquiryMessage" 
-                            placeholder="Additional Message (Optional)" 
-                            rows="4"
-                            maxlength="1000"></textarea>
+                <div class="form-wrap" style="margin-top: 10px;">
+                    <div class="form-group" style="flex: 0 0 100%; max-width: 100%;">
+                        <div class="entry-box" style="width: 100%;">
+                            <textarea name="memberEnquiryMessage"
+                                placeholder="Additional Message (Optional)"
+                                rows="4"
+                                maxlength="1000"></textarea>
+                        </div>
                     </div>
                 </div>
 

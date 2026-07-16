@@ -296,12 +296,14 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     amenities = serializers.SerializerMethodField()
     allContacts = serializers.ReadOnlyField(source='all_contacts')
     tees = serializers.SerializerMethodField()
+    joinRequestExpiryHours = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = CourseModel
         fields = [
             'id', 'name', 'address', 'timing', 'phone', 'alternatePhone',
-            'website', 'description', 'location', 'imageUrl', 'amenities', 'allContacts', 'tees'
+            'website', 'description', 'location', 'imageUrl', 'amenities', 'allContacts', 'tees',
+            'joinRequestExpiryHours'
         ]
 
     def get_amenities(self, obj):
@@ -333,6 +335,14 @@ class CourseDetailSerializer(serializers.ModelSerializer):
             return []
 
 
+class BlankableIntegerField(serializers.IntegerField):
+    """IntegerField that treats empty strings (from multipart form data) as None."""
+    def to_internal_value(self, data):
+        if data in ('', None, 'null', 'undefined'):
+            return None
+        return super().to_internal_value(data)
+
+
 class CourseCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating and updating courses"""
     courseAmenities = serializers.ListField(
@@ -340,14 +350,19 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         required=False,
         allow_empty=True
     )
-    
+    # Optional: hours before tee time when pending join requests auto-expire.
+    # Blank means the admin chose not to set it (auto-expiry disabled for this course).
+    joinRequestExpiryHours = BlankableIntegerField(
+        required=False, allow_null=True, min_value=0
+    )
+
     class Meta:
         model = CourseModel
         fields = [
-            'courseName', 'courseAddress', 'courseOpenFrom', 
+            'courseName', 'courseAddress', 'courseOpenFrom',
             'coursePhoneNumber', 'courseAlternatePhoneNumber', 'courseWebsite',
-            'courseDescription', 'courseLocation', 'courseImage', 
-            'courseAmenities', 'hideStatus'
+            'courseDescription', 'courseLocation', 'courseImage',
+            'courseAmenities', 'joinRequestExpiryHours', 'hideStatus'
         ]
     
     def validate_courseAmenities(self, value):
@@ -811,7 +826,30 @@ class BookingSerializer(serializers.ModelSerializer):
             original_booking = data.get('original_booking')
             if not original_booking:
                 raise serializers.ValidationError("Original booking is required for join requests")
-        
+            return data
+
+        # One booking at a time (overlapping-time rule): a member cannot hold two
+        # bookings for the same date + time, regardless of tee or course.
+        member = data.get('member')
+        slot_date = data.get('slot_date')
+        booking_time = data.get('booking_time')
+        if member and slot_date and booking_time:
+            clash = BookingModel.objects.filter(
+                member=member,
+                slot_date=slot_date,
+                booking_time=booking_time,
+                is_join_request=False,
+                status__in=['pending', 'confirmed', 'completed'],
+                hideStatus=0,
+            )
+            if self.instance is not None:
+                clash = clash.exclude(id=self.instance.id)
+            if clash.exists():
+                raise serializers.ValidationError(
+                    "You already have a booking at this date and time. "
+                    "You can't book another tee for the same time slot."
+                )
+
         return data
 
 

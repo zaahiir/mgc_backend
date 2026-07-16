@@ -73,6 +73,11 @@ class PlanModel(models.Model):
     def __str__(self):
         return self.planName or f"Plan {self.id}"
 
+    @property
+    def visible_features(self):
+        """Visible plan features, ordered for display (used by the membership page)."""
+        return self.features.filter(hideStatus=0).order_by('order', 'featureName')
+
     class Meta:
         verbose_name = 'Plan'
         verbose_name_plural = 'Plans'
@@ -201,6 +206,10 @@ class CourseModel(models.Model):
                                     help_text="GPS coordinates or detailed location for directions")
     courseImage = models.ImageField(upload_to='course_images/', null=True, blank=True)
     courseAmenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="courses")
+    joinRequestExpiryHours = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Hours before tee time when pending join requests auto-expire. Leave blank to disable auto-expiry for this course."
+    )
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
@@ -732,6 +741,7 @@ class JoinRequestModel(models.Model):
         ('pending_approval', 'Pending Approval'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('expired', 'Expired'),  # Auto-expired: not actioned before the course cut-off
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_approval')
     
@@ -836,6 +846,59 @@ class JoinRequestModel(models.Model):
     def __str__(self):
         return f"Join request {self.request_id} from {self.member.firstName} to {self.original_booking.booking_id}"
 
+    @property
+    def expiry_deadline(self):
+        """
+        The moment this request must be actioned by, or None if the slot's course
+        has no auto-expiry configured. Deadline = tee time minus the course's
+        joinRequestExpiryHours.
+        """
+        from datetime import datetime, timedelta
+        booking = self.original_booking
+        if not booking or not booking.slot_date or not booking.booking_time:
+            return None
+        course = booking.course
+        hours = getattr(course, 'joinRequestExpiryHours', None) if course else None
+        if not hours:
+            return None
+        tee_dt = timezone.make_aware(
+            datetime.combine(booking.slot_date, booking.booking_time)
+        )
+        return tee_dt - timedelta(hours=hours)
+
+    def is_expired_now(self):
+        """True if this pending request is past its course-defined cut-off."""
+        deadline = self.expiry_deadline
+        if deadline is None:
+            return False
+        return timezone.now().astimezone(UK_TIMEZONE) >= deadline.astimezone(UK_TIMEZONE)
+
+    @classmethod
+    def expire_stale_requests(cls):
+        """
+        Auto-expire every pending join request whose course cut-off has passed.
+        Sends a notification to the requester for each one. Returns the count
+        expired. Safe to call lazily (on read) and from a scheduled command.
+        """
+        expired_count = 0
+        pending = cls.objects.filter(
+            status='pending_approval', hideStatus=0
+        ).select_related('original_booking', 'original_booking__course', 'member')
+        for req in pending:
+            if req.is_expired_now():
+                req.status = 'expired'
+                req.save(update_fields=['status', 'updatedAt'])
+                try:
+                    NotificationModel.create_join_request_expired_notification(
+                        recipient=req.member,
+                        booking=req.original_booking,
+                    )
+                except Exception:
+                    # Never let a notification failure block the sweep
+                    pass
+                expired_count += 1
+        return expired_count
+
 
 class NotificationModel(models.Model):
     """Model for managing booking notifications"""
@@ -843,6 +906,7 @@ class NotificationModel(models.Model):
         ('join_request_received', 'Join Request Received'),
         ('join_request_approved', 'Join Request Approved'),
         ('join_request_rejected', 'Join Request Rejected'),
+        ('join_request_expired', 'Join Request Expired'),
         ('join_request', 'Join Request'),  # Legacy support
         ('join_approved', 'Join Approved'),  # Legacy support
         ('join_rejected', 'Join Rejected'),  # Legacy support
@@ -917,6 +981,26 @@ class NotificationModel(models.Model):
             notification_type=notification_type,
             title=title,
             message=message,
+            related_booking=booking
+        )
+
+    @classmethod
+    def create_join_request_expired_notification(cls, recipient, booking):
+        """Notify a member their pending join request expired before being actioned."""
+        time_str = booking.booking_time.strftime('%H:%M') if booking.booking_time else "Time not specified"
+        date_str = booking.slot_date.strftime('%B %d, %Y') if booking.slot_date else "Date not specified"
+        course_name = booking.course.courseName if booking.course else "Unknown Course"
+        tee_name = f"Tee {booking.tee.holeNumber}" if booking.tee else "Unknown Tee"
+
+        return cls.objects.create(
+            recipient=recipient,
+            sender=None,
+            notification_type='join_request_expired',
+            title='Join Request Expired',
+            message=(
+                f"Your join request for {course_name} - {tee_name} on {date_str} at {time_str} "
+                f"expired because it was not approved in time."
+            ),
             related_booking=booking
         )
 
