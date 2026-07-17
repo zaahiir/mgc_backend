@@ -8,7 +8,7 @@ from .views import (
     BlogViewSet, ConceptViewSet, ContactEnquiryViewSet, MemberEnquiryViewSet,
     AboutViewSet, EventViewSet, EventInterestViewSet, ProtocolViewSet,
     InstructorViewSet, MessageViewSet, FAQViewSet, NotificationViewSet,
-    JoinRequestViewSet
+    JoinRequestViewSet, DashboardViewSet
 )
 
 router = DefaultRouter()
@@ -43,6 +43,7 @@ router.register('message', MessageViewSet, basename='message')
 router.register('faq', FAQViewSet, basename='faq')
 router.register('notification', NotificationViewSet, basename='notification')
 router.register('joinRequest', JoinRequestViewSet, basename='joinRequest')
+router.register('dashboard', DashboardViewSet, basename='dashboard')
 
 urlpatterns = [
     path('', include(router.urls)),

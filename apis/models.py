@@ -130,7 +130,8 @@ class MemberModel(models.Model):
     profilePhoto = models.ImageField(upload_to="member_photos/", null=True, blank=True)
     idProof = models.FileField(upload_to="member_id_proofs/", null=True, blank=True)
     handicap = models.BooleanField(default=False)
-    golfClubId = models.CharField(max_length=100, null=True, blank=True)
+    golfClubId = models.CharField(max_length=100, null=True, blank=True, unique=True,
+                                  help_text="Assigned on save in the format MGC25100001; never set by the client")
     qr_token = models.CharField(max_length=255, null=True, blank=True, unique=True)
     
     # Enquiry related fields
@@ -146,7 +147,49 @@ class MemberModel(models.Model):
     def save(self, *args, **kwargs):
         if not self.qr_token:
             self.qr_token = str(uuid.uuid4())
+        if not self.golfClubId:
+            self.golfClubId = self.generate_member_id()
         super().save(*args, **kwargs)
+
+    def generate_member_id(self):
+        """Generate a unique member ID in the format MGC25100001 (MGC + yy + mm + 4-digit sequence).
+
+        Assigned here rather than by the caller so that concurrent sign-ups
+        cannot land on the same number. The sequence counts every member for
+        the month including hidden ones, so an ID is never handed out twice.
+        """
+        from datetime import datetime
+        import time
+        from django.db import transaction
+
+        max_retries = 10
+        for _ in range(max_retries):
+            try:
+                with transaction.atomic():
+                    now = datetime.now()
+                    base_id = f"MGC{str(now.year)[-2:]}{now.strftime('%m')}"
+
+                    existing = MemberModel.objects.filter(
+                        golfClubId__startswith=base_id
+                    ).select_for_update().order_by('-golfClubId')
+
+                    next_number = 1
+                    if existing.exists():
+                        try:
+                            next_number = int(existing.first().golfClubId[-4:]) + 1
+                        except (ValueError, IndexError, TypeError):
+                            next_number = existing.count() + 1
+
+                    member_id = f"{base_id}{next_number:04d}"
+                    if not MemberModel.objects.filter(golfClubId=member_id).exists():
+                        return member_id
+                    time.sleep(0.01)
+            except Exception:
+                time.sleep(0.01)
+
+        # Fallback: timestamp-derived suffix, still unique within the month
+        now = datetime.now()
+        return f"MGC{str(now.year)[-2:]}{now.strftime('%m')}{int(time.time() * 1000) % 10000:04d}"
 
     def __str__(self):
         return f"{self.firstName} {self.lastName} ({self.golfClubId})"
@@ -294,6 +337,10 @@ class BookingModel(models.Model):
         ('completed', 'Completed'),  # New status for completed bookings
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    # Statuses that hold a live place on a member's calendar. A booking in any
+    # of these blocks the member from taking a second slot at the same time.
+    ACTIVE_STATUSES = ['pending', 'confirmed', 'completed', 'approved']
     
     # Multi-slot booking grouping (optional)
     # If multiple slots are booked together, they can share a group_id
@@ -326,6 +373,19 @@ class BookingModel(models.Model):
             models.Index(fields=['slot_date', 'booking_time', 'tee']),
             models.Index(fields=['member', 'status']),
             models.Index(fields=['createdAt']),
+        ]
+        constraints = [
+            # Last line of defence for the one-slot-per-time rule: the Python
+            # checks can be raced by two concurrent requests, this cannot.
+            models.UniqueConstraint(
+                fields=['member', 'slot_date', 'booking_time'],
+                condition=models.Q(
+                    is_join_request=False,
+                    hideStatus=0,
+                    status__in=['pending', 'confirmed', 'completed', 'approved'],
+                ),
+                name='unique_member_slot_datetime',
+            ),
         ]
         verbose_name = 'Booking'
         verbose_name_plural = 'Bookings'
@@ -366,11 +426,76 @@ class BookingModel(models.Model):
                 booking_time=self.booking_time,
                 status__in=['pending', 'confirmed', 'completed']
             ).exclude(id=self.id if self.id else None)
-            
+
             if overlapping.exists():
                 tee_info = f"{self.tee.holeNumber} holes tee" if self.tee else "tee"
                 raise ValidationError(f"This time slot is already booked for {tee_info} on {self.slot_date}")
-    
+
+        # A member may hold only one slot per date + time, across every club.
+        if not self.is_join_request:
+            clash = BookingModel.find_member_clash(
+                self.member_id, self.slot_date, self.booking_time,
+                exclude_booking_id=self.id,
+            )
+            if clash:
+                raise ValidationError(self.member_clash_message(clash))
+
+    @staticmethod
+    def member_clash_message(clash_label=None):
+        """The single wording shown wherever a member double-books a time.
+
+        clash_label is omitted when the clash surfaces from the database
+        constraint, where the competing row isn't in hand.
+        """
+        where = f" ({clash_label})" if clash_label else ""
+        return (
+            f"You already have a booking at this date and time{where}. "
+            f"A member can only hold one slot per time, so please pick a different time."
+        )
+
+    @classmethod
+    def find_member_clash(cls, member, slot_date, booking_time,
+                          exclude_booking_id=None, exclude_join_request_id=None):
+        """Return a label for the member's existing commitment at this date+time, else None.
+
+        A member is committed either by a booking of their own or by an approved
+        request to join someone else's. Either one blocks a second slot at the
+        same date + time, whatever the club, course or tee.
+        """
+        if not (member and slot_date and booking_time):
+            return None
+
+        booking_qs = cls.objects.filter(
+            member=member,
+            slot_date=slot_date,
+            booking_time=booking_time,
+            is_join_request=False,
+            status__in=cls.ACTIVE_STATUSES,
+            hideStatus=0,
+        )
+        if exclude_booking_id:
+            booking_qs = booking_qs.exclude(id=exclude_booking_id)
+        clash = booking_qs.select_related('course').first()
+        if clash:
+            return clash.course.courseName if clash.course else 'another course'
+
+        join_qs = JoinRequestModel.objects.filter(
+            member=member,
+            original_booking__slot_date=slot_date,
+            original_booking__booking_time=booking_time,
+            status='approved',
+            hideStatus=0,
+        )
+        if exclude_join_request_id:
+            join_qs = join_qs.exclude(id=exclude_join_request_id)
+        join_clash = join_qs.select_related('original_booking__course').first()
+        if join_clash:
+            course = join_clash.original_booking.course
+            label = course.courseName if course else 'another course'
+            return f"{label}, as an approved join request"
+
+        return None
+
     def generate_booking_id(self):
         """Generate unique booking ID in format: MGCBK25AUG00010"""
         from datetime import datetime

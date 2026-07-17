@@ -830,25 +830,14 @@ class BookingSerializer(serializers.ModelSerializer):
 
         # One booking at a time (overlapping-time rule): a member cannot hold two
         # bookings for the same date + time, regardless of tee or course.
-        member = data.get('member')
-        slot_date = data.get('slot_date')
-        booking_time = data.get('booking_time')
-        if member and slot_date and booking_time:
-            clash = BookingModel.objects.filter(
-                member=member,
-                slot_date=slot_date,
-                booking_time=booking_time,
-                is_join_request=False,
-                status__in=['pending', 'confirmed', 'completed'],
-                hideStatus=0,
-            )
-            if self.instance is not None:
-                clash = clash.exclude(id=self.instance.id)
-            if clash.exists():
-                raise serializers.ValidationError(
-                    "You already have a booking at this date and time. "
-                    "You can't book another tee for the same time slot."
-                )
+        clash = BookingModel.find_member_clash(
+            data.get('member'),
+            data.get('slot_date'),
+            data.get('booking_time'),
+            exclude_booking_id=self.instance.id if self.instance else None,
+        )
+        if clash:
+            raise serializers.ValidationError(BookingModel.member_clash_message(clash))
 
         return data
 

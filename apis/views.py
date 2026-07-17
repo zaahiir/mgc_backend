@@ -8,8 +8,11 @@ from rest_framework.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404
 from .serializers import *
 from .models import *
+# The star-imports above rebind the bare name ValidationError to Django's.
+# Keep an unambiguous handle on DRF's so except clauses catch the right one.
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.db.models import Q
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from .utils import PasswordManager
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
@@ -88,7 +91,32 @@ from io import BytesIO
 import base64
 
 logger = logging.getLogger(__name__)
- 
+
+
+def first_error_message(exc_or_detail):
+    """Pull the first human-readable string out of a DRF ValidationError.
+
+    Accepts the exception or a bare serializer.errors structure. Either is a
+    str, list, or dict of lists depending on where the error was raised, and
+    str() on any of them leaks the ErrorDetail repr into the UI.
+    """
+    def walk(detail):
+        if isinstance(detail, dict):
+            for value in detail.values():
+                found = walk(value)
+                if found:
+                    return found
+        elif isinstance(detail, (list, tuple)):
+            for item in detail:
+                found = walk(item)
+                if found:
+                    return found
+        elif detail is not None:
+            return str(detail)
+        return None
+
+    return walk(getattr(exc_or_detail, 'detail', exc_or_detail))
+
 
 class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
@@ -2252,6 +2280,20 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'code': 0,
                 'message': 'Member not found'
             }, status=404)
+        except DRFValidationError as e:
+            # Surface the rule wording (e.g. the double-booking clash) as plain
+            # text; str(e) would leak DRF's ErrorDetail repr to the member.
+            return Response({
+                'code': 0,
+                'message': first_error_message(e) or 'Invalid booking details'
+            }, status=400)
+        except IntegrityError:
+            # Lost a race to a concurrent booking for the same slot: the unique
+            # constraint caught what the checks above could not.
+            return Response({
+                'code': 0,
+                'message': BookingModel.member_clash_message()
+            }, status=409)
         except Exception as e:
             return Response({
                 'code': 0,
@@ -2338,7 +2380,23 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': 'Slot cannot accommodate additional participants'
                 }, status=400)
-            
+
+            # The requester may have booked elsewhere while this sat pending.
+            clash = BookingModel.find_member_clash(
+                join_request.member_id,
+                original_booking.slot_date,
+                original_booking.booking_time,
+                exclude_join_request_id=join_request.id,
+            )
+            if clash:
+                return Response({
+                    'code': 0,
+                    'message': (
+                        f'{join_request.member.firstName} already has a booking at this '
+                        f'date and time ({clash}), so this request can no longer be approved.'
+                    )
+                }, status=400)
+
             # Approve the join request and merge participants
             join_request.status = 'approved'
             join_request.approved_by = original_booking.member
@@ -2538,9 +2596,9 @@ class BookingViewSet(viewsets.ModelViewSet):
                     serializer = self.get_serializer(data=booking_data)
                     if not serializer.is_valid():
                         # Surface the first validation error (e.g. overlapping-time clash)
-                        errors = serializer.errors
-                        detail = errors.get('non_field_errors') or errors
-                        raise ValueError(f'Slot {i + 1}: {detail}')
+                        raise ValueError(
+                            f'Slot {i + 1}: {first_error_message(serializer.errors) or "Invalid booking details"}'
+                        )
                     created_bookings.append(serializer.save())
                     total_participants += slot['participants']
 
@@ -2579,6 +2637,13 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'code': 0,
                 'message': str(ve)
             }, status=400)
+        except IntegrityError:
+            # Lost a race to a concurrent booking for the same slot: the unique
+            # constraint caught what the checks above could not.
+            return Response({
+                'code': 0,
+                'message': BookingModel.member_clash_message()
+            }, status=409)
         except Exception as e:
             import traceback
             print(f"Error creating multi-slot booking: {str(e)}")
@@ -2952,6 +3017,15 @@ class BookingViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': f'Slot cannot accommodate {participants} additional participants. Maximum 4 participants allowed.'
                 }, status=400)
+
+            # A member already committed at this date + time cannot join another
+            # club's slot at the same time.
+            clash = BookingModel.find_member_clash(member.id, slot_date, booking_time)
+            if clash:
+                return Response({
+                    'code': 0,
+                    'message': BookingModel.member_clash_message(clash)
+                }, status=400)
             
             # Check if there's already a pending or approved join request from this member
             from apis.models import JoinRequestModel
@@ -3304,6 +3378,88 @@ class BookingViewSet(viewsets.ModelViewSet):
             return Response({
                 'code': 0,
                 'message': f'Error reviewing join request: {str(e)}'
+            }, status=500)
+
+
+class DashboardViewSet(viewsets.ViewSet):
+    """Live club figures for the admin dashboard.
+
+    Every number is counted at request time, so polling this endpoint is what
+    makes the dashboard current. Dates use UK time to match the booking rules.
+    """
+    permission_classes = []
+    authentication_classes = []
+
+    @action(detail=False, methods=['GET'], url_path='stats')
+    def stats(self, request):
+        try:
+            today = timezone.now().astimezone(UK_TIMEZONE).date()
+            month_start = today.replace(day=1)
+
+            live_bookings = BookingModel.objects.filter(
+                hideStatus=0, is_join_request=False,
+                status__in=BookingModel.ACTIVE_STATUSES,
+            )
+
+            recent = live_bookings.select_related('member', 'course', 'tee').order_by('-createdAt')[:5]
+            recent_bookings = [{
+                'bookingId': b.booking_id,
+                'memberName': f"{b.member.firstName} {b.member.lastName}".strip() if b.member else 'Unknown',
+                'courseName': b.course.courseName if b.course else 'Unknown',
+                'teeInfo': f"{b.tee.holeNumber} Holes" if b.tee else '-',
+                'slotDate': b.slot_date.isoformat() if b.slot_date else None,
+                'bookingTime': b.booking_time.strftime('%H:%M') if b.booking_time else None,
+                'participants': b.participants,
+                'status': b.status,
+            } for b in recent]
+
+            # Bookings created on each of the last 7 days, oldest first
+            trend = []
+            for offset in range(6, -1, -1):
+                day = today - dt.timedelta(days=offset)
+                trend.append({
+                    'date': day.isoformat(),
+                    'label': day.strftime('%a'),
+                    'count': live_bookings.filter(createdAt__date=day).count(),
+                })
+
+            return Response({
+                'code': 1,
+                'message': 'Dashboard stats retrieved successfully',
+                'data': {
+                    'generatedAt': timezone.now().astimezone(UK_TIMEZONE).isoformat(),
+                    'members': {
+                        'total': MemberModel.objects.filter(hideStatus=0).count(),
+                        'newThisMonth': MemberModel.objects.filter(
+                            hideStatus=0, createdAt__date__gte=month_start).count(),
+                    },
+                    'bookings': {
+                        'today': live_bookings.filter(slot_date=today).count(),
+                        'upcoming': live_bookings.filter(slot_date__gt=today).count(),
+                        'thisMonth': live_bookings.filter(slot_date__gte=month_start).count(),
+                        'total': live_bookings.count(),
+                    },
+                    'joinRequests': {
+                        'pending': JoinRequestModel.objects.filter(
+                            hideStatus=0, status='pending_approval').count(),
+                    },
+                    'courses': {
+                        'active': CourseModel.objects.filter(hideStatus=0).count(),
+                        'tees': TeeModel.objects.filter(hideStatus=0).count(),
+                    },
+                    'enquiries': {
+                        'contact': ContactEnquiryModel.objects.filter(hideStatus=0).count(),
+                        'member': MemberEnquiryModel.objects.filter(hideStatus=0).count(),
+                    },
+                    'recentBookings': recent_bookings,
+                    'bookingsTrend': trend,
+                }
+            })
+        except Exception as e:
+            logger.error(f"Error building dashboard stats: {str(e)}")
+            return Response({
+                'code': 0,
+                'message': f'Error retrieving dashboard stats: {str(e)}'
             }, status=500)
 
 
@@ -5203,7 +5359,23 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
                     'code': 0,
                     'message': f'Slot cannot accommodate {join_request.participants} additional participants. Maximum is 4.'
                 }, status=400)
-            
+
+            # The requester may have booked elsewhere while this sat pending.
+            clash = BookingModel.find_member_clash(
+                join_request.member_id,
+                original_booking.slot_date,
+                original_booking.booking_time,
+                exclude_join_request_id=join_request.id,
+            )
+            if clash:
+                return Response({
+                    'code': 0,
+                    'message': (
+                        f'{join_request.member.firstName} already has a booking at this '
+                        f'date and time ({clash}), so this request can no longer be approved.'
+                    )
+                }, status=400)
+
             # Approve the request
             join_request.status = 'approved'
             join_request.approved_by = member
