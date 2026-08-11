@@ -13,9 +13,7 @@ from .models import *
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.db.models import Q
 from django.db import transaction, IntegrityError
-from .utils import PasswordManager
 from django.contrib.auth.hashers import check_password, make_password
-from django.core.mail import send_mail
 from django.conf import settings
 from datetime import datetime, timedelta
 import datetime as dt
@@ -23,65 +21,49 @@ import json
 import logging
 import qrcode
 import io
-from django.core.mail import EmailMultiAlternatives
 import os
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from decimal import Decimal
-from rest_framework.permissions import IsAuthenticated
+import secrets
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import UntypedToken
 from django.shortcuts import render
 import pytz
 
+from .authentication import (
+    RoleAwareJWTAuthentication,
+    MemberPrincipal,
+    issue_member_tokens,
+    issue_admin_tokens,
+)
+from .system_settings import send_email
+from .permissions import (
+    ActionPermissionMixin,
+    IsAdmin,
+    IsAdminOrMember,
+    IsMember,
+    IsSelfOrAdmin,
+    PublicCreateOnly,
+)
+
 # UK timezone
 UK_TIMEZONE = pytz.timezone('Europe/London')
 
-class CustomJWTAuthentication(JWTAuthentication):
-    """
-    Custom JWT authentication that properly extracts member_id from token
-    """
-    def authenticate(self, request):
-        try:
-            # Get the raw token from the request
-            raw_token = self.get_raw_token(request)
-            if raw_token is None:
-                return None
+# Superseded by apis.authentication.RoleAwareJWTAuthentication, which resolves
+# members against MemberModel instead of indexing auth_user by a member id.
+CustomJWTAuthentication = RoleAwareJWTAuthentication
 
-            # Validate the token
-            validated_token = self.get_validated_token(raw_token)
-            
-            # Extract member_id from the token
-            member_id = validated_token.get('member_id')
-            if not member_id:
-                return None
-            
-            # Create a user object with the member_id
-            from django.contrib.auth.models import AnonymousUser
-            from django.contrib.auth.models import User
-            
-            try:
-                # Try to get the Django User
-                user = User.objects.get(id=member_id)
-            except User.DoesNotExist:
-                # If Django User doesn't exist, create a minimal user object
-                user = User(id=member_id, username=f'member_{member_id}')
-                user.is_authenticated = True
-            
-            return (user, validated_token)
-            
-        except (InvalidToken, TokenError) as e:
-            return None
-        except Exception as e:
-            return None
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from django.core.mail import send_mail
 from django.conf import settings
 import json
 import random
@@ -118,7 +100,84 @@ def first_error_message(exc_or_detail):
     return walk(getattr(exc_or_detail, 'detail', exc_or_detail))
 
 
-class UserViewSet(viewsets.ViewSet):
+def safe_error(exc, context='Request failed'):
+    """Log the real exception, return a message that is safe to ship.
+
+    Responses used to interpolate str(exc) straight into the payload, which
+    handed clients ORM text, file paths and integrity-constraint details. The
+    detail now stays in the server log and the caller gets the context only.
+    """
+    logger.exception('%s: %s', context, exc)
+    return context
+
+
+def revoke_member_tokens(django_user):
+    """Blacklist every outstanding refresh token for a user.
+
+    Called after a password reset so a stolen session cannot outlive the
+    credential it was minted from.
+    """
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken, OutstandingToken,
+        )
+        for token in OutstandingToken.objects.filter(user=django_user):
+            BlacklistedToken.objects.get_or_create(token=token)
+    except Exception as e:
+        logger.warning('Could not revoke tokens for %s: %s', django_user, e)
+
+
+def resolve_member(request):
+    """The MemberModel behind the request, or None.
+
+    Identity comes from the verified token only. The previous
+    ``?user_id=`` fallback let an unauthenticated caller name any member.
+    """
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return None
+    member = getattr(user, 'member', None)
+    if member is not None:
+        return member
+    # Admin acting on their own behalf has no member record.
+    return None
+
+
+class UserViewSet(ActionPermissionMixin, viewsets.ViewSet):
+    """Authentication endpoints for the admin console and the member app.
+
+    Everything here is deliberately unauthenticated â€” it is where credentials
+    are exchanged for tokens â€” so each action is throttled and none of them
+    disclose whether a given account exists.
+    """
+
+    permission_map = {
+        'login': [AllowAny],
+        'logout': [AllowAny],
+        'member_login': [AllowAny],
+        'member_logout': [AllowAny],
+        'password_reset': [AllowAny],
+        'verify_reset_code': [AllowAny],
+        'set_new_password': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
+
+    # Generic replies. Reusing one string for "no such account" and "wrong
+    # password" keeps the endpoints from being used to enumerate members.
+    INVALID_CREDENTIALS = 'Invalid username or password'
+    INVALID_RESET = 'Invalid or expired verification code'
+
+    def get_throttles(self):
+        scopes = {
+            'login': 'login',
+            'member_login': 'login',
+            'password_reset': 'password_reset',
+            'verify_reset_code': 'reset_verify',
+            'set_new_password': 'reset_verify',
+        }
+        self.throttle_scope = scopes.get(self.action)
+        return super().get_throttles()
+
     @action(detail=False, methods=['post'])
     def login(self, request):
         username = request.data.get('username')
@@ -128,11 +187,10 @@ class UserViewSet(viewsets.ViewSet):
             return Response({"detail": "Username and password are required"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Authenticate only superuser
         user = authenticate(username=username, password=password)
 
-        if user and user.is_superuser:
-            tokens = RefreshToken.for_user(user)
+        if user and user.is_active and (user.is_superuser or user.is_staff):
+            tokens = issue_admin_tokens(user)
             return Response({
                 'refresh': str(tokens),
                 'access': str(tokens.access_token),
@@ -143,7 +201,7 @@ class UserViewSet(viewsets.ViewSet):
             }, status=status.HTTP_200_OK)
 
         return Response(
-            {"detail": "Access denied. Superuser credentials required"},
+            {"detail": self.INVALID_CREDENTIALS},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
@@ -152,207 +210,137 @@ class UserViewSet(viewsets.ViewSet):
         try:
             refresh_token = request.data.get("refresh_token")
             if not refresh_token:
-                raise ValidationError("Refresh token is required")
+                return Response({"detail": "Refresh token is required"},
+                                status=status.HTTP_400_BAD_REQUEST)
 
             token = RefreshToken(refresh_token)
             token.blacklist()
             return Response({"detail": "Logout successful"}, status=status.HTTP_200_OK)
         except TokenError:
             return Response({"detail": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception('Admin logout failed: %s', e)
             return Response({"detail": "Logout failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
+
     @action(detail=False, methods=['POST'])
     def member_login(self, request):
-        """
-        Login endpoint for members using username (email) and password
-        """
+        """Exchange member email + password for a member-scoped token pair."""
         try:
             data = request.data
-            
-            # Validate request data
+
             if not data.get('username') or not data.get('password'):
                 return Response({
                     'code': 0,
                     'message': 'Username and password are required'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Find member by username/email
-            try:
-                member = MemberModel.objects.get(
-                    email=data.get('username'),
-                    hideStatus=0
-                )
-            except MemberModel.DoesNotExist:
-                return Response({
-                    'code': 0,
-                    'message': 'Invalid username or password'
-                }, status=status.HTTP_401_UNAUTHORIZED)
-            
-            # Verify password - improved logic
-            password_manager = PasswordManager()
+
             input_password = data.get('password')
-            authenticated = False
-            
-            # Try authentication using available password fields
-            if member.hashed_password:
-                from django.contrib.auth.hashers import check_password
-                authenticated = check_password(input_password, member.hashed_password)
-            
-            if not authenticated and member.encrypted_password:
-                try:
-                    decrypted_password = password_manager.decrypt_password(member.encrypted_password)
-                    authenticated = (input_password == decrypted_password)
-                except Exception as e:
-                    print(f"Error decrypting password: {e}")
-            
-            if not authenticated and member.password:
-                authenticated = (input_password == member.password)
-            
-            if not authenticated:
+
+            try:
+                member = MemberModel.objects.get(email=data.get('username'), hideStatus=0)
+            except MemberModel.DoesNotExist:
+                # Spend the same work as the success path so response time does
+                # not reveal whether the address is registered.
+                make_password(input_password)
                 return Response({
                     'code': 0,
-                    'message': 'Invalid username or password'
+                    'message': self.INVALID_CREDENTIALS
                 }, status=status.HTTP_401_UNAUTHORIZED)
-            
-            # FIXED: Create or get a Django User for the member to handle JWT properly
-            from django.contrib.auth.models import User
-            
-            # Try to get or create a corresponding Django User
-            django_user, created = User.objects.get_or_create(
-                username=member.email,
-                defaults={
-                    'email': member.email,
-                    'first_name': member.firstName or '',
-                    'last_name': member.lastName or '',
-                    'is_active': True,
-                    'is_staff': False,
-                    'is_superuser': False
-                }
-            )
-            
-            # Create JWT tokens using the Django User
-            refresh = RefreshToken.for_user(django_user)
-            
-            # Add custom claims to the tokens
-            refresh['member_id'] = member.id
-            refresh['user_type'] = 'member'
-            refresh['email'] = member.email
-            
-            # Add custom claims to access token too
-            access_token = refresh.access_token
-            access_token['member_id'] = member.id
-            access_token['user_type'] = 'member'
-            access_token['email'] = member.email
-            
+
+            # Only the one-way hash is consulted. The reversible
+            # encrypted_password/plaintext columns are gone.
+            if not member.hashed_password or not check_password(input_password, member.hashed_password):
+                return Response({
+                    'code': 0,
+                    'message': self.INVALID_CREDENTIALS
+                }, status=status.HTTP_401_UNAUTHORIZED)
+
+            refresh = issue_member_tokens(member)
+
             return Response({
                 'code': 1,
                 'message': 'Login successful',
-                'access': str(access_token),
+                'access': str(refresh.access_token),
                 'refresh': str(refresh),
                 'user_type': 'member',
                 'user_id': member.id,
                 'username': member.email,
                 'email': member.email
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
-            import traceback
-            print(traceback.format_exc())  # Print full traceback for debugging
             return Response({
                 'code': 0,
-                'message': f'Login failed: {str(e)}'
+                'message': safe_error(e, 'Login failed')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
     @action(detail=False, methods=['POST'])
     def member_logout(self, request):
-        """
-        Logout endpoint for members - FIXED VERSION
-        """
+        """Blacklist a member refresh token."""
         try:
             refresh_token = request.data.get('refresh_token')
-            
+
             if not refresh_token:
                 return Response({
                     'code': 0,
                     'message': 'Refresh token is required'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             try:
-                # Decode the token to get user information
-                from rest_framework_simplejwt.tokens import UntypedToken
-                from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-                from django.contrib.auth.models import User
-                
-                # Validate and decode the token
-                UntypedToken(refresh_token)
-                
-                # Create RefreshToken instance and blacklist it
                 token = RefreshToken(refresh_token)
                 token.blacklist()
-                
                 return Response({
                     'code': 1,
                     'message': 'Logout successful'
                 }, status=status.HTTP_200_OK)
-                
-            except TokenError as e:
+            except TokenError:
                 return Response({
                     'code': 0,
                     'message': 'Invalid or expired token'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
         except Exception as e:
-            # If blacklisting fails, we can still consider the logout successful
-            # since the token will expire naturally
-            print(f"Logout error: {str(e)}")
+            logger.exception('Member logout failed: %s', e)
             return Response({
                 'code': 1,
                 'message': 'Logout successful'
             }, status=status.HTTP_200_OK)
-    
+
     @action(detail=False, methods=['POST'])
     def password_reset(self, request):
-        """
-        Password reset request endpoint - sends verification code to email
+        """Mail a single-use verification code to a member.
+
+        The code is stored as a salted hash, so leaking a member row no longer
+        hands over the ability to reset that member's password.
         """
         try:
-            email = request.data.get('email')
-            
+            email = (request.data.get('email') or '').strip()
+
             if not email:
                 return Response({
                     'code': 0,
                     'message': 'Email is required'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Find member by email
+
+            # Always the same reply whether or not the address is on file.
+            generic_response = Response({
+                'code': 1,
+                'message': 'If that email is registered, a verification code has been sent.'
+            }, status=status.HTTP_200_OK)
+
             try:
-                member = MemberModel.objects.get(email=email, hideStatus=0)
+                member = MemberModel.objects.get(email__iexact=email, hideStatus=0)
             except MemberModel.DoesNotExist:
-                return Response({
-                    'code': 0,
-                    'message': 'Email not found in our records'
-                }, status=status.HTTP_404_NOT_FOUND)
-            
-            # Generate a 6-digit verification code
-            import random
-            import datetime
-            from django.conf import settings
-            from django.core.mail import send_mail
-            
-            verification_code = str(random.randint(100000, 999999))
-            # Use UK time for expiry
+                return generic_response
+
+            verification_code = f'{secrets.randbelow(1000000):06d}'
             uk_now = timezone.now().astimezone(UK_TIMEZONE)
-            reset_token_expiry = uk_now + dt.timedelta(hours=1)  # 1 hour expiry
-            
-            # Store verification code and expiry in member record
-            member.reset_token = verification_code  # Using reset_token field to store verification code
-            member.reset_token_expiry = reset_token_expiry
-            member.save()
-            
-            # Send email with verification code
+
+            member.reset_token = make_password(verification_code)
+            member.reset_token_expiry = uk_now + dt.timedelta(minutes=15)
+            member.reset_attempts = 0
+            member.save(update_fields=['reset_token', 'reset_token_expiry', 'reset_attempts'])
+
             subject = 'Password Reset - Verification Code'
             message = f'''
     Dear {member.firstName or 'Member'},
@@ -361,164 +349,160 @@ class UserViewSet(viewsets.ViewSet):
 
     Your verification code is: {verification_code}
 
-    This code will expire in 1 hour.
+    This code will expire in 15 minutes.
 
     If you did not request a password reset, please ignore this email.
 
     Best regards,
     Master Golf Club Management
             '''
-            
+
             try:
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
-                    fail_silently=False
-                )
-                
-                # For development/testing purposes, you can return the code
-                # Remove this in production
-                development_response = {
-                    'code': 1,
-                    'message': 'Verification code sent to your email address'
-                }
-                
-                # Only include verification_code in development
-                if settings.DEBUG:
-                    development_response['verification_code'] = verification_code
-                    
-                return Response(development_response, status=status.HTTP_200_OK)
-                
+                send_email(subject, message, email, fail_silently=False)
             except Exception as email_error:
+                logger.exception('Reset email failed: %s', email_error)
                 return Response({
                     'code': 0,
                     'message': 'Failed to send verification email. Please try again.'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
+
+            # The code is never echoed back, in any environment.
+            return generic_response
+
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Password reset request failed: {str(e)}'
+                'message': safe_error(e, 'Password reset request failed')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _match_reset_code(self, email, verification_code):
+        """Resolve (member, error_response) for an email + code pair.
+
+        The lookup is keyed on the email, so a code is only ever valid for the
+        account that requested it. Previously the code alone identified the
+        member, which made a 6-digit space brute-forceable across every member
+        at once.
+        """
+        try:
+            member = MemberModel.objects.get(email__iexact=(email or '').strip(), hideStatus=0)
+        except MemberModel.DoesNotExist:
+            return None, Response({'code': 0, 'message': self.INVALID_RESET},
+                                  status=status.HTTP_400_BAD_REQUEST)
+
+        now = timezone.now()
+        if (not member.reset_token or not member.reset_token_expiry
+                or member.reset_token_expiry <= now):
+            return None, Response({'code': 0, 'message': self.INVALID_RESET},
+                                  status=status.HTTP_400_BAD_REQUEST)
+
+        if member.reset_attempts >= 5:
+            # Burn the code rather than let guessing continue.
+            member.reset_token = None
+            member.reset_token_expiry = None
+            member.save(update_fields=['reset_token', 'reset_token_expiry'])
+            return None, Response({'code': 0, 'message': self.INVALID_RESET},
+                                  status=status.HTTP_400_BAD_REQUEST)
+
+        if not check_password(str(verification_code), member.reset_token):
+            member.reset_attempts += 1
+            member.save(update_fields=['reset_attempts'])
+            return None, Response({'code': 0, 'message': self.INVALID_RESET},
+                                  status=status.HTTP_400_BAD_REQUEST)
+
+        return member, None
 
     @action(detail=False, methods=['POST'])
     def verify_reset_code(self, request):
-        """
-        Verify reset code without setting password
-        """
+        """Check an email + code pair without changing the password."""
         try:
+            email = request.data.get('email')
             verification_code = request.data.get('verification_code')
-            
-            if not verification_code:
+
+            if not email or not verification_code:
                 return Response({
                     'code': 0,
-                    'message': 'Verification code is required'
+                    'message': 'Email and verification code are required'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Find member by verification code
-            try:
-                member = MemberModel.objects.get(
-                    reset_token=verification_code,
-                    reset_token_expiry__gt=timezone.now().astimezone(UK_TIMEZONE),
-                    hideStatus=0
-                )
-                return Response({
-                    'code': 1,
-                    'message': 'Verification code is valid'
-                }, status=status.HTTP_200_OK)
-                
-            except MemberModel.DoesNotExist:
-                return Response({
-                    'code': 0,
-                    'message': 'Invalid or expired verification code'
-                }, status=status.HTTP_400_BAD_REQUEST)
-                
+
+            member, error = self._match_reset_code(email, verification_code)
+            if error:
+                return error
+
+            return Response({
+                'code': 1,
+                'message': 'Verification code is valid'
+            }, status=status.HTTP_200_OK)
+
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Verification failed: {str(e)}'
+                'message': safe_error(e, 'Verification failed')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['POST'])
     def set_new_password(self, request):
-        """
-        Set new password using verification code
-        """
+        """Set a new password given a valid email + code pair."""
         try:
+            email = request.data.get('email')
             verification_code = request.data.get('verification_code')
             new_password = request.data.get('new_password')
             confirm_password = request.data.get('confirm_password')
-            
-            if not all([verification_code, new_password, confirm_password]):
+
+            if not all([email, verification_code, new_password, confirm_password]):
                 return Response({
                     'code': 0,
-                    'message': 'Verification code, new password, and confirmation are required'
+                    'message': 'Email, verification code, new password and confirmation are required'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
+
             if new_password != confirm_password:
                 return Response({
                     'code': 0,
                     'message': 'Passwords do not match'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            if len(new_password) < 8:
-                return Response({
-                    'code': 0,
-                    'message': 'Password must be at least 8 characters long'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Find member by verification code
+
+            member, error = self._match_reset_code(email, verification_code)
+            if error:
+                return error
+
             try:
-                member = MemberModel.objects.get(
-                    reset_token=verification_code,
-                    reset_token_expiry__gt=timezone.now().astimezone(UK_TIMEZONE),
-                    hideStatus=0
-                )
-            except MemberModel.DoesNotExist:
+                validate_password(new_password)
+            except DjangoValidationError as pw_error:
                 return Response({
                     'code': 0,
-                    'message': 'Invalid or expired verification code'
+                    'message': ' '.join(pw_error.messages)
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Update password
-            from django.contrib.auth.hashers import make_password
-            password_manager = PasswordManager()
-            
-            # Hash the new password
+
             member.hashed_password = make_password(new_password)
-            # Also encrypt it for compatibility
-            member.encrypted_password = password_manager.encrypt_password(new_password)
-            # Clear the old plain text password
-            member.password = None
-            # Clear reset token
             member.reset_token = None
             member.reset_token_expiry = None
-            member.save()
-            
-            # Also update the corresponding Django User password if it exists
+            member.reset_attempts = 0
+            member.save(update_fields=[
+                'hashed_password', 'reset_token', 'reset_token_expiry', 'reset_attempts',
+            ])
+
+            # Keep the shadow auth_user row in step and cut existing sessions.
             try:
-                from django.contrib.auth.models import User
                 django_user = User.objects.get(username=member.email)
                 django_user.set_password(new_password)
                 django_user.save()
+                revoke_member_tokens(django_user)
             except User.DoesNotExist:
-                pass  # Django user doesn't exist, which is fine
-            
+                pass
+
             return Response({
                 'code': 1,
                 'message': 'Password has been reset successfully'
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Password reset failed: {str(e)}'
+                'message': safe_error(e, 'Password reset failed')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class UserTypeViewSet(viewsets.ModelViewSet):
+class UserTypeViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    default_permissions = [IsAdmin]
     queryset = UserTypeModel.objects.filter(hideStatus=0)
     serializer_class = UserTypeModelSerializers
 
@@ -545,14 +529,20 @@ class UserTypeViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         UserTypeModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
 
-class CountryViewSet(viewsets.ModelViewSet):
+class CountryViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = CountryModel.objects.filter(hideStatus=0)
     serializer_class = CountryModelSerializers
 
@@ -583,14 +573,15 @@ class CountryViewSet(viewsets.ModelViewSet):
 
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         CountryModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
 
-class PaymentMethodViewSet(viewsets.ModelViewSet):
+class PaymentMethodViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    default_permissions = [IsAdmin]
     queryset = PaymentMethodModel.objects.filter(hideStatus=0)
     serializer_class = PaymentMethodModelSerializer
 
@@ -618,14 +609,15 @@ class PaymentMethodViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         PaymentMethodModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
 
-class PaymentStatusViewSet(viewsets.ModelViewSet):
+class PaymentStatusViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    default_permissions = [IsAdmin]
     queryset = PaymentStatusModel.objects.filter(hideStatus=0)
     serializer_class = PaymentStatusModelSerializer
 
@@ -653,14 +645,20 @@ class PaymentStatusViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         PaymentStatusModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
 
-class GenderViewSet(viewsets.ModelViewSet):
+class GenderViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = GenderModel.objects.filter(hideStatus=0)
     serializer_class = GenderModelSerializer
 
@@ -687,7 +685,7 @@ class GenderViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         GenderModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
@@ -697,8 +695,14 @@ class GenderViewSet(viewsets.ModelViewSet):
 
 
 
-class PlanFeatureViewSet(viewsets.ModelViewSet):
+class PlanFeatureViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing plan features"""
+    permission_map = {
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = PlanFeatureModel.objects.filter(hideStatus=0)
     serializer_class = PlanFeatureSerializer
 
@@ -734,16 +738,22 @@ class PlanFeatureViewSet(viewsets.ModelViewSet):
                 response = {'code': 0, 'message': "Unable to Process Request", 'errors': serializer.errors}
             return Response(response)
         except Exception as e:
-            return Response({'code': 0, 'message': f"Error: {str(e)}"}, status=500)
+            return Response({'code': 0, 'message': safe_error(e, 'Error')}, status=500)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         PlanFeatureModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
 
-class PlanViewSet(viewsets.ModelViewSet):
+class PlanViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = PlanModel.objects.filter(hideStatus=0)
     serializer_class = PlanModelSerializers
 
@@ -769,17 +779,43 @@ class PlanViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         PlanModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
 
-class MemberViewSet(viewsets.ModelViewSet):
+class MemberViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     queryset = MemberModel.objects.filter(hideStatus=0)
     serializer_class = MemberModelSerializers
-    authentication_classes = [CustomJWTAuthentication]
+
+    # Member records are the crown jewels: the roster is admin-only, and the
+    # self-service routes are pinned to the caller's own id by IsSelfOrAdmin.
+    permission_map = {
+        'listing': [IsAdmin],
+        'processing': [IsAdmin],
+        'deletion': [IsAdmin],
+        'create_sample_members': [IsAdmin],
+        'get_last_member_id': [IsAdmin],
+        'list': [IsAdmin],
+        'create': [IsAdmin],
+        'update': [IsAdmin],
+        'partial_update': [IsAdmin],
+        'destroy': [IsAdmin],
+        # Detail routes a member may use against their own record only.
+        'retrieve': [IsSelfOrAdmin],
+        'get_profile': [IsSelfOrAdmin],
+        'update_profile': [IsSelfOrAdmin],
+        'get_member_qr_code': [IsSelfOrAdmin],
+        # Collection routes that resolve identity from the token.
+        'get_current_profile': [IsMember],
+        'get_current_member_qr_code': [IsMember],
+        'get_current_memberships': [IsMember],
+        # Gate staff scan the QR at the door with an admin session.
+        'verify_qr_code': [IsAdmin],
+    }
+    default_permissions = [IsAdmin]
 
     def generate_qr_code(self, qr_token: str):
         """
@@ -877,24 +913,13 @@ Master Golf Club Management
 </html>
             '''
 
-            # Create email message
-            msg = EmailMultiAlternatives(
-                subject,
-                text_message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email]
-            )
-            
-            # Add HTML version
-            msg.attach_alternative(html_message, "text/html")
-            
-            # Attach QR code
-            msg.attach(f'membership_qr_{member_id}.png', qr_image_data, 'image/png')
+            # Create email message using the admin-managed SMTP config
+            qr_attachment = (f'membership_qr_{member_id}.png', qr_image_data, 'image/png')
             
             logger.info("Attempting to send email...")
             
             # Send email
-            msg.send()
+            send_email(subject, text_message, email, html_message=html_message, attachments=[qr_attachment])
             
             logger.info("Email sent successfully")
             return True
@@ -917,19 +942,13 @@ Master Golf Club Management
     def processing(self, request, pk=None):
         try:
             data = request.data.copy()
-            password_manager = PasswordManager()
             plain_password = None
 
             # If this is a new member creation
             if pk == "0" and 'password' in data:
                 plain_password = data['password']
-                # Get both encrypted and hashed versions
-                encrypted_pwd, hashed_pwd = password_manager.encrypt_password(plain_password)
-
-                # Update data with encrypted and hashed passwords
-                data['encrypted_password'] = encrypted_pwd
-                data['hashed_password'] = hashed_pwd
-                # Remove plain password from data
+                # The password never reaches the serializer: it is not a
+                # writable field, and only its hash is persisted below.
                 data.pop('password', None)
 
             if pk == "0":
@@ -942,18 +961,19 @@ Master Golf Club Management
 
             if serializer.is_valid():
                 member = serializer.save()
-                logger.info(f"Member saved with ID: {member.id}, QR Token: {member.qr_token}")
+
+                if plain_password:
+                    member.hashed_password = make_password(plain_password)
+                    member.save(update_fields=['hashed_password'])
+                logger.info("Member saved with ID: %s", member.id)
 
                 # For new member, send credentials email and log credentials
                 if pk == "0" and member.email and plain_password:
-                    logger.info(f"=== NEW MEMBER CREATED ===")
-                    logger.info(f"Email: {member.email}")
-                    logger.info(f"Password: {plain_password}")
-                    logger.info(f"Member ID: {member.golfClubId}")
-                    logger.info(f"QR Token: {member.qr_token}")
-                    logger.info(f"Full Name: {member.firstName} {member.lastName}")
-                    logger.info(f"Phone: {member.phoneNumber}")
-                    logger.info("==========================")
+                    # Credentials and the QR token are deliberately not logged.
+                    logger.info(
+                        'New member created: id=%s golfClubId=%s',
+                        member.id, member.golfClubId,
+                    )
                     
                     # Send credentials email
                     email_sent = False
@@ -997,11 +1017,11 @@ Master Golf Club Management
 
         except Exception as e:
             logger.error(f"Processing error: {str(e)}")
-            response = {'code': 0, 'message': str(e)}
+            response = {'code': 0, 'message': safe_error(e, 'Request failed')}
 
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         MemberModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
@@ -1097,7 +1117,7 @@ Master Golf Club Management
             logger.error(f"Error retrieving profile: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error retrieving profile: {str(e)}',
+                'message': safe_error(e, 'Error retrieving profile'),
                 'data': None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -1125,10 +1145,22 @@ Master Golf Club Management
                     'message': 'Member profile not found'
                 }, status=status.HTTP_404_NOT_FOUND)
 
+            # SECURITY: strip identity/billing/admin-controlled fields before
+            # saving. A member must not self-modify their login email, plan,
+            # membership dates, or visibility through update-profile â€” those are
+            # set exclusively by the admin create/update endpoints.
+            update_data = dict(request.data)
+            for protected_field in [
+                'email', 'plan', 'membershipStartDate', 'membershipEndDate',
+                'hideStatus', 'golfClubId', 'enquiryId', 'enquiryMessage',
+                'createdAt', 'updatedAt',
+            ]:
+                update_data.pop(protected_field, None)
+
             # Update the member with provided data
             serializer = MemberModelSerializers(
                 instance=member,
-                data=request.data,
+                data=update_data,
                 partial=True  # Allow partial updates
             )
 
@@ -1153,7 +1185,7 @@ Master Golf Club Management
             logger.error(f"Error updating profile: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error updating profile: {str(e)}'
+                'message': safe_error(e, 'Error updating profile')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ADD: New method for current user profile (if you have authentication)
@@ -1164,28 +1196,16 @@ Master Golf Club Management
         URL: /apis/member/current-profile/
         """
         try:
-            # Get user ID from authenticated user (primary method)
-            user_id = request.user.id if request.user.is_authenticated else None
-            
-            # Fallback: Get user ID from query parameter (sent by frontend)
-            if not user_id:
-                user_id = request.query_params.get('user_id')
-                if user_id:
-                    try:
-                        user_id = int(user_id)
-                    except (ValueError, TypeError):
-                        return Response({
-                            'code': 0,
-                            'message': 'Invalid user ID format',
-                            'data': None
-                        }, status=status.HTTP_400_BAD_REQUEST)
-            
-            if not user_id:
+            # Identity comes from the verified token only. The old
+            # `?user_id=` fallback let any caller name any member.
+            member = resolve_member(request)
+            if member is None:
                 return Response({
                     'code': 0,
                     'message': 'User authentication required',
                     'data': None
                 }, status=status.HTTP_401_UNAUTHORIZED)
+            user_id = member.id
 
             try:
                 member = MemberModel.objects.get(id=user_id, hideStatus=0)
@@ -1244,7 +1264,7 @@ Master Golf Club Management
             logger.error(f"Error retrieving current profile: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error retrieving profile: {str(e)}',
+                'message': safe_error(e, 'Error retrieving profile'),
                 'data': None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
@@ -1285,7 +1305,7 @@ Master Golf Club Management
             logger.error(f"Error verifying QR code: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error verifying QR code: {str(e)}'
+                'message': safe_error(e, 'Error verifying QR code')
             }, status=500)
 
     @action(detail=False, methods=['POST'], url_path='create-sample-members')
@@ -1293,6 +1313,12 @@ Master Golf Club Management
         """
         Create 10 sample members for testing purposes
         """
+        # Seeds accounts with guessable passwords; never allowed off a dev box.
+        if not settings.DEBUG:
+            return Response({
+                'code': 0,
+                'message': 'Sample data creation is disabled in this environment.'
+            }, status=status.HTTP_403_FORBIDDEN)
         try:
             from datetime import date, timedelta
             import random
@@ -1325,7 +1351,6 @@ Master Golf Club Management
                 })
             
             created_members = []
-            password_manager = PasswordManager()
             
             for i, name_data in enumerate(sample_names, 1):
                 # Generate unique email if needed
@@ -1356,40 +1381,27 @@ Master Golf Club Management
                     'handicap': random.choice([True, False])
                 }
                 
-                # Encrypt password
-                encrypted_pwd, hashed_pwd = password_manager.encrypt_password(member_data['password'])
-                member_data['encrypted_password'] = encrypted_pwd
-                member_data['hashed_password'] = hashed_pwd
-                member_data.pop('password', None)
-                
+                sample_password = member_data.pop('password')
+
                 # Create member
                 serializer = MemberModelSerializers(data=member_data)
                 if serializer.is_valid():
                     member = serializer.save()
-                    
-                    # Log credentials
-                    logger.info(f"=== SAMPLE MEMBER {i} CREATED ===")
-                    logger.info(f"Email: {member.email}")
-                    logger.info(f"Password: password{i}")
-                    logger.info(f"Member ID: {member.golfClubId}")
-                    logger.info(f"Full Name: {member.firstName} {member.lastName}")
-                    logger.info(f"Phone: {member.phoneNumber}")
-                    logger.info("================================")
+                    member.hashed_password = make_password(sample_password)
+                    member.save(update_fields=['hashed_password'])
                     
                     created_members.append({
                         'id': member.id,
                         'golfClubId': member.golfClubId,
                         'email': member.email,
-                        'password': f"password{i}",
+                        'password': sample_password,
                         'fullName': f"{member.firstName} {member.lastName}",
                         'phone': member.phoneNumber
                     })
                 else:
                     logger.error(f"Failed to create sample member {i}: {serializer.errors}")
             
-            logger.info(f"=== SAMPLE MEMBERS SUMMARY ===")
-            logger.info(f"Total created: {len(created_members)}")
-            logger.info("===============================")
+            logger.info('Sample members created: %s', len(created_members))
             
             return Response({
                 'code': 1,
@@ -1401,7 +1413,7 @@ Master Golf Club Management
             logger.error(f"Error creating sample members: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f"Error creating sample members: {str(e)}"
+                'message': safe_error(e, 'Error creating sample members')
             })
 
     @action(detail=False, methods=['GET'], url_path='last-member-id/(?P<year>[^/.]+)/(?P<month>[^/.]+)')
@@ -1435,7 +1447,7 @@ Master Golf Club Management
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving last member ID: {str(e)}'
+                'message': safe_error(e, 'Error retrieving last member ID')
             }, status=500)
 
     @action(detail=True, methods=['GET'], url_path='qr-code')
@@ -1493,7 +1505,7 @@ Master Golf Club Management
             logger.error(f"Error generating QR code: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error generating QR code: {str(e)}'
+                'message': safe_error(e, 'Error generating QR code')
             }, status=500)
 
     @action(detail=False, methods=['GET'], url_path='current-qr-code')
@@ -1502,26 +1514,15 @@ Master Golf Club Management
         Get QR code for the currently authenticated member
         """
         try:
-            # Get user ID from authenticated user (primary method)
-            user_id = request.user.id if request.user.is_authenticated else None
-            
-            # Fallback: Get user ID from query parameter (sent by frontend)
-            if not user_id:
-                user_id = request.query_params.get('user_id')
-                if user_id:
-                    try:
-                        user_id = int(user_id)
-                    except (ValueError, TypeError):
-                        return Response({
-                            'code': 0,
-                            'message': 'Invalid user ID format'
-                        }, status=400)
-            
-            if not user_id:
+            # Identity comes from the verified token only. The old
+            # `?user_id=` fallback let any caller name any member.
+            member = resolve_member(request)
+            if member is None:
                 return Response({
                     'code': 0,
                     'message': 'User authentication required'
                 }, status=401)
+            user_id = member.id
             
             # Find member by user ID
             try:
@@ -1577,7 +1578,7 @@ Master Golf Club Management
             logger.error(f"Error generating QR code for current member: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error generating QR code: {str(e)}'
+                'message': safe_error(e, 'Error generating QR code')
             }, status=500)
 
     @action(detail=False, methods=['GET'], url_path='current-memberships')
@@ -1586,26 +1587,15 @@ Master Golf Club Management
         Get current memberships for the authenticated member
         """
         try:
-            # Get user ID from authenticated user (primary method)
-            user_id = request.user.id if request.user.is_authenticated else None
-            
-            # Fallback: Get user ID from query parameter (sent by frontend)
-            if not user_id:
-                user_id = request.query_params.get('user_id')
-                if user_id:
-                    try:
-                        user_id = int(user_id)
-                    except (ValueError, TypeError):
-                        return Response({
-                            'code': 0,
-                            'message': 'Invalid user ID format'
-                        }, status=400)
-            
-            if not user_id:
+            # Identity comes from the verified token only. The old
+            # `?user_id=` fallback let any caller name any member.
+            member = resolve_member(request)
+            if member is None:
                 return Response({
                     'code': 0,
                     'message': 'User authentication required'
                 }, status=401)
+            user_id = member.id
             
             # Find member by user ID
             try:
@@ -1676,13 +1666,20 @@ Master Golf Club Management
             logger.error(f"Error retrieving current memberships: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error retrieving memberships: {str(e)}'
+                'message': safe_error(e, 'Error retrieving memberships')
             }, status=500)
 
 
 
 
-class AmenitiesViewSet(viewsets.ModelViewSet):
+class AmenitiesViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+        'collection_amenities': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = AmenitiesModel.objects.filter(hideStatus=0)
     serializer_class = AmenitiesModelSerializers
 
@@ -1747,19 +1744,27 @@ class AmenitiesViewSet(viewsets.ModelViewSet):
         except AmenitiesModel.DoesNotExist:
             return Response({'code': 0, 'message': "Amenity not found"})
         except Exception as e:
-            return Response({'code': 0, 'message': f"Error processing request: {str(e)}"})
+            return Response({'code': 0, 'message': safe_error(e, 'Error processing request')})
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             AmenitiesModel.objects.filter(id=pk).update(hideStatus=1)
             return Response({'code': 1, 'message': "Done Successfully"})
         except Exception as e:
-            return Response({'code': 0, 'message': f"Error deleting amenity: {str(e)}"})
+            return Response({'code': 0, 'message': safe_error(e, 'Error deleting amenity')})
 
 
-class CollectionViewSet(viewsets.ModelViewSet):
+class CollectionViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """Optimized ViewSet for collection view with minimal data"""
+    permission_map = {
+        'list_courses': [AllowAny],
+        'course_detail': [AllowAny],
+        'search': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = CourseModel.objects.filter(hideStatus=0)
     serializer_class = CollectionSerializer
 
@@ -1841,8 +1846,14 @@ class CollectionViewSet(viewsets.ModelViewSet):
         })
 
 
-class CourseManagementViewSet(viewsets.ModelViewSet):
+class CourseManagementViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for course management (admin operations)"""
+    permission_map = {
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = CourseModel.objects.filter(hideStatus=0)
     serializer_class = CourseDetailSerializer
 
@@ -1983,10 +1994,10 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f"Error: {str(e)}"
+                'message': safe_error(e, 'Error')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             CourseModel.objects.filter(id=pk).update(hideStatus=1)
@@ -1994,11 +2005,19 @@ class CourseManagementViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f"Error: {str(e)}"
+                'message': safe_error(e, 'Error')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
-class TeeViewSet(viewsets.ModelViewSet):
+class TeeViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+        'by_course': [AllowAny],
+        'tee_info': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     serializer_class = TeeSerializer
     
     def get_queryset(self):
@@ -2045,10 +2064,10 @@ class TeeViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f"Error: {str(e)}"
+                'message': safe_error(e, 'Error')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             TeeModel.objects.filter(id=pk).update(hideStatus=1)
@@ -2056,7 +2075,7 @@ class TeeViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f"Error: {str(e)}"
+                'message': safe_error(e, 'Error')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'])
@@ -2155,37 +2174,30 @@ class TeeViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving tee information: {str(e)}'
+                'message': safe_error(e, 'Error retrieving tee information')
             }, status=500)
 
-class BookingViewSet(viewsets.ModelViewSet):
+class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'available_slots': [AllowAny],
+        'admin_all_bookings': [IsAdmin],
+    }
+    default_permissions = [IsMember]
     serializer_class = BookingSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Get bookings for the authenticated member"""
-        try:
-            # Get the authenticated member from the JWT token
-            auth_header = self.request.headers.get('Authorization', '')
-            if not auth_header.startswith('Bearer '):
-                return BookingModel.objects.none()
-            
-            token = auth_header.split(' ')[1]
-            from rest_framework_simplejwt.tokens import UntypedToken
-            token_data = UntypedToken(token)
-            member_id = token_data.get('member_id')
-            
-            if not member_id:
-                return BookingModel.objects.none()
-            
-            member = MemberModel.objects.get(id=member_id)
-            return BookingModel.objects.filter(
-                member=member,
-                hideStatus=0
-            ).prefetch_related('tee__course').order_by('-createdAt')
-        except Exception:
+        """Bookings belonging to the authenticated member.
+
+        Re-parsing the Authorization header here duplicated the work the
+        authentication layer already did; the principal is authoritative.
+        """
+        member = resolve_member(self.request)
+        if member is None:
             return BookingModel.objects.none()
+        return BookingModel.objects.filter(
+            member=member,
+            hideStatus=0
+        ).prefetch_related('tee__course').order_by('-createdAt')
 
 
 
@@ -2209,7 +2221,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving bookings: {str(e)}'
+                'message': safe_error(e, 'Error retrieving bookings')
             }, status=500)
 
     def create(self, request, *args, **kwargs):
@@ -2297,7 +2309,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
 
@@ -2330,7 +2342,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving all bookings: {str(e)}'
+                'message': safe_error(e, 'Error retrieving all bookings')
             }, status=500)
 
     @action(detail=True, methods=['post'])
@@ -2441,7 +2453,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     @action(detail=True, methods=['post'])
@@ -2491,7 +2503,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     @action(detail=False, methods=['post'])
@@ -2646,14 +2658,14 @@ class BookingViewSet(viewsets.ModelViewSet):
             }, status=409)
         except Exception as e:
             import traceback
-            print(f"Error creating multi-slot booking: {str(e)}")
-            print(f"Full traceback: {traceback.format_exc()}")
+            logger.exception('Unhandled error')
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return Response({
                 'code': 0,
-                'message': f'Error creating multi-slot booking: {str(e)}'
+                'message': safe_error(e, 'Error creating multi-slot booking')
             }, status=500)
 
-    @action(detail=False, methods=['get'], permission_classes=[])
+    @action(detail=False, methods=['get'])
     def available_slots(self, request):
         """Get available time slots for a course, date, and specific tee"""
         try:
@@ -2686,8 +2698,8 @@ class BookingViewSet(viewsets.ModelViewSet):
             # Generate time slots specifically for this tee (using UK time)
             slots = self.generate_time_slots(course, booking_date, tee, participants)
             
-            print(f"Generated {len(slots)} slots for {tee.holeNumber} holes tee")
-            print(f"First few slots: {slots[:3] if slots else 'No slots'}")
+            logger.debug(f"Generated {len(slots)} slots for {tee.holeNumber} holes tee")
+            logger.debug(f"First few slots: {slots[:3] if slots else 'No slots'}")
             
             # Add tee information to the response for clarity
             response_data = {
@@ -2701,7 +2713,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 'total_slots': len(slots)
             }
             
-            print(f"Response data structure: {response_data}")
+            logger.debug("Time slot response built")
             
             return Response({
                 'code': 1,
@@ -2711,11 +2723,11 @@ class BookingViewSet(viewsets.ModelViewSet):
             
         except Exception as e:
             import traceback
-            print(f"Error in available_slots: {str(e)}")
-            print(f"Traceback: {traceback.format_exc()}")
+            logger.exception('Unhandled error')
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return Response({
                 'code': 0,
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     def generate_time_slots(self, course, booking_date, tee, requested_participants):
@@ -2738,7 +2750,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         if booking_date == uk_now.date():
             # Use UK time directly - no need for timezone offset adjustment
             now = uk_now
-            print(f"Today's booking for {tee.holeNumber} holes - using UK time: {now}")
+            logger.debug(f"Today's booking for {tee.holeNumber} holes - using UK time: {now}")
                 
             if current_time < now:
                 # Round up to next 8-minute slot
@@ -2750,13 +2762,13 @@ class BookingViewSet(viewsets.ModelViewSet):
                 if current_time.time() < open_time:
                     current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
                 
-                print(f"Today's booking for {tee.holeNumber} holes - starting from: {current_time.time()}")
+                logger.debug(f"Today's booking for {tee.holeNumber} holes - starting from: {current_time.time()}")
             else:
-                print(f"Today's booking for {tee.holeNumber} holes - using open time: {current_time.time()}")
+                logger.debug(f"Today's booking for {tee.holeNumber} holes - using open time: {current_time.time()}")
         else:
             # For all future dates (including tomorrow), start from the course opening time
             current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
-            print(f"Future date {booking_date} for {tee.holeNumber} holes - using open time: {current_time.time()}")
+            logger.debug(f"Future date {booking_date} for {tee.holeNumber} holes - using open time: {current_time.time()}")
         
         while current_time.time() <= close_time:
             slot_time = current_time.time()
@@ -2772,11 +2784,11 @@ class BookingViewSet(viewsets.ModelViewSet):
                     is_join_request=False,  # Only count original bookings, not join requests
                     hideStatus=0
                 )
-                print(f"Query executed successfully for slot {slot_time}")
+                logger.debug(f"Query executed successfully for slot {slot_time}")
             except Exception as query_error:
-                print(f"Error in booking query: {query_error}")
+                logger.error(f"Error in booking query: {query_error}")
                 import traceback
-                print(f"Query traceback: {traceback.format_exc()}")
+                logger.error(f"Query traceback: {traceback.format_exc()}")
                 existing_bookings = BookingModel.objects.none()
             
             # Calculate total participants in this slot for this specific tee
@@ -2801,9 +2813,12 @@ class BookingViewSet(viewsets.ModelViewSet):
                     for booking in existing_bookings:
                         # Check if tee exists before accessing holeNumber
                         hole_number = booking.tee.holeNumber if booking.tee else None
+                        display_name = f"{booking.member.firstName} {booking.member.lastName}"
+                        if not request.user.is_authenticated:
+                            display_name = "Member"
                         booking_details.append({
                             'booking_id': booking.booking_id,
-                            'member_name': f"{booking.member.firstName} {booking.member.lastName}",
+                            'member_name': display_name,
                             'participants': booking.participants,
                             'status': booking.status,
                             'hole_number': hole_number,
@@ -2828,19 +2843,19 @@ class BookingViewSet(viewsets.ModelViewSet):
                 }
                 
                 slots.append(slot_data)
-                print(f"Added slot: {slot_data['time']} - {slot_data['slot_status']} - {slot_data['available_spots']} spots available")
+                logger.debug(f"Added slot: {slot_data['time']} - {slot_data['slot_status']} - {slot_data['available_spots']} spots available")
             
             # Move to next slot (8 minutes later)
             current_time += timedelta(minutes=slot_duration)
         
-        print(f"Total slots generated: {len(slots)}")
+        logger.debug(f"Total slots generated: {len(slots)}")
         return slots
 
     @action(detail=True, methods=['post'], url_path='add_participants', url_name='add_participants')
     def add_participants(self, request, pk=None):
         """Add participants to an existing booking"""
         try:
-            print(f"add_participants called with pk: {pk}, request data: {request.data}")
+            logger.debug(f"add_participants called with pk: {pk}")
             
             # Get the authenticated member from the JWT token
             auth_header = request.headers.get('Authorization', '')
@@ -2866,12 +2881,12 @@ class BookingViewSet(viewsets.ModelViewSet):
             # Get the booking object directly by ID
             try:
                 booking = get_object_or_404(BookingModel, id=pk, hideStatus=0)
-                print(f"Found booking: {booking.id}, member: {booking.member.id if booking.member else 'None'}")
+                logger.debug(f"Found booking: {booking.id}, member: {booking.member.id if booking.member else 'None'}")
             except Exception as e:
-                print(f"Error getting booking object: {str(e)}")
+                logger.exception('Unhandled error')
                 return Response({
                     'code': 0,
-                    'message': f'Error getting booking: {str(e)}'
+                    'message': safe_error(e, 'Error getting booking')
                 }, status=500)
             
             # Check if the authenticated user owns this booking
@@ -2882,7 +2897,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 }, status=403)
             
             additional_participants = request.data.get('additional_participants', 1)
-            print(f"Additional participants requested: {additional_participants}")
+            logger.debug(f"Additional participants requested: {additional_participants}")
             
             if not additional_participants or additional_participants <= 0:
                 return Response({
@@ -2903,7 +2918,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking.participants = total_participants
             booking.save()
             
-            print(f"Successfully updated booking {booking.id}: {old_participants} -> {total_participants} participants")
+            logger.debug(f"Successfully updated booking {booking.id}: {old_participants} -> {total_participants} participants")
             
             return Response({
                 'code': 1,
@@ -2916,12 +2931,12 @@ class BookingViewSet(viewsets.ModelViewSet):
             })
             
         except Exception as e:
-            print(f"Error in add_participants: {str(e)}")
+            logger.exception('Unhandled error')
             import traceback
             traceback.print_exc()
             return Response({
                 'code': 0,
-                'message': f'Error adding participants: {str(e)}'
+                'message': safe_error(e, 'Error adding participants')
             }, status=500)
 
     @action(detail=False, methods=['post'])
@@ -3096,7 +3111,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     @action(detail=False, methods=['GET'])
@@ -3250,7 +3265,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error checking slot availability: {str(e)}'
+                'message': safe_error(e, 'Error checking slot availability')
             }, status=500)
 
     @action(detail=True, methods=['post'])
@@ -3377,18 +3392,17 @@ class BookingViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error reviewing join request: {str(e)}'
+                'message': safe_error(e, 'Error reviewing join request')
             }, status=500)
 
 
-class DashboardViewSet(viewsets.ViewSet):
+class DashboardViewSet(ActionPermissionMixin, viewsets.ViewSet):
     """Live club figures for the admin dashboard.
 
     Every number is counted at request time, so polling this endpoint is what
     makes the dashboard current. Dates use UK time to match the booking rules.
     """
-    permission_classes = []
-    authentication_classes = []
+    default_permissions = [IsAdmin]
 
     @action(detail=False, methods=['GET'], url_path='stats')
     def stats(self, request):
@@ -3459,15 +3473,14 @@ class DashboardViewSet(viewsets.ViewSet):
             logger.error(f"Error building dashboard stats: {str(e)}")
             return Response({
                 'code': 0,
-                'message': f'Error retrieving dashboard stats: {str(e)}'
+                'message': safe_error(e, 'Error retrieving dashboard stats')
             }, status=500)
 
 
-class NotificationViewSet(viewsets.ModelViewSet):
+class NotificationViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing notifications"""
+    default_permissions = [IsMember]
     serializer_class = NotificationSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         queryset = NotificationModel.objects.select_related('recipient', 'sender', 'related_booking')
@@ -3520,7 +3533,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error marking notification as read: {str(e)}'
+                'message': safe_error(e, 'Error marking notification as read')
             }, status=400)
     
     @action(detail=False, methods=['POST'])
@@ -3584,11 +3597,18 @@ class NotificationViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving header notifications: {str(e)}'
+                'message': safe_error(e, 'Error retrieving header notifications')
             }, status=500)
 
 
-class BlogViewSet(viewsets.ModelViewSet):
+class BlogViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'listing': [AllowAny],
+        'latest': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = BlogModel.objects.filter(hideStatus=0)
     serializer_class = BlogModelSerializers
 
@@ -3635,14 +3655,20 @@ class BlogViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         BlogModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
 
 
-class ConceptViewSet(viewsets.ModelViewSet):
+class ConceptViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'get_concept': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = ConceptModel.objects.all()
     serializer_class = ConceptModelSerializer
 
@@ -3660,7 +3686,7 @@ class ConceptViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['POST'], url_path='create_or_update_concept')
@@ -3715,7 +3741,7 @@ class ConceptViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f"Error: {str(e)}"
+                'message': safe_error(e, 'Error')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['DELETE'], url_path='delete_concept')
@@ -3741,7 +3767,7 @@ class ConceptViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f"Error: {str(e)}"
+                'message': safe_error(e, 'Error')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['DELETE'], url_path='delete_item')
@@ -3784,11 +3810,15 @@ class ConceptViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f"Error: {str(e)}"
+                'message': safe_error(e, 'Error')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class ContactEnquiryViewSet(viewsets.ModelViewSet):
+class ContactEnquiryViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'processing': [PublicCreateOnly],
+    }
+    default_permissions = [IsAdmin]
     queryset = ContactEnquiryModel.objects.filter(hideStatus=0)
     serializer_class = ContactEnquiryModelSerializers
 
@@ -3818,7 +3848,7 @@ class ContactEnquiryViewSet(viewsets.ModelViewSet):
             response = {'code': 0, 'message': "Unable to Process Request"}
         return Response(response)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         ContactEnquiryModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
@@ -3846,7 +3876,11 @@ class ContactEnquiryViewSet(viewsets.ModelViewSet):
         return Response(response)
 
 
-class MemberEnquiryViewSet(viewsets.ModelViewSet):
+class MemberEnquiryViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'processing': [PublicCreateOnly],
+    }
+    default_permissions = [IsAdmin]
     queryset = MemberEnquiryModel.objects.filter(hideStatus=0)
     serializer_class = MemberEnquiryModelSerializers
 
@@ -3869,7 +3903,7 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
         
         except Exception as e:
             logger.error(f"Error in listing enquiries: {str(e)}")
-            response = {'code': 0, 'message': f"Error retrieving enquiries: {str(e)}"}
+            response = {'code': 0, 'message': safe_error(e, 'Error retrieving enquiries')}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['POST'], url_path='processing/(?P<enquiry_id>[^/.]+)')
@@ -3916,10 +3950,10 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error in processing enquiry: {str(e)}")
-            response = {'code': 0, 'message': f"Error: {str(e)}"}
+            response = {'code': 0, 'message': safe_error(e, 'Error')}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=['GET'], url_path='deletion/(?P<enquiry_id>[^/.]+)')
+    @action(detail=False, methods=['DELETE'], url_path='deletion/(?P<enquiry_id>[^/.]+)')
     def deletion(self, request, enquiry_id=None):
         """
         Soft delete member enquiry
@@ -3953,7 +3987,7 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error in deleting enquiry: {str(e)}")
-            response = {'code': 0, 'message': f"Error: {str(e)}"}
+            response = {'code': 0, 'message': safe_error(e, 'Error')}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['POST'], url_path='mark-converted/(?P<enquiry_id>[^/.]+)')
@@ -4017,11 +4051,18 @@ class MemberEnquiryViewSet(viewsets.ModelViewSet):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error marking enquiry as converted: {str(e)}", exc_info=True)
-            response = {'code': 0, 'message': f"Error: {str(e)}"}
+            response = {'code': 0, 'message': safe_error(e, 'Error')}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class AboutViewSet(viewsets.ModelViewSet):
+class AboutViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'get_about': [AllowAny],
+        'listing': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = AboutModel.objects.filter(hideStatus=0)
     serializer_class = AboutModelSerializer
 
@@ -4038,7 +4079,7 @@ class AboutViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=500)
 
     @action(detail=False, methods=['POST'], url_path='create_or_update_about')
@@ -4063,7 +4104,7 @@ class AboutViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=500)
 
     @action(detail=True, methods=['GET'])
@@ -4084,7 +4125,7 @@ class AboutViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=500)
 
     @action(detail=True, methods=['POST'])
@@ -4114,10 +4155,10 @@ class AboutViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=500)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             about = self.get_object()
@@ -4135,7 +4176,7 @@ class AboutViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=500)
 
 
@@ -4180,7 +4221,15 @@ def blog_detail_view(request, blog_id):
     return render(request, 'news.html', context)
 
 
-class EventViewSet(viewsets.ModelViewSet):
+class EventViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
+    permission_map = {
+        'listing': [AllowAny],
+        'active_events': [AllowAny],
+        'event_detail': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = EventModel.objects.filter(hideStatus=0)
     serializer_class = EventModelSerializer
     
@@ -4223,7 +4272,7 @@ class EventViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=500)
     
     @action(detail=True, methods=['POST'])
@@ -4287,14 +4336,14 @@ class EventViewSet(viewsets.ModelViewSet):
             }, status=404)
         except Exception as e:
             import traceback
-            print(f"Error in event processing: {str(e)}")
-            print(f"Traceback: {traceback.format_exc()}")
+            logger.exception('Unhandled error')
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return Response({
                 'status': 'error',
-                'message': f"Error processing event: {str(e)}"
+                'message': safe_error(e, 'Error processing event')
             }, status=500)
     
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             event = EventModel.objects.get(id=pk, hideStatus=0)
@@ -4313,7 +4362,7 @@ class EventViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=500)
     
     @action(detail=False, methods=['GET'])
@@ -4330,7 +4379,7 @@ class EventViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': f'Error retrieving events: {str(e)}'
+                'message': safe_error(e, 'Error retrieving events')
             }, status=500)
     
     @action(detail=True, methods=['GET'])
@@ -4352,15 +4401,14 @@ class EventViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': f'Error retrieving event details: {str(e)}'
+                'message': safe_error(e, 'Error retrieving event details')
             }, status=500)
 
 
-class EventInterestViewSet(viewsets.ModelViewSet):
+class EventInterestViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing event interests"""
+    default_permissions = [IsMember]
     serializer_class = EventInterestSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """Get interests for the authenticated member"""
@@ -4463,7 +4511,7 @@ class EventInterestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': f'Error retrieving member interests: {str(e)}'
+                'message': safe_error(e, 'Error retrieving member interests')
             }, status=500)
 
     def get_memberFullName(self, obj):
@@ -4487,8 +4535,15 @@ class EventInterestViewSet(viewsets.ModelViewSet):
         return data
 
 
-class ProtocolViewSet(viewsets.ModelViewSet):
+class ProtocolViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing protocols"""
+    permission_map = {
+        'listing': [AllowAny],
+        'active_protocols': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = ProtocolModel.objects.filter(hideStatus=0)
     serializer_class = ProtocolModelSerializer
 
@@ -4515,7 +4570,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     @action(detail=True, methods=['POST'])
@@ -4557,10 +4612,10 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             protocol = self.get_object()
@@ -4573,7 +4628,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     @action(detail=False, methods=['GET'])
@@ -4589,12 +4644,19 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
 
-class InstructorViewSet(viewsets.ModelViewSet):
+class InstructorViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing instructors"""
+    permission_map = {
+        'listing': [AllowAny],
+        'active_instructors': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = InstructorModel.objects.filter(hideStatus=0)
     serializer_class = InstructorModelSerializer
 
@@ -4621,7 +4683,7 @@ class InstructorViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     @action(detail=True, methods=['POST'])
@@ -4663,10 +4725,10 @@ class InstructorViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             instructor = self.get_object()
@@ -4679,7 +4741,7 @@ class InstructorViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': safe_error(e, 'Request failed')
             }, status=400)
 
     @action(detail=False, methods=['GET'])
@@ -4692,12 +4754,16 @@ class InstructorViewSet(viewsets.ModelViewSet):
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error retrieving active instructors: {str(e)}")
-            response = {'code': 0, 'message': f"Error retrieving instructors: {str(e)}"}
+            response = {'code': 0, 'message': safe_error(e, 'Error retrieving instructors')}
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class MessageViewSet(viewsets.ModelViewSet):
+class MessageViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing messages"""
+    permission_map = {
+        'create_message': [PublicCreateOnly],
+    }
+    default_permissions = [IsAdmin]
     queryset = MessageModel.objects.filter(hideStatus=0)
     serializer_class = MessageModelSerializer
 
@@ -4745,7 +4811,7 @@ class MessageViewSet(viewsets.ModelViewSet):
                 'message': 'Message not found'
             }, status=404)
 
-    @action(detail=False, methods=['GET'], url_path='deletion/(?P<message_id>[^/.]+)')
+    @action(detail=False, methods=['DELETE'], url_path='deletion/(?P<message_id>[^/.]+)')
     def deletion(self, request, message_id=None):
         try:
             message = MessageModel.objects.get(id=message_id, hideStatus=0)
@@ -4846,8 +4912,15 @@ class MessageViewSet(viewsets.ModelViewSet):
             }, status=400)
 
 
-class FAQViewSet(viewsets.ModelViewSet):
+class FAQViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing FAQs"""
+    permission_map = {
+        'listing': [AllowAny],
+        'active_faqs': [AllowAny],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+    }
+    default_permissions = [IsAdmin]
     queryset = FAQModel.objects.filter(hideStatus=0)
     serializer_class = FAQModelSerializer
 
@@ -4924,7 +4997,7 @@ class FAQViewSet(viewsets.ModelViewSet):
                 'message': 'FAQ not found'
             }, status=404)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['DELETE'])
     def deletion(self, request, pk=None):
         try:
             faq = FAQModel.objects.get(id=pk, hideStatus=0)
@@ -4952,11 +5025,10 @@ class FAQViewSet(viewsets.ModelViewSet):
         })
 
 
-class OrdersViewSet(viewsets.ModelViewSet):
+class OrdersViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing orders and order statistics"""
+    default_permissions = [IsMember]
     serializer_class = BookingSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """Get all bookings for the authenticated member"""
@@ -5049,7 +5121,7 @@ class OrdersViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving enhanced order statistics: {str(e)}'
+                'message': safe_error(e, 'Error retrieving enhanced order statistics')
             }, status=500)
 
     @action(detail=False, methods=['GET'])
@@ -5090,7 +5162,7 @@ class OrdersViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error filtering orders: {str(e)}'
+                'message': safe_error(e, 'Error filtering orders')
             }, status=500)
 
     @action(detail=False, methods=['GET'])
@@ -5141,7 +5213,7 @@ class OrdersViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving enhanced orders: {str(e)}'
+                'message': safe_error(e, 'Error retrieving enhanced orders')
             }, status=500)
 
     @action(detail=False, methods=['GET'])
@@ -5197,15 +5269,17 @@ class OrdersViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving pending review requests: {str(e)}'
+                'message': safe_error(e, 'Error retrieving pending review requests')
             }, status=500)
 
 
-class JoinRequestViewSet(viewsets.ModelViewSet):
+class JoinRequestViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     """ViewSet for managing join requests"""
+    permission_map = {
+        'admin_all_requests': [IsAdmin],
+    }
+    default_permissions = [IsMember]
     serializer_class = JoinRequestSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """Get join requests based on user role"""
@@ -5252,7 +5326,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving all join requests: {str(e)}'
+                'message': safe_error(e, 'Error retrieving all join requests')
             }, status=500)
 
     @action(detail=False, methods=['GET'])
@@ -5283,7 +5357,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving incoming requests: {str(e)}'
+                'message': safe_error(e, 'Error retrieving incoming requests')
             }, status=500)
     
     @action(detail=False, methods=['GET'])
@@ -5313,7 +5387,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving outgoing requests: {str(e)}'
+                'message': safe_error(e, 'Error retrieving outgoing requests')
             }, status=500)
     
     @action(detail=True, methods=['POST'])
@@ -5430,7 +5504,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error approving join request: {str(e)}'
+                'message': safe_error(e, 'Error approving join request')
             }, status=500)
     
     @action(detail=True, methods=['POST'])
@@ -5478,7 +5552,7 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error rejecting join request: {str(e)}'
+                'message': safe_error(e, 'Error rejecting join request')
             }, status=500)
     
     @action(detail=False, methods=['GET'])
@@ -5547,6 +5621,6 @@ class JoinRequestViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 'code': 0,
-                'message': f'Error retrieving statistics: {str(e)}'
+                'message': safe_error(e, 'Error retrieving statistics')
             }, status=500)
 

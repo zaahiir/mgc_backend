@@ -1,5 +1,18 @@
 venv
 .venv
+
+# Secrets. Never commit; see .env.example for the required keys.
+.env
+.env.*
+!.env.example
+
+# Local database
+*.sqlite3
+db.sqlite3
+
+# Uploaded user content
+media/
+
 Golf-Admin/dist/
 master_golf_club/dist/
 *.backup

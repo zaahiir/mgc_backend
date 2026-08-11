@@ -5,6 +5,7 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
+from .validators import validate_document_upload, validate_image_upload
 import uuid
 import datetime
 import pytz
@@ -108,8 +109,10 @@ class MemberModel(models.Model):
     firstName = models.CharField(max_length=150)  # Required
     lastName = models.CharField(max_length=150)   # Required
     email = models.EmailField(unique=True)        # Required
-    password = models.CharField(max_length=100, null=True, blank=True)
-    encrypted_password = models.TextField(null=True, blank=True)
+    # Only a one-way hash is kept. The former `password` (plaintext) and
+    # `encrypted_password` (Fernet, decryptable so credentials could be mailed
+    # back) columns are gone: anything able to read a member row could recover
+    # the live password from them.
     hashed_password = models.TextField(null=True, blank=True)
     phoneNumber = models.CharField(max_length=20) # Required
     alternatePhoneNumber = models.CharField(max_length=20, null=True, blank=True)
@@ -127,8 +130,8 @@ class MemberModel(models.Model):
     emergencyContactPhone = models.CharField(max_length=20, null=True, blank=True)
     emergencyContactRelation = models.CharField(max_length=100, null=True, blank=True)
     referredBy = models.CharField(max_length=200, null=True, blank=True)
-    profilePhoto = models.ImageField(upload_to="member_photos/", null=True, blank=True)
-    idProof = models.FileField(upload_to="member_id_proofs/", null=True, blank=True)
+    profilePhoto = models.ImageField(upload_to="member_photos/", null=True, blank=True, validators=[validate_image_upload])
+    idProof = models.FileField(upload_to="member_id_proofs/", null=True, blank=True, validators=[validate_document_upload])
     handicap = models.BooleanField(default=False)
     golfClubId = models.CharField(max_length=100, null=True, blank=True, unique=True,
                                   help_text="Assigned on save in the format MGC25100001; never set by the client")
@@ -137,8 +140,10 @@ class MemberModel(models.Model):
     # Enquiry related fields
     enquiryId = models.CharField(max_length=50, null=True, blank=True, help_text="ID of the original enquiry if member was created from enquiry")
     enquiryMessage = models.TextField(null=True, blank=True, help_text="Original enquiry message")
+    # Stores a salted hash of the emailed code, never the code itself.
     reset_token = models.CharField(max_length=255, null=True, blank=True)
     reset_token_expiry = models.DateTimeField(null=True, blank=True)
+    reset_attempts = models.PositiveSmallIntegerField(default=0)
     
     hideStatus = models.IntegerField(default=0)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -247,7 +252,7 @@ class CourseModel(models.Model):
     courseDescription = models.TextField(null=True, blank=True)
     courseLocation = models.CharField(max_length=500, null=True, blank=True, 
                                     help_text="GPS coordinates or detailed location for directions")
-    courseImage = models.ImageField(upload_to='course_images/', null=True, blank=True)
+    courseImage = models.ImageField(upload_to='course_images/', null=True, blank=True, validators=[validate_image_upload])
     courseAmenities = models.ManyToManyField(AmenitiesModel, blank=True, related_name="courses")
     joinRequestExpiryHours = models.PositiveIntegerField(
         null=True, blank=True,
@@ -1137,7 +1142,7 @@ class BlogModel(models.Model):
     blogTitle = models.CharField(max_length=255)
     blogHighlight = models.TextField(null=True, blank=True)
     blogDescription = HTMLField()
-    blogImage = models.ImageField(upload_to='blog_images/', null=True, blank=True)
+    blogImage = models.ImageField(upload_to='blog_images/', null=True, blank=True, validators=[validate_image_upload])
     blogQuote = models.TextField(null=True, blank=True, help_text="Quote text for the blog")
     blogQuoteCreator = models.CharField(max_length=255, null=True, blank=True, help_text="Name of the quote creator")
     hideStatus = models.IntegerField(default=0)
@@ -1267,15 +1272,15 @@ class EventModel(models.Model):
     EventEntryPrice = models.CharField(max_length=50, help_text="Event entry price (e.g., '$60')", default="$0")
     
     # Main Event Image
-    EventImage = models.ImageField(upload_to='events/main/', help_text="Main event image", blank=True, null=True)
+    EventImage = models.ImageField(upload_to='events/main/', help_text="Main event image", blank=True, null=True, validators=[validate_image_upload])
     
     # Event Details Section
     EventDetails = HTMLField(help_text="Event details with rich text editor", default="")
     
     # Event Activities Section
     EventActivities = HTMLField(help_text="Event activities with rich text editor", default="")
-    EventActivitiesimageOne = models.ImageField(upload_to='events/activities/', blank=True, null=True, help_text="Event activities image 1")
-    EventActivitiesimageTwo = models.ImageField(upload_to='events/activities/', blank=True, null=True, help_text="Event activities image 2")
+    EventActivitiesimageOne = models.ImageField(upload_to='events/activities/', blank=True, null=True, help_text="Event activities image 1", validators=[validate_image_upload])
+    EventActivitiesimageTwo = models.ImageField(upload_to='events/activities/', blank=True, null=True, help_text="Event activities image 2", validators=[validate_image_upload])
     
     # Event Details
     EventDetailOrganizer = models.CharField(max_length=255, help_text="Event organizer name")
@@ -1363,7 +1368,7 @@ class InstructorModel(models.Model):
     id = models.AutoField(primary_key=True)
     instructorName = models.CharField(max_length=255, help_text="Instructor name")
     instructorPosition = models.CharField(max_length=255, help_text="Instructor position/role")
-    instructorPhoto = models.ImageField(upload_to='instructor_photos/', help_text="Instructor photo", blank=True, null=True)
+    instructorPhoto = models.ImageField(upload_to='instructor_photos/', help_text="Instructor photo", blank=True, null=True, validators=[validate_image_upload])
     facebookUrl = models.URLField(max_length=500, blank=True, null=True, help_text="Facebook profile URL")
     instagramUrl = models.URLField(max_length=500, blank=True, null=True, help_text="Instagram profile URL")
     twitterUrl = models.URLField(max_length=500, blank=True, null=True, help_text="Twitter/X profile URL")
@@ -1458,4 +1463,24 @@ class FAQModel(models.Model):
         return self.faqQuestion[:100] + "..." if len(self.faqQuestion) > 100 else self.faqQuestion
 
 
+class SystemSetting(models.Model):
+    """Admin-managed key/value store for secrets (API keys, SMTP credentials).
+
+    Values flagged `is_secret` are encrypted at rest using the Django SECRET_KEY.
+    Read through `apis.system_settings.get_setting` / `get_smtp_config`.
+    """
+    key = models.CharField(max_length=100, unique=True)
+    value = models.TextField(null=True, blank=True)
+    is_secret = models.BooleanField(default=False, help_text="Encrypt this value at rest")
+    description = models.TextField(null=True, blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "System Setting"
+        verbose_name_plural = "System Settings"
+        ordering = ['key']
+
+    def __str__(self):
+        return self.key
 

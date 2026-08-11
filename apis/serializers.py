@@ -99,10 +99,25 @@ class MemberModelSerializers(serializers.ModelSerializer):
 
     class Meta:
         model = MemberModel
-        fields = '__all__'
+        # SECURITY: enumerated explicitly rather than '__all__'. The wildcard
+        # published every column it was not told to hide, which put the
+        # plaintext password, the password-reset code and the QR access token
+        # into every member listing response.
+        fields = [
+            'id', 'firstName', 'lastName', 'email', 'phoneNumber',
+            'alternatePhoneNumber', 'alternateEmail', 'dateOfBirth', 'gender',
+            'nationality', 'address', 'plan', 'membershipStartDate',
+            'membershipEndDate', 'emergencyContactName', 'emergencyContactPhone',
+            'emergencyContactRelation', 'referredBy', 'profilePhoto', 'idProof',
+            'handicap', 'golfClubId', 'enquiryId', 'enquiryMessage',
+            'hideStatus', 'createdAt', 'updatedAt',
+        ]
+        # Never serialisable, and never settable by a client:
+        #   hashed_password  - credential material
+        #   reset_token / reset_token_expiry / reset_attempts - reset state
+        #   qr_token         - grants club entry when presented
+        read_only_fields = ['id', 'golfClubId', 'createdAt', 'updatedAt']
         extra_kwargs = {
-            'encrypted_password': {'write_only': True},
-            'hashed_password': {'write_only': True},
             # Make sure only required fields are enforced
             'firstName': {'required': True},
             'lastName': {'required': True},
@@ -562,7 +577,14 @@ class BookingSerializer(serializers.ModelSerializer):
     
     # Multi-slot support for orders component
     slots = serializers.SerializerMethodField(read_only=True)
-    
+
+    def get_unique_together_validators(self):
+        # slot_date/slotDate and booking_time/bookingTime both map to the same
+        # model field, which trips DRF's auto-generated UniqueTogetherValidator
+        # (AssertionError at validation time). The one-slot-per-time rule is
+        # enforced by BookingSerializer.validate() and the model's DB constraint.
+        return []
+
     class Meta:
         model = BookingModel
         fields = [
