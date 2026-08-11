@@ -278,6 +278,14 @@ DEFAULT_FROM_EMAIL = os.getenv('DJANGO_DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 EMAIL_TIMEOUT = int(os.getenv('DJANGO_EMAIL_TIMEOUT', '30'))
 
+# ---------------------------------------------------------------------------
+# Obfuscated Django admin / TinyMCE mount points
+# ---------------------------------------------------------------------------
+# The stock '/admin/' path is a well-known attack surface. Mount the Django
+# admin under a less guessable prefix (override in .env). TinyMCE's upload
+# endpoint is folded under the same prefix and remains staff-only.
+DJANGO_ADMIN_URL = os.getenv('DJANGO_ADMIN_URL', 'mastergolf-admin-console').strip('/')
+
 LANGUAGE_CODE = 'en-gb'
 TIME_ZONE = 'Europe/London'
 USE_I18N = True

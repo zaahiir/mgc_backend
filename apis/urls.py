@@ -8,7 +8,7 @@ from .views import (
     BlogViewSet, ConceptViewSet, ContactEnquiryViewSet, MemberEnquiryViewSet,
     AboutViewSet, EventViewSet, EventInterestViewSet, ProtocolViewSet,
     InstructorViewSet, MessageViewSet, FAQViewSet, NotificationViewSet,
-    JoinRequestViewSet, DashboardViewSet
+    JoinRequestViewSet, DashboardViewSet, SystemSettingsViewSet
 )
 
 router = DefaultRouter()
@@ -44,6 +44,7 @@ router.register('faq', FAQViewSet, basename='faq')
 router.register('notification', NotificationViewSet, basename='notification')
 router.register('joinRequest', JoinRequestViewSet, basename='joinRequest')
 router.register('dashboard', DashboardViewSet, basename='dashboard')
+router.register('system-settings', SystemSettingsViewSet, basename='system-settings')
 
 urlpatterns = [
     path('', include(router.urls)),

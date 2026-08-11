@@ -11,6 +11,7 @@ DEFAULT_KEYS = [
     ('SMTP_PASSWORD', settings.EMAIL_HOST_PASSWORD, True, 'SMTP mail app password (stored encrypted)'),
     ('SMTP_USE_TLS', 'true', False, 'Use TLS for SMTP (true/false)'),
     ('SMTP_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL, False, 'From address used for outgoing email'),
+    ('TINYMCE_API_KEY', '', True, 'TinyMCE API key (stored encrypted)'),
 ]
 
 

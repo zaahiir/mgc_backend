@@ -500,6 +500,103 @@ class UserViewSet(ActionPermissionMixin, viewsets.ViewSet):
                 'message': safe_error(e, 'Password reset failed')
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['GET'])
+    def profile(self, request):
+        """Current admin profile.
+
+        URL: /apis/user/profile/
+        """
+        try:
+            user = request.user
+            return Response({
+                'code': 1,
+                'message': 'Profile retrieved successfully',
+                'data': {
+                    'user_id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'user_type': 'admin' if (user.is_superuser or user.is_staff) else 'user',
+                }
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': safe_error(e, 'Error retrieving profile')
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['PUT', 'PATCH'], url_path='update-profile')
+    def update_profile(self, request):
+        """Update the current admin's username/email.
+
+        URL: /apis/user/update-profile/
+        """
+        try:
+            user = request.user
+            data = request.data or {}
+
+            if not any(key in data for key in ('username', 'email')):
+                return Response({
+                    'code': 0,
+                    'message': 'Username or email is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            update_fields = []
+            if 'username' in data:
+                username = str(data.get('username') or '').strip()
+                if not username:
+                    return Response({
+                        'code': 0,
+                        'message': 'Username cannot be empty'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                if User.objects.exclude(pk=user.pk).filter(username__iexact=username).exists():
+                    return Response({
+                        'code': 0,
+                        'message': 'That username is already taken'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                user.username = username
+                update_fields.append('username')
+
+            if 'email' in data:
+                email = str(data.get('email') or '').strip()
+                if not email:
+                    return Response({
+                        'code': 0,
+                        'message': 'Email cannot be empty'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                if User.objects.exclude(pk=user.pk).filter(email__iexact=email).exists():
+                    return Response({
+                        'code': 0,
+                        'message': 'That email is already in use'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                user.email = email
+                update_fields.append('email')
+
+            try:
+                user.full_clean()
+            except DjangoValidationError as exc:
+                return Response({
+                    'code': 0,
+                    'message': ' '.join(exc.messages)
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            user.save(update_fields=update_fields)
+
+            return Response({
+                'code': 1,
+                'message': 'Profile updated successfully',
+                'data': {
+                    'user_id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'user_type': 'admin' if (user.is_superuser or user.is_staff) else 'user',
+                }
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'code': 0,
+                'message': safe_error(e, 'Profile update failed')
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class UserTypeViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
     default_permissions = [IsAdmin]
@@ -825,7 +922,6 @@ class MemberViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             # FIXED: Use mastergolfclub.com instead of mastergolfclub.com for QR code URLs
             qr_url = f"https://mastergolfclub.com/member/verify/{qr_token}/"
             
-            logger.info(f"Generating QR code for URL: {qr_url}")
             
             # Generate QR code
             qr = qrcode.QRCode(
@@ -845,7 +941,6 @@ class MemberViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             qr_image.save(buffer, format='PNG')
             buffer.seek(0)
             
-            logger.info("QR code generated successfully")
             return buffer.getvalue()
             
         except Exception as e:
@@ -857,7 +952,6 @@ class MemberViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
         Send email with credentials and QR code to new member
         """
         try:
-            logger.info(f"Attempting to send email to: {email}")
             
             # Generate QR code
             qr_image_data = self.generate_qr_code(qr_token)
@@ -916,12 +1010,10 @@ Master Golf Club Management
             # Create email message using the admin-managed SMTP config
             qr_attachment = (f'membership_qr_{member_id}.png', qr_image_data, 'image/png')
             
-            logger.info("Attempting to send email...")
             
             # Send email
             send_email(subject, text_message, email, html_message=html_message, attachments=[qr_attachment])
             
-            logger.info("Email sent successfully")
             return True
             
         except Exception as e:
@@ -965,16 +1057,10 @@ Master Golf Club Management
                 if plain_password:
                     member.hashed_password = make_password(plain_password)
                     member.save(update_fields=['hashed_password'])
-                logger.info("Member saved with ID: %s", member.id)
 
                 # For new member, send credentials email and log credentials
                 if pk == "0" and member.email and plain_password:
                     # Credentials and the QR token are deliberately not logged.
-                    logger.info(
-                        'New member created: id=%s golfClubId=%s',
-                        member.id, member.golfClubId,
-                    )
-                    
                     # Send credentials email
                     email_sent = False
                     try:
@@ -984,9 +1070,7 @@ Master Golf Club Management
                             plain_password, 
                             member.qr_token
                         )
-                        if email_sent:
-                            logger.info("Credentials email sent successfully")
-                        else:
+                        if not email_sent:
                             logger.error("Failed to send credentials email")
                     except Exception as email_error:
                         logger.error(f"Error sending credentials email: {str(email_error)}")
@@ -1026,6 +1110,12 @@ Master Golf Club Management
         MemberModel.objects.filter(id=pk).update(hideStatus=1)
         response = {'code': 1, 'message': "Done Successfully"}
         return Response(response)
+
+    def destroy(self, request, *args, **kwargs):
+        # SECURITY/PRIVACY: members are never hard-deleted. A destroy call
+        # soft-hides the record so it leaves all listing/roster queries.
+        MemberModel.objects.filter(id=kwargs.get('pk')).update(hideStatus=1)
+        return Response({'code': 1, 'message': "Done Successfully"})
 
     @action(detail=True, methods=['GET'], url_path='profile')
     def get_profile(self, request, pk=None):
@@ -1097,7 +1187,6 @@ Master Golf Club Management
                 'notifications': True
             }
 
-            logger.info(f"Profile retrieved successfully for member ID: {member.id}")
             
             return Response({
                 'code': 1,
@@ -1166,7 +1255,6 @@ Master Golf Club Management
 
             if serializer.is_valid():
                 updated_member = serializer.save()
-                logger.info(f"Profile updated successfully for member ID: {updated_member.id}")
                 
                 return Response({
                     'code': 1,
@@ -1275,12 +1363,10 @@ Master Golf Club Management
         Verify QR code and return member details
         """
         try:
-            logger.info(f"Attempting to verify QR token: {qr_token}")
             
             # Find member by QR token
             member = MemberModel.objects.get(qr_token=qr_token, hideStatus=0)
             
-            logger.info(f"Member found: {member.firstName} {member.lastName}")
             
             # Serialize member data
             serializer = MemberQRDetailSerializer(member, context={'request': request})
@@ -1291,11 +1377,10 @@ Master Golf Club Management
                 'message': 'Member details retrieved successfully'
             }
             
-            logger.info("QR verification successful")
             return Response(response)
             
         except MemberModel.DoesNotExist:
-            logger.error(f"Member not found for QR token: {qr_token}")
+            logger.error("Member not found for provided QR token")
             return Response({
                 'code': 0,
                 'message': 'Invalid QR code or member not found'
@@ -1401,7 +1486,6 @@ Master Golf Club Management
                 else:
                     logger.error(f"Failed to create sample member {i}: {serializer.errors}")
             
-            logger.info('Sample members created: %s', len(created_members))
             
             return Response({
                 'code': 1,
@@ -1456,7 +1540,6 @@ Master Golf Club Management
         Get QR code for a specific member
         """
         try:
-            logger.info(f"Fetching QR code for member ID: {pk}")
             
             # Get the member
             member = MemberModel.objects.get(id=pk, hideStatus=0)
@@ -1482,7 +1565,6 @@ Master Golf Club Management
             import base64
             qr_base64 = base64.b64encode(qr_image_data).decode('utf-8')
             
-            logger.info(f"QR code generated successfully for member {pk}")
             
             return Response({
                 'code': 1,
@@ -1554,7 +1636,6 @@ Master Golf Club Management
             import base64
             qr_base64 = base64.b64encode(qr_image_data).decode('utf-8')
             
-            logger.info(f"QR code generated successfully for current member {member.id}")
             
             return Response({
                 'code': 1,
@@ -2698,8 +2779,6 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             # Generate time slots specifically for this tee (using UK time)
             slots = self.generate_time_slots(course, booking_date, tee, participants)
             
-            logger.debug(f"Generated {len(slots)} slots for {tee.holeNumber} holes tee")
-            logger.debug(f"First few slots: {slots[:3] if slots else 'No slots'}")
             
             # Add tee information to the response for clarity
             response_data = {
@@ -2713,7 +2792,6 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
                 'total_slots': len(slots)
             }
             
-            logger.debug("Time slot response built")
             
             return Response({
                 'code': 1,
@@ -2750,7 +2828,6 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
         if booking_date == uk_now.date():
             # Use UK time directly - no need for timezone offset adjustment
             now = uk_now
-            logger.debug(f"Today's booking for {tee.holeNumber} holes - using UK time: {now}")
                 
             if current_time < now:
                 # Round up to next 8-minute slot
@@ -2762,13 +2839,9 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
                 if current_time.time() < open_time:
                     current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
                 
-                logger.debug(f"Today's booking for {tee.holeNumber} holes - starting from: {current_time.time()}")
-            else:
-                logger.debug(f"Today's booking for {tee.holeNumber} holes - using open time: {current_time.time()}")
         else:
             # For all future dates (including tomorrow), start from the course opening time
             current_time = timezone.make_aware(datetime.combine(booking_date, open_time))
-            logger.debug(f"Future date {booking_date} for {tee.holeNumber} holes - using open time: {current_time.time()}")
         
         while current_time.time() <= close_time:
             slot_time = current_time.time()
@@ -2784,7 +2857,6 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
                     is_join_request=False,  # Only count original bookings, not join requests
                     hideStatus=0
                 )
-                logger.debug(f"Query executed successfully for slot {slot_time}")
             except Exception as query_error:
                 logger.error(f"Error in booking query: {query_error}")
                 import traceback
@@ -2843,19 +2915,16 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
                 }
                 
                 slots.append(slot_data)
-                logger.debug(f"Added slot: {slot_data['time']} - {slot_data['slot_status']} - {slot_data['available_spots']} spots available")
             
             # Move to next slot (8 minutes later)
             current_time += timedelta(minutes=slot_duration)
         
-        logger.debug(f"Total slots generated: {len(slots)}")
         return slots
 
     @action(detail=True, methods=['post'], url_path='add_participants', url_name='add_participants')
     def add_participants(self, request, pk=None):
         """Add participants to an existing booking"""
         try:
-            logger.debug(f"add_participants called with pk: {pk}")
             
             # Get the authenticated member from the JWT token
             auth_header = request.headers.get('Authorization', '')
@@ -2881,7 +2950,6 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             # Get the booking object directly by ID
             try:
                 booking = get_object_or_404(BookingModel, id=pk, hideStatus=0)
-                logger.debug(f"Found booking: {booking.id}, member: {booking.member.id if booking.member else 'None'}")
             except Exception as e:
                 logger.exception('Unhandled error')
                 return Response({
@@ -2897,7 +2965,6 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
                 }, status=403)
             
             additional_participants = request.data.get('additional_participants', 1)
-            logger.debug(f"Additional participants requested: {additional_participants}")
             
             if not additional_participants or additional_participants <= 0:
                 return Response({
@@ -2918,7 +2985,6 @@ class BookingViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             booking.participants = total_participants
             booking.save()
             
-            logger.debug(f"Successfully updated booking {booking.id}: {old_participants} -> {total_participants} participants")
             
             return Response({
                 'code': 1,
@@ -3926,10 +3992,6 @@ class MemberEnquiryViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             if serializer.is_valid():
                 enquiry = serializer.save()
                 
-                # Log the conversion update if this is a conversion
-                if data.get('isConverted', False):
-                    logger.info(f"Enquiry {enquiry.id} marked as converted to member {data.get('convertedMemberId', 'Unknown')}")
-                
                 response = {
                     'code': 1, 
                     'message': "Done Successfully", 
@@ -3975,7 +4037,6 @@ class MemberEnquiryViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             affected_rows = MemberEnquiryModel.objects.filter(id=enquiry_id, hideStatus=0).update(hideStatus=1)
             
             if affected_rows > 0:
-                logger.info(f"Enquiry {enquiry_id} soft deleted successfully")
                 response = {'code': 1, 'message': "Done Successfully"}
                 return Response(response, status=status.HTTP_200_OK)
             else:
@@ -3998,11 +4059,8 @@ class MemberEnquiryViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
         Expected data: {'convertedMemberId': 'MEMBER_ID'}
         """
         try:
-            logger.info(f"Received request to mark enquiry {enquiry_id} as converted")
-            logger.info(f"Request data: {request.data}")
             
             enquiry = get_object_or_404(MemberEnquiryModel, id=enquiry_id, hideStatus=0)
-            logger.info(f"Found enquiry: {enquiry.id}, current status: converted={enquiry.is_converted}")
             
             # Check if already converted
             if enquiry.is_converted:
@@ -4030,8 +4088,6 @@ class MemberEnquiryViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
             # FIXED: Verify the update was successful by reloading from database
             enquiry.refresh_from_db()
             
-            logger.info(f"Enquiry {enquiry_id} successfully marked as converted to member {converted_member_id}")
-            logger.info(f"Verification - enquiry.is_converted: {enquiry.is_converted}, enquiry.converted_member_id: {enquiry.converted_member_id}")
             
             response = {
                 'code': 1, 
@@ -5623,4 +5679,85 @@ class JoinRequestViewSet(ActionPermissionMixin, viewsets.ModelViewSet):
                 'code': 0,
                 'message': safe_error(e, 'Error retrieving statistics')
             }, status=500)
+
+
+# Known admin-managed settings and whether each is stored encrypted.
+KNOWN_SETTINGS = {
+    'SMTP_HOST': False,
+    'SMTP_PORT': False,
+    'SMTP_USERNAME': False,
+    'SMTP_PASSWORD': True,
+    'SMTP_USE_TLS': False,
+    'SMTP_FROM_EMAIL': False,
+    'TINYMCE_API_KEY': True,
+}
+
+
+class SystemSettingsViewSet(ActionPermissionMixin, viewsets.ViewSet):
+    """Admin-only endpoint to read/update the DB-backed settings (SMTP, API keys).
+
+    GET  /apis/system-settings/            -> list of {key, is_secret, value, description}
+                                              (secret values are returned blank)
+    PUT  /apis/system-settings/update/     -> body {key: value, ...}
+                                              (a blank/absent secret keeps the stored value)
+    """
+    permission_map = {
+        'list': [IsAdmin],
+        'update_settings': [IsAdmin],
+    }
+    default_permissions = [IsAdmin]
+
+    def list(self, request):
+        from .models import SystemSetting
+        rows = {
+            s.key: s for s in SystemSetting.objects.filter(
+                key__in=KNOWN_SETTINGS.keys()
+            )
+        }
+        data = []
+        for key, is_secret in KNOWN_SETTINGS.items():
+            obj = rows.get(key)
+            data.append({
+                'key': key,
+                'value': '' if (is_secret or obj is None) else obj.value,
+                'is_secret': is_secret,
+                'description': obj.description if obj else '',
+            })
+        return Response({'code': 1, 'data': data})
+
+    @action(detail=False, methods=['put'], url_path='update')
+    def update_settings(self, request):
+        from .models import SystemSetting
+        from .system_settings import set_setting
+
+        payload = request.data or {}
+        if not isinstance(payload, dict):
+            return Response(
+                {'code': 0, 'message': 'Expected an object of {key: value}'},
+                status=400,
+            )
+
+        for key, value in payload.items():
+            if key not in KNOWN_SETTINGS:
+                return Response(
+                    {'code': 0, 'message': f'Unknown setting key: {key}'},
+                    status=400,
+                )
+            if not isinstance(value, str):
+                return Response(
+                    {'code': 0, 'message': f'Value for {key} must be a string'},
+                    status=400,
+                )
+
+        changed = []
+        for key, value in payload.items():
+            is_secret = KNOWN_SETTINGS[key]
+            if is_secret and not value.strip():
+                continue  # blank secret: keep the stored value
+            set_setting(key, value.strip() if not is_secret else value,
+                        is_secret=is_secret)
+            changed.append(key)
+
+        return Response({'code': 1, 'message': 'Settings updated', 'data': changed})
+
 

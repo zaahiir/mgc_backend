@@ -14,8 +14,10 @@ urlpatterns = [
     path('membership/', membership_view, name='membership'),  # Added trailing slash
     path('news/<int:blog_id>/', blog_detail_view, name='blog_detail'),  # Added trailing slash
     path('member/verify/<str:qr_token>/', TemplateView.as_view(template_name='member_verify.html'), name='member_verify'),
-    path('tinymce/', include('tinymce.urls')),
-    path('admin/', admin.site.urls),
+    # Admin and its TinyMCE upload endpoint live under the obfuscated prefix
+    # (settings.DJANGO_ADMIN_URL). The default '/admin/' path is not registered.
+    path(f'{settings.DJANGO_ADMIN_URL}/tinymce/', include('tinymce.urls')),
+    path(f'{settings.DJANGO_ADMIN_URL}/', admin.site.urls),
     path('apis/', include('apis.urls')),  # This includes all the router URLs
     
     # Separate auth endpoints
