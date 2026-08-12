@@ -61,49 +61,123 @@
         function preloader() {
 
             let preloader = $( ".preloader" ),
+                homepage = $( "#homepage" ),
                 progress_number = preloader.find( ".percent" ),
                 progress_title = preloader.find( ".title .text-fill" ),
                 persent = { value: 0 },
                 preloader_bar = preloader.find( ".preloader-bar" ),
                 preloader_progress = preloader_bar.find( ".preloader-progress" );
 
-
-            let timer = dsnGrid.pageLoad( 0, 100, 1000, function ( val ) {
-                progress_number.text( val );
-                persent.value = val;
-                progress_title.css( "clip-path", "inset(" + ( 100 - val ) + "% 0% 0% 0%)" );
-                preloader_progress.css( "width", val + "%" );
-
-            } );
-
             if ( !preloader.length ) {
+                $( "html" ).removeClass( "is-loading" );
+                homepage.removeClass( "homepage-loading" ).addClass( "homepage-ready" ).attr( "aria-hidden", "false" );
                 effectBackForward();
                 reloadAjax().catch( $err => {
                     console.log( $err );
                 } );
+                return;
             }
 
+            let actualProgress = 0,
+                displayedProgress = 0,
+                progressTimer = null,
+                criticalImages = ( preloader.attr( "data-critical-images" ) || "" ).split( "|" ).filter( Boolean ),
+                heroVideo = document.getElementById( "BGVideo" ),
+                totalAssets = criticalImages.length + ( heroVideo ? 1 : 0 ),
+                assetProgress = new Array( totalAssets ).fill( 0 );
 
-            $wind.on( "load", function () {
+            function renderProgress( value ) {
+                displayedProgress = value;
+                persent.value = value;
+                progress_number.text( Math.round( value ) );
+                progress_title.css( "clip-path", "inset(" + ( 100 - value ) + "% 0% 0% 0%)" );
+                preloader_progress.css( "width", value + "%" );
+            }
 
-                clearInterval( timer );
-                gsap.timeline()
-                    .to( persent, 1, {
-                        value: 100, onUpdate: function () {
-                            progress_number.text( persent.value.toFixed( 0 ) );
-                            progress_title.css( "clip-path", "inset(" + ( 100 - persent.value ) + "% 0% 0% 0%)" );
-                            preloader_progress.css( "width", persent.value + "%" );
-                        },
+            function setAssetProgress( index, value ) {
+                assetProgress[ index ] = Math.max( assetProgress[ index ], Math.min( 100, value ) );
+                actualProgress = totalAssets
+                    ? assetProgress.reduce( ( total, progress ) => total + progress, 0 ) / totalAssets
+                    : 100;
+            }
+
+            function preloadImage( src, index ) {
+                return new Promise( resolve => {
+                    const image = new Image();
+                    let settled = false;
+                    const finish = () => {
+                        if ( settled ) return;
+                        settled = true;
+                        setAssetProgress( index, 100 );
+                        resolve();
+                    };
+                    image.addEventListener( "load", finish, { once: true } );
+                    image.addEventListener( "error", finish, { once: true } );
+                    image.src = src;
+                    if ( image.complete ) finish();
+                } );
+            }
+
+            function preloadVideo( video ) {
+                if ( !video ) return Promise.resolve();
+                const videoIndex = criticalImages.length;
+                const source = video.querySelector( "source" );
+                const src = source ? source.getAttribute( "data-src" ) : null;
+                if ( !src ) {
+                    setAssetProgress( videoIndex, 100 );
+                    return Promise.resolve();
+                }
+
+                return fetch( src, { credentials: "same-origin" } )
+                    .then( response => {
+                        if ( !response.ok ) throw new Error( "Video request failed" );
+                        const total = Number( response.headers.get( "content-length" ) ) || 0;
+                        if ( !response.body || !total ) return response.blob();
+
+                        const reader = response.body.getReader();
+                        const chunks = [];
+                        let received = 0;
+                        return reader.read().then( function process( result ) {
+                            if ( result.done ) return new Blob( chunks, { type: "video/mp4" } );
+                            chunks.push( result.value );
+                            received += result.value.byteLength;
+                            setAssetProgress( videoIndex, ( received / total ) * 100 );
+                            return reader.read().then( process );
+                        } );
                     } )
-                    .to( preloader.find( '> *' ), { y: -30, autoAlpha: 0 } )
-                    .call( function () {
-                        if ( preloader.length ) {
-                            effectBackForward();
-                            reloadAjax().catch( $err => {
-                                console.log( $err );
-                            } );
+                    .then( blob => new Promise( resolve => {
+                        const objectUrl = URL.createObjectURL( blob );
+                        video.addEventListener( "loadeddata", function ready() {
+                            setAssetProgress( videoIndex, 100 );
+                            resolve();
+                        }, { once: true } );
+                        video.src = objectUrl;
+                        video.load();
+                    } ) )
+                    .catch( () => {
+                        setAssetProgress( videoIndex, 100 );
+                    } );
+            }
+
+            function waitForVisualProgress() {
+                return new Promise( resolve => {
+                    progressTimer = window.setInterval( function () {
+                        if ( displayedProgress < actualProgress ) {
+                            renderProgress( Math.min( displayedProgress + 1, actualProgress ) );
                         }
-                    } )
+                        if ( actualProgress === 100 && displayedProgress === 100 ) {
+                            clearInterval( progressTimer );
+                            resolve();
+                        }
+                    }, 15 );
+                } );
+            }
+
+            function finishPreloader() {
+                return new Promise( resolve => {
+                    gsap.timeline()
+                    .to( {}, { duration: 0.2 } )
+                    .to( preloader.find( '> *' ), { y: -30, autoAlpha: 0 } )
                     .set( persent, { value: 0 } )
                     .to( persent, 0.8, {
                         value: 100, onUpdate: function () {
@@ -114,10 +188,41 @@
 
                     .call( function () {
                         preloader.remove();
-                        timer = preloader = progress_number = progress_title = persent = preloader_bar = preloader_progress = null;
+                        homepage.removeClass( "homepage-loading" )
+                            .addClass( "homepage-ready" )
+                            .attr( "aria-hidden", "false" );
+                        $( "html" ).removeClass( "is-loading is-revealing" );
+                        preloader = progress_number = progress_title = persent = preloader_bar = preloader_progress = null;
+                        resolve();
                     } );
+                } );
+            }
 
-            } );
+            async function initializeHomepage() {
+                renderProgress( 0 );
+                const smoothProgress = waitForVisualProgress();
+                const imageLoads = criticalImages.map( ( src, index ) => preloadImage( src, index ) );
+                const assetsReady = Promise.all( imageLoads.concat( preloadVideo( heroVideo ) ) );
+
+                await assetsReady;
+                await smoothProgress;
+
+                // Build the theme layout and animations while the opaque loader still covers it.
+                effectBackForward();
+                try {
+                    await reloadAjax();
+                } catch ( error ) {
+                    if ( window.console ) console.error( "Homepage initialization failed", error );
+                }
+
+                await finishPreloader();
+                if ( heroVideo ) {
+                    const playback = heroVideo.play();
+                    if ( playback && playback.catch ) playback.catch( function () {} );
+                }
+            }
+
+            initializeHomepage();
 
 
         }

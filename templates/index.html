@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en-US">
+<html lang="en-US" class="is-loading">
 
 <head>
     <meta charset="utf-8" />
@@ -9,11 +9,7 @@
     <!--  Title -->
     <title>Master Golf Club</title>
 
-    <!-- Font Google -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&amp;family=Poppins:wght@300;400;500;600;700&amp;display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&amp;family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
-    </noscript>
+    <link href="{% static 'css/local-fonts.css' %}" rel="stylesheet" type="text/css">
     <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon" />
     <link rel="icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon" />
 
@@ -35,23 +31,52 @@
 
 
     <style>
-        #fullpage .section:nth-child(1) {
+        html.is-loading,
+        html.is-loading body,
+        html.is-revealing,
+        html.is-revealing body {
+            overflow: hidden !important;
+        }
+
+        html.is-loading .preloader {
+            visibility: visible;
+        }
+
+        .preloader {
+            inset: 0;
+            z-index: 999999 !important;
+        }
+
+        #homepage.homepage-loading {
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        #homepage.homepage-ready {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            transition: opacity .7s ease;
+        }
+
+        #fullpage .section.sec1 {
         			background: none;
         		}
         		 
-        		#fullpage .section:nth-child(2) {
+		#fullpage .section.sec2 {
         			background: url("{% static 'img/slider/tournament.jpg' %}");
         		}
         		
-        		#fullpage .section:nth-child(3) {
+		#fullpage .section.sec3 {
         			background: url("{% static 'img/slider/events.jpg' %}");
         		}
         		
-        		#fullpage .section:nth-child(1) {
+		#fullpage .section.sec1 {
         			background-color: rgba(0,0,0,0.5);
         		}
         		
-        		#fullpage .section:nth-child(2), #fullpage .section:nth-child(3) {
+		#fullpage .section.sec2, #fullpage .section.sec3 {
         			background-color: rgba(0,0,0,0.4);
         			background-blend-mode: overlay;
         			background-size: cover !important;
@@ -274,7 +299,7 @@
         		
         		.site-header.stiky { display: none !important; }
         			
-        		.section video {
+		.section video {
         			position: absolute !important;
         			top: 50% !important; 
         			left: 50% !important;
@@ -285,8 +310,62 @@
         			width: auto !important; 
         			height: auto !important;
         			z-index: -1000; 
-        			 overflow: hidden;
-        		}
+				 overflow: hidden;
+		}
+
+        .hero-video-shell {
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            background: #172018 url("{% static 'img/slider/tournament.jpg' %}") center center / cover no-repeat;
+        }
+
+        .hero-video-shell #BGVideo {
+            z-index: 0 !important;
+            opacity: 0;
+            transition: opacity .8s ease;
+        }
+
+        .hero-video-shell.is-ready #BGVideo {
+            opacity: 1;
+        }
+
+        .hero-video-loader {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .18);
+            transition: opacity .35s ease, visibility .35s ease;
+        }
+
+        .hero-video-loader::after {
+            content: "";
+            width: 34px;
+            height: 34px;
+            border: 2px solid rgba(255, 255, 255, .35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: hero-video-spin .8s linear infinite;
+        }
+
+        .hero-video-shell.is-ready .hero-video-loader,
+        .hero-video-shell.has-error .hero-video-loader {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        @keyframes hero-video-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero-video-loader::after { animation: none; }
+            .hero-video-shell #BGVideo { transition: none; }
+        }
         
         		.about-img{
         			height: 600px;
@@ -314,7 +393,7 @@
         				display: none !important;
         			}
         	
-        			#fullpage .section:nth-child(1), #fullpage .section:nth-child(2), #fullpage .section:nth-child(3), #fullpage .section:nth-child(4) {
+			#fullpage .section.sec1, #fullpage .section.sec2, #fullpage .section.sec3, #fullpage .section.sec4 {
         				background-size: cover !important;
         			}
         			
@@ -401,7 +480,7 @@
 <body class="v-light dsn-effect-scroll dsn-ajax">
 
     <!-- ========== Loading Page ========== -->
-    <div class="preloader">
+    <div class="preloader" data-critical-images="{% static 'img/logo.png' %}|{% static 'img/slider/tournament.jpg' %}|{% static 'img/slider/events.jpg' %}|{% static 'img/slider/tournaments-thumb.jpg' %}|{% static 'img/slider/about.jpg' %}">
         <span class="percent ">0</span>
         <span class="loading-text text-uppercase">Loading ...</span>
         <div class="preloader-bar">
@@ -414,38 +493,7 @@
     </div>
     <!-- ========== End Loading Page ========== -->
 
-    <!-- Fast preloader dismissal: hide as soon as the DOM is ready instead of
-         waiting for every image/font/iframe + the theme's percentage animation. -->
-    <style>
-        .preloader {
-            transition: opacity .4s ease, visibility .4s ease;
-        }
-        .preloader.preloader--hidden {
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-        }
-    </style>
-    <script>
-        (function () {
-            function hidePreloader() {
-                var p = document.querySelector('.preloader');
-                if (p) { p.classList.add('preloader--hidden'); }
-            }
-            // Hide shortly after the DOM is parsed (content is already usable).
-            if (document.readyState === 'interactive' || document.readyState === 'complete') {
-                setTimeout(hidePreloader, 200);
-            } else {
-                document.addEventListener('DOMContentLoaded', function () {
-                    setTimeout(hidePreloader, 200);
-                });
-            }
-            // Hard safety cap: never keep the loader on screen longer than 1.2s.
-            setTimeout(hidePreloader, 1200);
-            window.addEventListener('load', hidePreloader);
-        })();
-    </script>
-
+    <div id="homepage" class="homepage-loading" aria-hidden="true">
     <div class="actions">
         <div class="regular slider">
             <div id="evnt" data-slide="1">
@@ -468,9 +516,12 @@
 
     <div id="fullpage">
         <div class="section fpsn sec1">
-            <video data-keepplaying autoplay loop muted id="BGVideo" style="width: 100%; height: auto; position: absolute; z-index: -1; position: absolute; top: 0; left: 0; right: 0;">
-                <source src="{% static 'videos/banner-video-new.mp4' %}" type="video/mp4">
-            </video>
+            <div class="hero-video-shell" id="heroVideoShell">
+                <div class="hero-video-loader" aria-hidden="true"></div>
+                <video data-keepplaying loop muted playsinline preload="auto" id="BGVideo">
+                    <source data-src="{% static 'videos/banner-video-new.mp4' %}" type="video/mp4">
+                </video>
+            </div>
             <div class="slide-container">
                 <p class="sub-heading line-bg-left mb-20 dsn-up" data-dsn="parallax">Master Golf Club</p>
                 <h1 class="title user-no-selection d-inline-block mb-30">Experience the precision on the greens.<br>
@@ -483,11 +534,33 @@
                 </div>
             </div>
         </div>
+        <script>
+            (function () {
+                var video = document.getElementById('BGVideo');
+                var shell = document.getElementById('heroVideoShell');
+                if (!video || !shell) return;
+
+                var revealVideo = function () {
+                    if (video.readyState >= 2) {
+                        shell.classList.add('is-ready');
+                    }
+                };
+                var showFallback = function () {
+                    shell.classList.add('has-error');
+                };
+
+                video.addEventListener('loadeddata', revealVideo, { once: true });
+                video.addEventListener('canplay', revealVideo, { once: true });
+                video.addEventListener('error', showFallback, { once: true });
+                if (video.readyState >= 2) revealVideo();
+
+            })();
+        </script>
         <div class="section fpsn sec2">
             <div class="slide-container">
                 <p class="sub-heading line-bg-left mb-20 dsn-up">Master Golf Club Concept</p>
                 <h1 class="title user-no-selection d-inline-block mb-30">MGC is a unique and innovative <br> solution
-					designed to meet all your <br> golfing needs. </h1>
+					designed to meet all <br> your golfing needs. </h1>
             </div>
         </div>
         <div class="section fpsn sec3">
@@ -1139,6 +1212,7 @@
 
     <!-- ========== Line left & right with creative page ========== -->
     <div class="line-border-style w-100 h-100"></div>
+    </div>
 
 
     <!-- Optional JavaScript -->
@@ -1146,7 +1220,7 @@
     <script src="{% static 'js/jquery-migrate-1.2.1.min.js' %}"></script>
     <script src="{% static 'js/plugins.min.js' %}"></script>
     <script src="{% static 'js/dsn-grid.min.js' %}"></script>
-    <script src="{% static 'js/custom.js' %}"></script>
+    <script src="{% static 'js/custom.js' %}?v=homepage-video-download-3"></script>
     <script src="{% static 'js/fullpage.js' %}"></script>
     <script src="{% static 'js/slick.js' %}"></script>
     <script src="{% static 'js/smooth-scrollbar.js' %}"></script>

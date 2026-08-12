@@ -3473,8 +3473,32 @@ class DashboardViewSet(ActionPermissionMixin, viewsets.ViewSet):
     @action(detail=False, methods=['GET'], url_path='stats')
     def stats(self, request):
         try:
-            today = timezone.now().astimezone(UK_TIMEZONE).date()
+            uk_now = timezone.now().astimezone(UK_TIMEZONE)
+            today = uk_now.date()
             month_start = today.replace(day=1)
+
+            # Use timestamp ranges instead of createdAt__date. The latter asks
+            # MySQL to run CONVERT_TZ(), which returns NULL when its timezone
+            # tables are not installed and makes valid bookings disappear.
+            def uk_day_range(day):
+                start = UK_TIMEZONE.localize(dt.datetime.combine(day, dt.time.min))
+                end = UK_TIMEZONE.localize(dt.datetime.combine(
+                    day + dt.timedelta(days=1), dt.time.min
+                ))
+                return start, end
+
+            month_start_at = UK_TIMEZONE.localize(
+                dt.datetime.combine(month_start, dt.time.min)
+            )
+            if month_start.month == 12:
+                next_month = month_start.replace(
+                    year=month_start.year + 1, month=1
+                )
+            else:
+                next_month = month_start.replace(month=month_start.month + 1)
+            next_month_at = UK_TIMEZONE.localize(
+                dt.datetime.combine(next_month, dt.time.min)
+            )
 
             live_bookings = BookingModel.objects.filter(
                 hideStatus=0, is_join_request=False,
@@ -3497,10 +3521,14 @@ class DashboardViewSet(ActionPermissionMixin, viewsets.ViewSet):
             trend = []
             for offset in range(6, -1, -1):
                 day = today - dt.timedelta(days=offset)
+                day_start, day_end = uk_day_range(day)
                 trend.append({
                     'date': day.isoformat(),
                     'label': day.strftime('%a'),
-                    'count': live_bookings.filter(createdAt__date=day).count(),
+                    'count': live_bookings.filter(
+                        createdAt__gte=day_start,
+                        createdAt__lt=day_end,
+                    ).count(),
                 })
 
             return Response({
@@ -3511,7 +3539,10 @@ class DashboardViewSet(ActionPermissionMixin, viewsets.ViewSet):
                     'members': {
                         'total': MemberModel.objects.filter(hideStatus=0).count(),
                         'newThisMonth': MemberModel.objects.filter(
-                            hideStatus=0, createdAt__date__gte=month_start).count(),
+                            hideStatus=0,
+                            createdAt__gte=month_start_at,
+                            createdAt__lt=next_month_at,
+                        ).count(),
                     },
                     'bookings': {
                         'today': live_bookings.filter(slot_date=today).count(),
@@ -5759,5 +5790,4 @@ class SystemSettingsViewSet(ActionPermissionMixin, viewsets.ViewSet):
             changed.append(key)
 
         return Response({'code': 1, 'message': 'Settings updated', 'data': changed})
-
 
